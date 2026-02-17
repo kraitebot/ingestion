@@ -1,0 +1,17 @@
+{
+    "_hash": "312f003ccbb9df94b087f0828e15baec799d158fa38433dfc4e16797b662f5a7",
+    "patches": {
+        "laravel/boost": [
+            {
+                "package": "laravel/boost",
+                "description": "Fix mixed content error by using relative URL for browser-logs endpoint",
+                "url": "patches/laravel-boost-https-fix.patch",
+                "sha256": "49d059fa07de70ffea44a24e37c405cab5a79283f03cd97162a055c178dceb46",
+                "depth": 1,
+                "extra": {
+                    "provenance": "root"
+                }
+            }
+        ]
+    }
+}

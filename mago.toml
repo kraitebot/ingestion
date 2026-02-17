@@ -1,0 +1,36 @@
+# Mago Configuration for Martingalian Ingestion
+# https://mago.carthage.software/guide/configuration
+
+php-version = "8.4"
+
+[source]
+# Main source paths to analyze, lint, and format
+paths = [
+    "app",
+    "packages/martingalian/core/src",
+    "tests",
+]
+
+# Dependencies - parsed for type info but not linted/analyzed
+includes = [
+    "vendor",
+    "packages/martingalian/core/vendor",
+]
+
+# Completely excluded from all processing
+excludes = [
+    "bootstrap/cache/**",
+    "storage/**",
+    "node_modules/**",
+    "*.blade.php",
+]
+
+extensions = ["php"]
+
+[linter]
+# Use default rules for now - can customize later
+# level = "default"
+
+[formatter]
+# Use PER coding style (similar to PSR-12)
+# We already use Pint, so formatter is optional

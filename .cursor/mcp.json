@@ -1,0 +1,24 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "wsl.exe",
+            "args": [
+                "/usr/bin/php8.4",
+                "/home/bruno/ingestion/artisan",
+                "boost:mcp"
+            ]
+        },
+        "filesystem": {
+            "command": "/home/bruno/.nvm/versions/node/v20.19.4/bin/mcp-server-filesystem",
+            "args": [
+                "/home/bruno/ingestion",
+                "/home/bruno",
+                "/tmp"
+            ]
+        },
+        "puppeteer": {
+            "command": "/home/bruno/.nvm/versions/node/v20.19.4/bin/mcp-server-puppeteer",
+            "args": []
+        }
+    }
+}

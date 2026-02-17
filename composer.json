@@ -1,0 +1,173 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "kraitebot/ingestion",
+    "type": "project",
+    "description": "Kraite Ingestion",
+    "keywords": [
+        "crypto",
+        "laravel"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.4.0",
+        "brunocfalcao/blade-feather-icons": "dev-master",
+        "brunocfalcao/laravel-zepto-mail-api-driver": "dev-master",
+        "laravel/boost": "^2.1",
+        "laravel/framework": "^12.40.2",
+        "laravel/tinker": "^2.10.2",
+        "laravel/ui": "^4.6",
+        "kraitebot/core": "dev-master",
+        "nunomaduro/essentials": "^1.0.1"
+    },
+    "require-dev": {
+        "cweagans/composer-patches": "^2.0",
+        "driftingly/rector-laravel": "^2.1.3",
+        "fakerphp/faker": "^1.24.1",
+        "larastan/larastan": "^3.8.0",
+        "laravel/horizon": "^5.40.1",
+        "laravel/pail": "^1.2.4",
+        "laravel/pint": "^1.26.0",
+        "mockery/mockery": "^1.6.12",
+        "nunomaduro/collision": "^8.8.3",
+        "pestphp/pest": "^4.1.5",
+        "pestphp/pest-plugin-browser": "^4.1.1",
+        "pestphp/pest-plugin-laravel": "^4.0.0",
+        "pestphp/pest-plugin-type-coverage": "^4.0.3",
+        "rector/rector": "^2.2.8"
+    },
+    "autoload": {
+        "files": [
+            "app/helpers.php"
+        ],
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "setup": [
+            "composer install",
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+            "@php artisan key:generate",
+            "@php artisan migrate --force"
+        ],
+        "dev": [
+            "Composer\\Config::disableProcessTimeout",
+            "npx concurrently -c \"#93c5fd,#c4b5fd\" \"php artisan serve\" \"php artisan pail --timeout=0\" --names=server,logs --kill-others"
+        ],
+        "claude": "claude --dangerously-skip-permissions",
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
+            "@php artisan clear"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@php artisan migrate --graceful --ansi"
+        ],
+        "update:requirements": [
+            "composer bump"
+        ],
+        "lint": [
+            "rector",
+            "pint --parallel"
+        ],
+        "test:type-coverage": "pest --type-coverage --min=100",
+        "test:lint": [
+            "pint --parallel --test",
+            "rector --dry-run"
+        ],
+        "test:unit": "pest --parallel --processes=6 --exclude-testsuite=Integration",
+        "test:unit:ci": "pest --parallel --processes=6 --compact --exclude-testsuite=Integration",
+        "test:integration": "pest --testsuite=Integration",
+        "test:coverage": "pest --coverage --min=70",
+        "test:types": "phpstan",
+        "test:cleanup": "./cleanup-test-databases.sh",
+        "test": [
+            "@test:type-coverage",
+            "@test:unit",
+            "@test:integration",
+            "@test:lint",
+            "@test:types",
+            "@test:cleanup"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        },
+        "composer-patches": {
+            "ignore-patch-failure": true
+        },
+        "patches": {
+            "laravel/boost": {
+                "Fix mixed content error by using relative URL for browser-logs endpoint": "patches/laravel-boost-https-fix.patch"
+            }
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true,
+            "cweagans/composer-patches": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./packages/kraitebot/core",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "./packages/brunocfalcao/step-dispatcher",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "./packages/brunocfalcao/blade-feather-icons",
+            "canonical": false,
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "./packages/brunocfalcao/laravel-helpers",
+            "canonical": false,
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "./packages/brunocfalcao/laravel-zepto-mail-api-driver",
+            "canonical": false,
+            "options": {
+                "symlink": true
+            }
+        }
+    ]
+}

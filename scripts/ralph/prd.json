@@ -1,0 +1,218 @@
+{
+  "project": "Ingestion Phase 1 - Exchange Variants",
+  "branchName": "master",
+  "description": "Create exchange-specific job implementations for BitGet, KuCoin, and ByBit (matching Binance patterns)",
+  "ralphInstructions": "IMPORTANT: (1) Do NOT write tests. (2) RE-READ CLAUDE.md and Laravel best practices BEFORE each story. (3) Check existing Binance implementations as patterns. (4) Use search-docs tool for Laravel features. (5) Extend base classes, override only what's exchange-specific. (6) After completing each story, verify class extends correct base class.",
+  "userStories": [
+    {
+      "id": "P1-US-001",
+      "title": "Create Bitget CalculateWapAndModifyProfitOrderJob",
+      "description": "As a developer, I want a Bitget-specific WAP job so that profit orders are recalculated correctly after DCA fills on Bitget.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Atomic/Order/Bitget/CalculateWapAndModifyProfitOrderJob.php",
+        "Class extends base CalculateWapAndModifyProfitOrderJob",
+        "Uses Bitget API to fetch position's breakEvenPrice",
+        "Updates reference_price and reference_quantity in complete() method",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Copy Binance implementation. Check app/Services/Bitget/BitgetFutureService.php for API methods. Base class at Jobs/Atomic/Order/CalculateWapAndModifyProfitOrderJob.php",
+      "isFirstStory": true,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-002",
+      "title": "Create Bitget CorrectModifiedOrderJob",
+      "description": "As a developer, I want a Bitget-specific order correction job so that modified orders are restored to original values on Bitget.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Atomic/Order/Bitget/CorrectModifiedOrderJob.php",
+        "Class extends base CorrectModifiedOrderJob",
+        "For algo orders (is_algo=true), uses cancel+recreate flow",
+        "For regular orders, uses apiModify",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Copy Binance implementation. Bitget uses Plan Order API for stop orders. Check app/Services/Bitget/BitgetFutureService.php",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-003",
+      "title": "Create Bitget ReplacePositionOrdersJob",
+      "description": "As a developer, I want a Bitget-specific order replacement job so that cancelled/expired orders are recreated on Bitget.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Lifecycles/Position/Bitget/ReplacePositionOrdersJob.php",
+        "Class extends base ReplacePositionOrdersJob",
+        "Uses SmartReplaceOrdersJob pattern (cancel+recreate)",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Copy Binance implementation. Base class at Jobs/Lifecycles/Position/ReplacePositionOrdersJob.php",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-004",
+      "title": "Create Bitget DispatchPositionJob",
+      "description": "As a developer, I want a Bitget-specific position dispatch job so that positions open correctly on Bitget.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Lifecycles/Position/Bitget/DispatchPositionJob.php",
+        "Class extends base DispatchPositionJob",
+        "Dispatches position opening workflow correctly",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Copy Binance implementation. Base class at Jobs/Lifecycles/Position/DispatchPositionJob.php",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-005",
+      "title": "Create KuCoin CalculateWapAndModifyProfitOrderJob",
+      "description": "As a developer, I want a KuCoin-specific WAP job so that profit orders are recalculated correctly after DCA fills on KuCoin.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Atomic/Order/Kucoin/CalculateWapAndModifyProfitOrderJob.php",
+        "Class extends base CalculateWapAndModifyProfitOrderJob",
+        "Uses KuCoin API to fetch position's breakEvenPrice",
+        "Updates reference_price and reference_quantity in complete() method",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Copy Binance implementation. Check app/Services/Kucoin/KucoinFutureService.php for API methods.",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-006",
+      "title": "Create KuCoin CorrectModifiedOrderJob",
+      "description": "As a developer, I want a KuCoin-specific order correction job so that modified orders are restored to original values on KuCoin.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Atomic/Order/Kucoin/CorrectModifiedOrderJob.php",
+        "Class extends base CorrectModifiedOrderJob",
+        "For algo orders (is_algo=true), uses cancel+recreate flow",
+        "For regular orders, uses apiModify",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Copy Binance implementation. KuCoin uses Stop Orders API for stop orders. Check app/Services/Kucoin/KucoinFutureService.php",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-007",
+      "title": "Create KuCoin ReplacePositionOrdersJob",
+      "description": "As a developer, I want a KuCoin-specific order replacement job so that cancelled/expired orders are recreated on KuCoin.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Lifecycles/Position/Kucoin/ReplacePositionOrdersJob.php",
+        "Class extends base ReplacePositionOrdersJob",
+        "Uses SmartReplaceOrdersJob pattern (cancel+recreate)",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Copy Binance implementation. Base class at Jobs/Lifecycles/Position/ReplacePositionOrdersJob.php",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-008",
+      "title": "Create KuCoin DispatchPositionJob",
+      "description": "As a developer, I want a KuCoin-specific position dispatch job so that positions open correctly on KuCoin.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Lifecycles/Position/Kucoin/DispatchPositionJob.php",
+        "Class extends base DispatchPositionJob",
+        "Dispatches position opening workflow correctly",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Copy Binance implementation. Base class at Jobs/Lifecycles/Position/DispatchPositionJob.php",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-009",
+      "title": "Create ByBit CalculateWapAndModifyProfitOrderJob",
+      "description": "As a developer, I want a ByBit-specific WAP job so that profit orders are recalculated correctly after DCA fills on ByBit.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Atomic/Order/Bybit/CalculateWapAndModifyProfitOrderJob.php",
+        "Class extends base CalculateWapAndModifyProfitOrderJob",
+        "Uses ByBit API to fetch position's breakEvenPrice",
+        "Updates reference_price and reference_quantity in complete() method",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Copy Binance implementation. Check app/Services/Bybit/BybitFutureService.php for API methods.",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-010",
+      "title": "Create ByBit CorrectModifiedOrderJob",
+      "description": "As a developer, I want a ByBit-specific order correction job so that modified orders are restored to original values on ByBit.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Atomic/Order/Bybit/CorrectModifiedOrderJob.php",
+        "Class extends base CorrectModifiedOrderJob",
+        "For algo orders (is_algo=true), uses cancel+recreate flow",
+        "For regular orders, uses apiModify",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Copy Binance implementation. ByBit uses same endpoint with triggerPrice for stop orders. Check app/Services/Bybit/BybitFutureService.php",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-011",
+      "title": "Create ByBit ReplacePositionOrdersJob",
+      "description": "As a developer, I want a ByBit-specific order replacement job so that cancelled/expired orders are recreated on ByBit.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Lifecycles/Position/Bybit/ReplacePositionOrdersJob.php",
+        "Class extends base ReplacePositionOrdersJob",
+        "Uses SmartReplaceOrdersJob pattern (cancel+recreate)",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Copy Binance implementation. Base class at Jobs/Lifecycles/Position/ReplacePositionOrdersJob.php",
+      "isFirstStory": false,
+      "isLastStory": false
+    },
+    {
+      "id": "P1-US-012",
+      "title": "Create ByBit DispatchPositionJob",
+      "description": "As a developer, I want a ByBit-specific position dispatch job so that positions open correctly on ByBit.",
+      "acceptanceCriteria": [
+        "File created at Jobs/Lifecycles/Position/Bybit/DispatchPositionJob.php",
+        "Class extends base DispatchPositionJob",
+        "Dispatches position opening workflow correctly",
+        "Namespace matches directory structure",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Copy Binance implementation. Base class at Jobs/Lifecycles/Position/DispatchPositionJob.php",
+      "isFirstStory": false,
+      "isLastStory": true
+    }
+  ]
+}
