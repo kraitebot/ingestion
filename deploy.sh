@@ -113,7 +113,7 @@ if [ -z "$INSTALLED_CORE_REF" ] || [ "$INSTALLED_CORE_TYPE" = "path" ]; then
     # Force fresh fetch from GitHub
     echo "🔄 Clearing composer cache and retrying..."
     composer clear-cache
-    rm -rf vendor/martingalian/
+    rm -rf vendor/kraitebot/
 
     # Re-run composer update to fetch from GitHub
     composer update kraitebot/core --no-interaction --prefer-dist --no-dev

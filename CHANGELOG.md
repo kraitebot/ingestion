@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - [IMPROVED] Update package references from martingalian/core to kraitebot/core throughout codebase
 - [IMPROVED] Update database names from martingalian_tests to kraite_tests in all test configurations
 - [IMPROVED] Update system paths from /home/martingalian/ to /home/ploi/ and user from martingalian to waygou in supervisor configs
+- [IMPROVED] Update vendor directory cleanup in deploy.sh from vendor/martingalian/ to vendor/kraitebot/
 
 ### Fixes
 
