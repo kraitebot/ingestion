@@ -1,4 +1,4 @@
-# Mago Configuration for Martingalian Ingestion
+# Mago Configuration for Kraite Ingestion
 # https://mago.carthage.software/guide/configuration
 
 php-version = "8.4"
@@ -7,14 +7,14 @@ php-version = "8.4"
 # Main source paths to analyze, lint, and format
 paths = [
     "app",
-    "packages/martingalian/core/src",
+    "packages/kraitebot/core/src",
     "tests",
 ]
 
 # Dependencies - parsed for type info but not linted/analyzed
 includes = [
     "vendor",
-    "packages/martingalian/core/vendor",
+    "packages/kraitebot/core/vendor",
 ]
 
 # Completely excluded from all processing

@@ -18,7 +18,7 @@ final class ClearTablesCommand extends BaseCommand
         'api_systems',
         'exchange_symbols',
         'indicators',
-        'martingalian',
+        'engine',
         'migrations',
         'notifications',
         'servers',

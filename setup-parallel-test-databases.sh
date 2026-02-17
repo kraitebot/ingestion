@@ -7,7 +7,7 @@ DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
 DB_USERNAME="${DB_USERNAME:-root}"
 DB_PASSWORD="${DB_PASSWORD:-password}"
-DB_BASE_NAME="martingalian_tests"
+DB_BASE_NAME="kraite_tests"
 NUM_PROCESSES="${1:-20}"  # Default to 20 parallel processes
 
 echo "Setting up $NUM_PROCESSES parallel test databases..."

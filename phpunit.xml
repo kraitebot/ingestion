@@ -36,9 +36,9 @@
         <env name="DB_CONNECTION" value="mysql"/>
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="3306"/>
-        <env name="DB_DATABASE" value="martingalian_tests"/>
-        <env name="DB_USERNAME" value="martingalian"/>
-        <env name="DB_PASSWORD" value="martingalian"/>
+        <env name="DB_DATABASE" value="kraite_tests"/>
+        <env name="DB_USERNAME" value="kraite"/>
+        <env name="DB_PASSWORD" value="kraite"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="NOTIFICATIONS_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>

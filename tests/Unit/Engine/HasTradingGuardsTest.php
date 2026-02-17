@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Kraite\Core\Trading\Engine;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\Engine as EngineModel;
+use Kraite\Core\Trading\Engine;
 
 test('canOpenPositions returns true when allow_opening_positions is true', function () {
     EngineModel::query()->update(['allow_opening_positions' => true]);
@@ -24,7 +24,7 @@ test('canOpenPositions returns false when allow_opening_positions is false', fun
     expect($engine->canOpenPositions())->toBeFalse();
 });
 
-test('canOpenPositions returns false when no martingalian record exists', function () {
+test('canOpenPositions returns false when no engine record exists', function () {
     EngineModel::query()->delete();
 
     $account = Account::factory()->create();

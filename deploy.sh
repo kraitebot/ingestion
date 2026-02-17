@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 # Detect hostname and set directory
 HOSTNAME=$(hostname)
-SITE_DIR="/home/ploi/${HOSTNAME}.martingalian.com"
+SITE_DIR="/home/ploi/${HOSTNAME}.kraite.com"
 
 cd "$SITE_DIR"
 
@@ -11,8 +11,8 @@ echo "🚀 Starting deployment for ${HOSTNAME}..."
 
 # Safety check: Only deploy if safe to restart
 echo "🔍 Checking if it's safe to deploy..."
-if php artisan list | grep -q "martingalian:safe-to-restart"; then
-    if php artisan martingalian:safe-to-restart; then
+if php artisan list | grep -q "kraite:safe-to-restart"; then
+    if php artisan kraite:safe-to-restart; then
         echo "✅ Safe to deploy - no steps are running."
     else
         echo "❌ Deployment aborted: Steps are currently being processed."
@@ -20,7 +20,7 @@ if php artisan list | grep -q "martingalian:safe-to-restart"; then
         exit 1
     fi
 else
-    echo "⚠️  Command 'martingalian:safe-to-restart' not found (first deployment?)"
+    echo "⚠️  Command 'kraite:safe-to-restart' not found (first deployment?)"
     echo "   Proceeding with deployment..."
 fi
 
@@ -79,8 +79,8 @@ echo "✅ Ingestion repo at: ${CURRENT_COMMIT:0:7}"
 
 # Update APP_URL based on hostname
 echo "🔧 Updating APP_URL for ${HOSTNAME}..."
-sed -i "s|^APP_URL=.*|APP_URL=https://${HOSTNAME}.martingalian.com|" .env
-echo "✅ APP_URL set to https://${HOSTNAME}.martingalian.com"
+sed -i "s|^APP_URL=.*|APP_URL=https://${HOSTNAME}.kraite.com|" .env
+echo "✅ APP_URL set to https://${HOSTNAME}.kraite.com"
 
 # Nuke any custom repositories (kills local path repos cleanly)
 echo "🔧 Cleaning composer repositories..."
@@ -92,21 +92,21 @@ echo "💣 Clearing vendor directory and Composer cache..."
 rm -rf vendor/
 composer clear-cache
 
-# Resolve martingalian/core from remote (in case lock was bound to a path)
-echo "📚 Updating martingalian/core..."
-composer update martingalian/core --no-interaction --prefer-dist --no-dev
+# Resolve kraitebot/core from remote (in case lock was bound to a path)
+echo "📚 Updating kraitebot/core..."
+composer update kraitebot/core --no-interaction --prefer-dist --no-dev
 
 # Fresh install of all dependencies
 echo "📥 Installing dependencies from scratch..."
 composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
 
-# Verify martingalian/core was installed from GitHub (not path-based)
-echo "🔍 Verifying martingalian/core installation..."
-INSTALLED_CORE_REF=$(jq -r '.packages[] | select(.name == "martingalian/core") | .source.reference // empty' composer.lock 2>/dev/null || echo "")
-INSTALLED_CORE_TYPE=$(jq -r '.packages[] | select(.name == "martingalian/core") | .source.type // empty' composer.lock 2>/dev/null || echo "")
+# Verify kraitebot/core was installed from GitHub (not path-based)
+echo "🔍 Verifying kraitebot/core installation..."
+INSTALLED_CORE_REF=$(jq -r '.packages[] | select(.name == "kraitebot/core") | .source.reference // empty' composer.lock 2>/dev/null || echo "")
+INSTALLED_CORE_TYPE=$(jq -r '.packages[] | select(.name == "kraitebot/core") | .source.type // empty' composer.lock 2>/dev/null || echo "")
 
 if [ -z "$INSTALLED_CORE_REF" ] || [ "$INSTALLED_CORE_TYPE" = "path" ]; then
-    echo "⚠️  martingalian/core not properly installed from GitHub! Attempting forced update..."
+    echo "⚠️  kraitebot/core not properly installed from GitHub! Attempting forced update..."
     echo "   Type: ${INSTALLED_CORE_TYPE:-unknown}"
     echo "   Ref: ${INSTALLED_CORE_REF:-none}"
 
@@ -116,15 +116,15 @@ if [ -z "$INSTALLED_CORE_REF" ] || [ "$INSTALLED_CORE_TYPE" = "path" ]; then
     rm -rf vendor/martingalian/
 
     # Re-run composer update to fetch from GitHub
-    composer update martingalian/core --no-interaction --prefer-dist --no-dev
+    composer update kraitebot/core --no-interaction --prefer-dist --no-dev
     composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
 
     # Re-verify
-    INSTALLED_CORE_REF=$(jq -r '.packages[] | select(.name == "martingalian/core") | .source.reference // empty' composer.lock 2>/dev/null || echo "")
-    INSTALLED_CORE_TYPE=$(jq -r '.packages[] | select(.name == "martingalian/core") | .source.type // empty' composer.lock 2>/dev/null || echo "")
+    INSTALLED_CORE_REF=$(jq -r '.packages[] | select(.name == "kraitebot/core") | .source.reference // empty' composer.lock 2>/dev/null || echo "")
+    INSTALLED_CORE_TYPE=$(jq -r '.packages[] | select(.name == "kraitebot/core") | .source.type // empty' composer.lock 2>/dev/null || echo "")
 
     if [ -z "$INSTALLED_CORE_REF" ] || [ "$INSTALLED_CORE_TYPE" = "path" ]; then
-        echo "❌ ABORT: martingalian/core STILL not installed from GitHub!"
+        echo "❌ ABORT: kraitebot/core STILL not installed from GitHub!"
         echo "   Type: ${INSTALLED_CORE_TYPE:-unknown}"
         echo "   Ref: ${INSTALLED_CORE_REF:-none}"
         echo "   Check that the package exists on GitHub/Packagist."
@@ -134,7 +134,7 @@ if [ -z "$INSTALLED_CORE_REF" ] || [ "$INSTALLED_CORE_TYPE" = "path" ]; then
     echo "✅ Forced update successful!"
 fi
 
-echo "✅ martingalian/core installed: ${INSTALLED_CORE_REF:0:7} (${INSTALLED_CORE_TYPE})"
+echo "✅ kraitebot/core installed: ${INSTALLED_CORE_REF:0:7} (${INSTALLED_CORE_TYPE})"
 
 # Regenerate autoloader
 echo "🔄 Regenerating autoloader..."

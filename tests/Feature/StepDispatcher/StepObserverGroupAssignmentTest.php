@@ -23,19 +23,19 @@ use StepDispatcher\States\Running;
 */
 
 beforeEach(function (): void {
-    // Clean up steps from previous tests
+    // Clean up steps and dispatcher groups from previous tests
     Step::query()->delete();
+    StepsDispatcher::query()->delete();
 
     // Seed steps_dispatcher groups for round-robin selection (all 10 groups)
     $groups = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
     foreach ($groups as $group) {
-        StepsDispatcher::firstOrCreate(
-            ['group' => $group],
-            ['can_dispatch' => true, 'last_selected_at' => null]
-        );
+        StepsDispatcher::create([
+            'group' => $group,
+            'can_dispatch' => true,
+            'last_selected_at' => null,
+        ]);
     }
-    // Reset last_selected_at for predictable round-robin
-    StepsDispatcher::query()->update(['last_selected_at' => null]);
 });
 
 test('root step gets a group from steps_dispatcher via round-robin', function (): void {
