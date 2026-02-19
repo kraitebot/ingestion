@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.3.1 - 2026-02-19
+
+### Improvements
+
+- [IMPROVED] Add ingestion-side regression tests for `kraitebot/core` decimal formatting helpers and direction-alignment job namespace reference
+
+### Dependencies
+
+- [DEPENDENCIES] Update `kraitebot/core` lock reference to include precision-safe formatting and alignment-step namespace fixes
+
 ## 1.3.0 - 2026-02-17
 
 ### Improvements
