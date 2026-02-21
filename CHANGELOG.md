@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.3.7 - 2026-02-21
+
+### Features
+
+- [NEW FEATURE] Add BusinessSeeder for trader/account/exchange integration data (moved from kraitebot/core)
+
+### Improvements
+
+- [IMPROVED] DatabaseSeeder now calls KraiteSeeder (system) then BusinessSeeder (business data)
+- [IMPROVED] Replace `env()` calls with `config()` in BusinessSeeder
+
+### Dependencies
+
+- [DEPENDENCIES] Sync kraitebot/core with seeder split
+
 ## 1.3.6 - 2026-02-21
 
 ### Improvements

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Kraite\Core\Database\Seeders\KraiteSeeder;
 
 final class DatabaseSeeder extends Seeder
 {
@@ -13,6 +14,7 @@ final class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        //
+        $this->call(KraiteSeeder::class);
+        $this->call(BusinessSeeder::class);
     }
 }
