@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.3.4 - 2026-02-21
+
+### Features
+
+- [NEW FEATURE] Add AppLog unit tests covering polymorphic relationships, severity defaults, JSON metadata, disable/enable toggle, and multi-model support
+
+### Dependencies
+
+- [DEPENDENCIES] Update `kraitebot/core` with AppLog model, migration, and business timeline logging across position creation chain
+
 ## 1.3.3 - 2026-02-21
 
 ### Improvements

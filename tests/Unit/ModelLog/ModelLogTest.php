@@ -139,11 +139,11 @@ it('respects skipLogging array for timestamps on updates', function () {
     expect($updatedAtLog)->toBeNull();
 });
 
-it('allows manual logging with appLog method', function () {
+it('allows manual logging with modelLog method', function () {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
     $step = Step::factory()->create();
 
-    $log = $exchangeSymbol->appLog(
+    $log = $exchangeSymbol->modelLog(
         eventType: 'price_sync_failed',
         metadata: ['error' => 'Connection timeout', 'retry_count' => 3],
         relatable: $step,
@@ -163,7 +163,7 @@ it('allows manual logging with appLog method', function () {
 it('allows manual logging without relatable model', function () {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
 
-    $log = $exchangeSymbol->appLog(
+    $log = $exchangeSymbol->modelLog(
         eventType: 'delisted',
         metadata: ['reason' => 'Low volume'],
         message: 'Symbol delisted due to low volume'
@@ -199,7 +199,7 @@ it('stores relatable polymorphic relationship correctly', function () {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
     $step = Step::factory()->create();
 
-    $log = $exchangeSymbol->appLog(
+    $log = $exchangeSymbol->modelLog(
         eventType: 'test_event',
         relatable: $step
     );
@@ -241,13 +241,13 @@ it('formats array values correctly in messages', function () {
 it('does not create ModelLog entries for ModelLog model itself', function () {
     // Create an ModelLog entry
     $exchangeSymbol = ExchangeSymbol::factory()->create();
-    $appLog = $exchangeSymbol->appLog('test_event', ['key' => 'value']);
+    $modelLog = $exchangeSymbol->modelLog('test_event', ['key' => 'value']);
 
     // Count logs before update
     $countBefore = ModelLog::count();
 
     // Update the ModelLog itself
-    $appLog->update(['message' => 'Updated message']);
+    $modelLog->update(['message' => 'Updated message']);
 
     // Count logs after update - should be the same (no new logs for ModelLog)
     $countAfter = ModelLog::count();
@@ -268,7 +268,7 @@ it('can disable and enable logging globally', function () {
     expect($logsWhileDisabled)->toBe(0);
 
     // Try manual logging - should also NOT log
-    $result = $exchangeSymbol->appLog('test_event', ['key' => 'value']);
+    $result = $exchangeSymbol->modelLog('test_event', ['key' => 'value']);
     expect($result)->toBeNull();
 
     // Enable logging
@@ -286,6 +286,6 @@ it('can disable and enable logging globally', function () {
     expect($logsWhileEnabled)->toBeGreaterThan(0);
 
     // Manual logging should also work
-    $result = $exchangeSymbol->appLog('test_event', ['key' => 'value']);
+    $result = $exchangeSymbol->modelLog('test_event', ['key' => 'value']);
     expect($result)->toBeInstanceOf(ModelLog::class);
 });
