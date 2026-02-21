@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.3.6 - 2026-02-21
+
+### Improvements
+
+- [IMPROVED] Remove 18 artisan commands — now provided by kraitebot/core package
+
+### Dependencies
+
+- [DEPENDENCIES] Sync kraitebot/core with centralized command registration
+
 ## 1.3.5 - 2026-02-21
 
 ### Dependencies
