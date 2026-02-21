@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.3.3 - 2026-02-21
+
+### Improvements
+
+- [IMPROVED] Remove `JustEndException` and `JustResolveException` references from TestQueueableJob and exception type tests
+
+### Dependencies
+
+- [DEPENDENCIES] Update `kraitebot/core` with algo order endpoint fix, observer silent rejection, and exception cleanup
+- [DEPENDENCIES] Update `brunocfalcao/step-dispatcher` with JustEnd/JustResolve exception removal
+
 ## 1.3.2 - 2026-02-19
 
 ### Dependencies
