@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.3.8 - 2026-02-21
+
+### Features
+
+- [NEW FEATURE] Add `kraite-ingestion.php` config file for trader/account env vars
+
+### Improvements
+
+- [IMPROVED] BusinessSeeder uses `config('kraite-ingestion.*')` instead of `env()` — zero direct env access in seeders
+
 ## 1.3.7 - 2026-02-21
 
 ### Features

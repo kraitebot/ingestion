@@ -38,12 +38,12 @@ final class BusinessSeeder extends Seeder
     private function seedUser(): User
     {
         $userData = [
-            'name' => config('traders.binance_bybit.name'),
-            'email' => config('traders.binance_bybit.email'),
-            'password' => bcrypt(config('traders.binance_bybit.password', 'password')),
+            'name' => config('kraite-ingestion.traders.binance_bybit.name'),
+            'email' => config('kraite-ingestion.traders.binance_bybit.email'),
+            'password' => bcrypt(config('kraite-ingestion.traders.binance_bybit.password', 'password')),
             'is_active' => true,
             'is_admin' => true,
-            'pushover_key' => config('traders.binance_bybit.pushover_key'),
+            'pushover_key' => config('kraite-ingestion.traders.binance_bybit.pushover_key'),
             'notification_channels' => ['mail', 'pushover'],
         ];
 
@@ -69,8 +69,8 @@ final class BusinessSeeder extends Seeder
                 'portfolio_quote' => 'USDT',
                 'trading_quote' => 'USDT',
                 'trade_configuration_id' => 1,
-                'binance_api_key' => config('traders.binance_bybit.binance_api_key'),
-                'binance_api_secret' => config('traders.binance_bybit.binance_api_secret'),
+                'binance_api_key' => config('kraite-ingestion.traders.binance_bybit.binance_api_key'),
+                'binance_api_secret' => config('kraite-ingestion.traders.binance_bybit.binance_api_secret'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
             ]
@@ -140,8 +140,8 @@ final class BusinessSeeder extends Seeder
                 'portfolio_quote' => 'USDT',
                 'trading_quote' => 'USDT',
                 'trade_configuration_id' => 1,
-                'bybit_api_key' => config('traders.binance_bybit.bybit_api_key'),
-                'bybit_api_secret' => config('traders.binance_bybit.bybit_api_secret'),
+                'bybit_api_key' => config('kraite-ingestion.traders.binance_bybit.bybit_api_key'),
+                'bybit_api_secret' => config('kraite-ingestion.traders.binance_bybit.bybit_api_secret'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
             ]);
@@ -153,7 +153,7 @@ final class BusinessSeeder extends Seeder
      */
     private function setupBinanceOnlyIntegration(ApiSystem $binanceApiSystem): void
     {
-        $binanceEmail = config('traders.binance_only.email');
+        $binanceEmail = config('kraite-ingestion.traders.binance_only.email');
 
         if (! $binanceEmail) {
             return;
@@ -162,11 +162,11 @@ final class BusinessSeeder extends Seeder
         $binanceUser = User::updateOrCreate(
             ['email' => $binanceEmail],
             [
-                'name' => config('traders.binance_only.name'),
-                'password' => bcrypt(config('traders.binance_only.password', 'password')),
+                'name' => config('kraite-ingestion.traders.binance_only.name'),
+                'password' => bcrypt(config('kraite-ingestion.traders.binance_only.password', 'password')),
                 'is_active' => true,
                 'is_admin' => false,
-                'pushover_key' => config('traders.binance_only.pushover_key'),
+                'pushover_key' => config('kraite-ingestion.traders.binance_only.pushover_key'),
                 'notification_channels' => ['mail', 'pushover'],
             ]
         );
@@ -184,8 +184,8 @@ final class BusinessSeeder extends Seeder
                 'portfolio_quote' => 'USDT',
                 'trading_quote' => 'USDT',
                 'trade_configuration_id' => 1,
-                'binance_api_key' => config('traders.binance_only.binance_api_key'),
-                'binance_api_secret' => config('traders.binance_only.binance_api_secret'),
+                'binance_api_key' => config('kraite-ingestion.traders.binance_only.binance_api_key'),
+                'binance_api_secret' => config('kraite-ingestion.traders.binance_only.binance_api_secret'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
             ]);
@@ -197,7 +197,7 @@ final class BusinessSeeder extends Seeder
      */
     private function setupKucoinIntegration(ApiSystem $kucoinApiSystem): void
     {
-        $kucoinEmail = config('traders.kucoin.email');
+        $kucoinEmail = config('kraite-ingestion.traders.kucoin.email');
 
         if (! $kucoinEmail) {
             return;
@@ -206,11 +206,11 @@ final class BusinessSeeder extends Seeder
         $kucoinUser = User::updateOrCreate(
             ['email' => $kucoinEmail],
             [
-                'name' => config('traders.kucoin.name'),
-                'password' => bcrypt(config('traders.kucoin.password', 'password')),
+                'name' => config('kraite-ingestion.traders.kucoin.name'),
+                'password' => bcrypt(config('kraite-ingestion.traders.kucoin.password', 'password')),
                 'is_active' => true,
                 'is_admin' => false,
-                'pushover_key' => config('traders.kucoin.pushover_key'),
+                'pushover_key' => config('kraite-ingestion.traders.kucoin.pushover_key'),
                 'notification_channels' => ['mail', 'pushover'],
             ]
         );
@@ -228,9 +228,9 @@ final class BusinessSeeder extends Seeder
                 'portfolio_quote' => 'USDT',
                 'trading_quote' => 'USDT',
                 'trade_configuration_id' => 1,
-                'kucoin_api_key' => config('traders.kucoin.api_key'),
-                'kucoin_api_secret' => config('traders.kucoin.api_secret'),
-                'kucoin_passphrase' => config('traders.kucoin.passphrase'),
+                'kucoin_api_key' => config('kraite-ingestion.traders.kucoin.api_key'),
+                'kucoin_api_secret' => config('kraite-ingestion.traders.kucoin.api_secret'),
+                'kucoin_passphrase' => config('kraite-ingestion.traders.kucoin.passphrase'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
             ]);
@@ -242,7 +242,7 @@ final class BusinessSeeder extends Seeder
      */
     private function setupBitgetIntegration(ApiSystem $bitgetApiSystem): void
     {
-        $bitgetEmail = config('traders.bitget.email');
+        $bitgetEmail = config('kraite-ingestion.traders.bitget.email');
 
         if (! $bitgetEmail) {
             return;
@@ -251,11 +251,11 @@ final class BusinessSeeder extends Seeder
         $bitgetUser = User::updateOrCreate(
             ['email' => $bitgetEmail],
             [
-                'name' => config('traders.bitget.name'),
-                'password' => bcrypt(config('traders.bitget.password', 'password')),
+                'name' => config('kraite-ingestion.traders.bitget.name'),
+                'password' => bcrypt(config('kraite-ingestion.traders.bitget.password', 'password')),
                 'is_active' => true,
                 'is_admin' => false,
-                'pushover_key' => config('traders.bitget.pushover_key'),
+                'pushover_key' => config('kraite-ingestion.traders.bitget.pushover_key'),
                 'notification_channels' => ['mail', 'pushover'],
             ]
         );
@@ -273,9 +273,9 @@ final class BusinessSeeder extends Seeder
                 'portfolio_quote' => 'USDT',
                 'trading_quote' => 'USDT',
                 'trade_configuration_id' => 1,
-                'bitget_api_key' => config('traders.bitget.api_key'),
-                'bitget_api_secret' => config('traders.bitget.api_secret'),
-                'bitget_passphrase' => config('traders.bitget.passphrase'),
+                'bitget_api_key' => config('kraite-ingestion.traders.bitget.api_key'),
+                'bitget_api_secret' => config('kraite-ingestion.traders.bitget.api_secret'),
+                'bitget_passphrase' => config('kraite-ingestion.traders.bitget.passphrase'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
             ]);
@@ -304,8 +304,8 @@ final class BusinessSeeder extends Seeder
 
             if (! $hasKey || ! $hasSecret) {
                 $bybitAccount->update([
-                    'bybit_api_key' => config('services.bybit.key'),
-                    'bybit_api_secret' => config('services.bybit.secret'),
+                    'bybit_api_key' => config('kraite-ingestion.bybit_fallback.api_key'),
+                    'bybit_api_secret' => config('kraite-ingestion.bybit_fallback.api_secret'),
                 ]);
             }
         }
