@@ -38,7 +38,7 @@
         <env name="DB_PORT" value="3306"/>
         <env name="DB_DATABASE" value="kraite_tests"/>
         <env name="DB_USERNAME" value="kraite"/>
-        <env name="DB_PASSWORD" value="kraite"/>
+        <env name="DB_PASSWORD" value="tkHfcgwGjtNSnhvZjadQapp1wnxfvKN"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="NOTIFICATIONS_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>

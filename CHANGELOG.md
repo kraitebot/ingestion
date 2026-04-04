@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.3.9 - 2026-04-05
+
+### Features
+
+- [NEW FEATURE] Exchange cooldown mechanism — blocks new position creation when exchanges report server instability (503/504)
+- [NEW FEATURE] Exchange cooldown tests (31 tests covering model, handlers, observer, and command)
+
+### Improvements
+
+- [IMPROVED] `StoreAccountsBalancesCommand` refactored to step-based workflow with full exception handling
+- [IMPROVED] Test database password synced with credentials in `phpunit.xml`
+
 ## 1.3.8 - 2026-02-21
 
 ### Features
