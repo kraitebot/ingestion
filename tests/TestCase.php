@@ -22,7 +22,7 @@ abstract class TestCase extends BaseTestCase
 
         // Clear the once() cache to prevent test pollution
         // The once() helper memoizes results per process, which can cause
-        // stale cached values (like Engine::admin()) to persist between tests
+        // stale cached values (like Kraite::admin()) to persist between tests
         Once::flush();
 
         // Register parallel testing hooks only once

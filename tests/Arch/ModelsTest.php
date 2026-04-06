@@ -23,7 +23,7 @@ arch('models are not used directly in controllers')
         'Kraite\Core\Models\User', // User model is ok in controllers
         'Kraite\Core\Models\Enums', // Enums are ok everywhere
         'Kraite\Core\Models\ExchangeSymbol', // ExchangeSymbol is used in DashboardController for stats
-        'Kraite\Core\Models\Engine', // Engine is used in DashboardController for cooldown status
+        'Kraite\Core\Models\Kraite', // Engine is used in DashboardController for cooldown status
         'Kraite\Core\Models\Account', // Account is used in DashboardController for account list
     ]);
 

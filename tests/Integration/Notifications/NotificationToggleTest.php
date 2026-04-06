@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Notification;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\NotificationService;
 
@@ -21,7 +21,7 @@ it('does not send notifications when notifications are globally disabled', funct
         ->create();
 
     // Create Engine record (singleton) for admin notifications
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -31,7 +31,7 @@ it('does not send notifications when notifications are globally disabled', funct
 
     // Attempt to send notification - should return false
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0 // Disable throttling to ensure only the toggle affects the result
@@ -58,7 +58,7 @@ it('sends notifications when notifications are globally enabled', function () {
         ->create();
 
     // Create Engine record (singleton) for admin notifications
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -68,7 +68,7 @@ it('sends notifications when notifications are globally enabled', function () {
 
     // Attempt to send notification - should return true
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0 // Disable throttling
@@ -79,7 +79,7 @@ it('sends notifications when notifications are globally enabled', function () {
 
     // Assert notification was sent to admin
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class,
         function ($notification) {
             return $notification->canonical === 'server_rate_limit_exceeded'
@@ -101,7 +101,7 @@ it('blocks all notification types when notifications are disabled', function () 
     \Kraite\Core\Models\Notification::factory()->serverIpForbidden()->create();
 
     // Create Engine record (singleton) for admin notifications
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -111,14 +111,14 @@ it('blocks all notification types when notifications are disabled', function () 
 
     // Try to send multiple different notification types
     $result1 = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0
     );
 
     $result2 = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_ip_forbidden',
         referenceData: ['exchange' => 'binance'],
         duration: 0
@@ -146,7 +146,7 @@ it('sends notifications when explicitly enabled in config', function () {
         ->create();
 
     // Create Engine record (singleton) for admin notifications
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -156,7 +156,7 @@ it('sends notifications when explicitly enabled in config', function () {
 
     // The config value is true, so notification should be sent
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0
@@ -167,7 +167,7 @@ it('sends notifications when explicitly enabled in config', function () {
 
     // Assert notification was sent
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class
     );
 });
@@ -189,7 +189,7 @@ it('blocks notifications regardless of throttle settings when disabled', functio
         ]);
 
     // Create Engine record (singleton) for admin notifications
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -199,7 +199,7 @@ it('blocks notifications regardless of throttle settings when disabled', functio
 
     // Try to send with cache-based throttling (would normally be allowed on first call)
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         cacheKeys: ['api_system' => 'binance']

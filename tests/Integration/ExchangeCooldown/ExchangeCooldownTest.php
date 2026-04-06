@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Kraite\Core\Abstracts\BaseExceptionHandler;
 use Kraite\Core\Models\ApiRequestLog;
 use Kraite\Core\Models\ApiSystem;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,8 +21,8 @@ use Kraite\Core\Models\Engine;
 uses()->group('integration', 'exchange-cooldown');
 
 beforeEach(function () {
-    // Engine record needed by observer (notification routing calls Engine::admin())
-    Engine::firstOrCreate(
+    // Engine record needed by observer (notification routing calls Kraite::admin())
+    Kraite::firstOrCreate(
         ['id' => 1],
         [
             'email' => 'admin@test.com',

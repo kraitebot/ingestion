@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Schedule;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 
 /**
  * Helper to check if system is cooling down.
@@ -11,7 +11,7 @@ use Kraite\Core\Models\Engine;
  */
 $isCoolingDown = function (): bool {
     try {
-        return (bool) Engine::first()?->is_cooling_down;
+        return (bool) Kraite::first()?->is_cooling_down;
     } catch (Throwable) {
         return false;
     }

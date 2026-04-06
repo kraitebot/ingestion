@@ -20,7 +20,7 @@ pest()->extend(TestCase::class)
         $this->freezeTime();
 
         // Ensure Engine record exists for tests that need it
-        Kraite\Core\Models\Engine::firstOrCreate(
+        Kraite\Core\Models\Kraite::firstOrCreate(
             ['id' => 1],
             [
                 'allow_opening_positions' => true,
@@ -48,7 +48,7 @@ pest()->extend(TestCase::class)
         $this->freezeTime();
 
         // Ensure Engine record exists for tests that need it
-        Kraite\Core\Models\Engine::firstOrCreate(
+        Kraite\Core\Models\Kraite::firstOrCreate(
             ['id' => 1],
             [
                 'allow_opening_positions' => true,

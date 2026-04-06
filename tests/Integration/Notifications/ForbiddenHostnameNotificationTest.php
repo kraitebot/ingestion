@@ -7,7 +7,7 @@ use Illuminate\Support\Once;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ForbiddenHostname;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\User;
 use Kraite\Core\Notifications\AlertNotification;
 use Tests\Support\StepTester;
@@ -19,7 +19,7 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class)->group('integration',
 beforeEach(function () {
     config(['kraite.notifications_enabled' => true]);
 
-    // Clear the once() cache for Engine::admin() to prevent test pollution
+    // Clear the once() cache for Kraite::admin() to prevent test pollution
     // The once() helper memoizes results per process, so we need to flush it between tests
     Once::flush();
 
@@ -30,7 +30,7 @@ beforeEach(function () {
     \Kraite\Core\Models\Notification::factory()->serverAccountBlocked()->create();
 
     // Create Engine admin record
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -78,7 +78,7 @@ describe('User Notifications (Account-Specific Issues)', function () {
 
         // Assert: Notification NOT sent to admin
         Notification::assertNotSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'server_ip_not_whitelisted';
@@ -124,7 +124,7 @@ describe('User Notifications (Account-Specific Issues)', function () {
 
         // Assert: Notification NOT sent to admin
         Notification::assertNotSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'server_account_blocked';
@@ -163,7 +163,7 @@ describe('Admin Notifications (System-Wide Issues)', function () {
 
         // Assert: Notification sent to ADMIN
         Notification::assertSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'server_ip_rate_limited';
@@ -209,7 +209,7 @@ describe('Admin Notifications (System-Wide Issues)', function () {
 
         // Assert: Notification sent to ADMIN
         Notification::assertSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'server_ip_banned';

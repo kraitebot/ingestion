@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Notification;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\TradingMappers\BinanceTradingMapper;
 use Kraite\Core\Support\TradingMappers\BybitTradingMapper;
@@ -40,7 +40,7 @@ function setupNotificationPrerequisites(): void
         ->create();
 
     // Use firstOrCreate since Pest.php already creates a Engine record
-    Engine::firstOrCreate(
+    Kraite::firstOrCreate(
         ['id' => 1],
         [
             'email' => 'admin@test.com',
@@ -81,7 +81,7 @@ describe('Binance delisting detection', function () {
         $exchangeSymbol->save();
 
         Notification::assertSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'token_delisting'
@@ -106,7 +106,7 @@ describe('Binance delisting detection', function () {
         $exchangeSymbol->save();
 
         Notification::assertSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'token_delisting'
@@ -131,7 +131,7 @@ describe('Binance delisting detection', function () {
         $exchangeSymbol->save();
 
         Notification::assertSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'token_delisting';
@@ -174,7 +174,7 @@ describe('Bybit delisting detection', function () {
         $exchangeSymbol->save();
 
         Notification::assertSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'token_delisting'
@@ -198,7 +198,7 @@ describe('Bybit delisting detection', function () {
         $exchangeSymbol->save();
 
         Notification::assertSentTo(
-            Engine::admin(),
+            Kraite::admin(),
             AlertNotification::class,
             function ($notification) {
                 return $notification->canonical === 'token_delisting';

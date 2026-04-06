@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Kraite\Core\Trading\Engine;
 use Kraite\Core\Support\Math;
+use Kraite\Core\Trading\Kraite;
 
 /**
  * Tests for calculateBudgetDistribution() - Budget-based Martingale margin distribution.
@@ -24,7 +24,7 @@ test('distributes budget correctly with equal multipliers [2,2,2,2] and 4 limit 
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Verify structure
     expect($result)->toHaveKeys(['market', 'limits', 'total', 'weights']);
@@ -66,7 +66,7 @@ test('distributes budget correctly with equal multipliers [2,2,2,2] and 2 limit 
     $multipliers = [2, 2, 2, 2];
     $N = 2;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(1000.0, 0.01);
@@ -90,7 +90,7 @@ test('distributes budget correctly with equal multipliers [3,3,3,3] - higher rat
     $multipliers = [3, 3, 3, 3];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(3000.0, 0.01);
@@ -117,7 +117,7 @@ test('distributes budget correctly with variable multipliers [2, 1.5, 2.5, 2]', 
     $multipliers = [2, 1.5, 2.5, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(1500.0, 0.01);
@@ -145,7 +145,7 @@ test('distributes budget correctly with aggressive multipliers [4, 3, 2, 1.5]', 
     $multipliers = [4, 3, 2, 1.5];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(5000.0, 0.01);
@@ -162,7 +162,7 @@ test('distributes budget correctly with conservative multipliers [1.2, 1.3, 1.4,
     $multipliers = [1.2, 1.3, 1.4, 1.5];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(2000.0, 0.01);
@@ -188,7 +188,7 @@ test('distributes budget correctly with single limit order (N=1)', function () {
     $multipliers = [2];
     $N = 1;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(1000.0, 0.01);
@@ -213,7 +213,7 @@ test('distributes budget correctly with single limit order and high multiplier',
     $multipliers = [5];
     $N = 1;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(1000.0, 0.01);
@@ -235,7 +235,7 @@ test('allocates all budget to market when N=0', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 0;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // All budget goes to market
     expect((float) $result['market'])->toEqualWithDelta(1000.0, 0.01);
@@ -255,7 +255,7 @@ test('handles very small budget correctly', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(10.0, 0.001);
@@ -270,7 +270,7 @@ test('handles very large budget correctly', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(1000000.0, 1.0);
@@ -285,7 +285,7 @@ test('handles decimal budget correctly', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total must equal budget
     expect((float) $result['total'])->toEqualWithDelta(1234.56789, 0.001);
@@ -296,7 +296,7 @@ test('handles string numeric budget', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     expect((float) $result['total'])->toEqualWithDelta(1500.0, 0.01);
 });
@@ -306,7 +306,7 @@ test('handles integer budget', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     expect((float) $result['total'])->toEqualWithDelta(1500.0, 0.01);
 });
@@ -316,7 +316,7 @@ test('handles float budget', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     expect((float) $result['total'])->toEqualWithDelta(1500.50, 0.01);
 });
@@ -330,7 +330,7 @@ test('uses only needed multipliers when array is longer than N', function () {
     $multipliers = [2, 3, 4, 5, 6, 7, 8]; // More than needed
     $N = 3;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     expect((float) $result['total'])->toEqualWithDelta(1000.0, 0.01);
     expect($result['limits'])->toHaveCount(3);
@@ -346,7 +346,7 @@ test('repeats last multiplier when array is shorter than N', function () {
     $multipliers = [2, 3]; // Shorter than N
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     expect((float) $result['total'])->toEqualWithDelta(1000.0, 0.01);
     expect($result['limits'])->toHaveCount(4);
@@ -367,7 +367,7 @@ test('weights sum to 1.0', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     $weightSum = '0';
     foreach ($result['weights'] as $weight) {
@@ -382,7 +382,7 @@ test('weights reflect correct proportions', function () {
     $multipliers = [2];
     $N = 1;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // With N=1 and m=2: market ~33.33%, limit ~66.67%
     expect((float) $result['weights'][0])->toEqualWithDelta(0.3333, 0.01);
@@ -394,35 +394,35 @@ test('weights reflect correct proportions', function () {
 // ============================================================================
 
 test('throws exception for zero budget', function () {
-    Engine::calculateBudgetDistribution('0', [2, 2, 2, 2], 4);
+    Kraite::calculateBudgetDistribution('0', [2, 2, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Budget must be numeric and > 0');
 
 test('throws exception for negative budget', function () {
-    Engine::calculateBudgetDistribution('-100', [2, 2, 2, 2], 4);
+    Kraite::calculateBudgetDistribution('-100', [2, 2, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Budget must be numeric and > 0');
 
 test('throws exception for non-numeric budget', function () {
-    Engine::calculateBudgetDistribution('invalid', [2, 2, 2, 2], 4);
+    Kraite::calculateBudgetDistribution('invalid', [2, 2, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Budget must be numeric and > 0');
 
 test('throws exception for empty multipliers array', function () {
-    Engine::calculateBudgetDistribution('1000', [], 4);
+    Kraite::calculateBudgetDistribution('1000', [], 4);
 })->throws(InvalidArgumentException::class, 'Multipliers array cannot be empty');
 
 test('throws exception for negative total limit orders', function () {
-    Engine::calculateBudgetDistribution('1000', [2, 2, 2, 2], -1);
+    Kraite::calculateBudgetDistribution('1000', [2, 2, 2, 2], -1);
 })->throws(InvalidArgumentException::class, 'Total limit orders must be >= 0');
 
 test('throws exception for zero multiplier', function () {
-    Engine::calculateBudgetDistribution('1000', [2, 0, 2, 2], 4);
+    Kraite::calculateBudgetDistribution('1000', [2, 0, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Multiplier at index 1 must be a positive number');
 
 test('throws exception for negative multiplier', function () {
-    Engine::calculateBudgetDistribution('1000', [2, -1.5, 2, 2], 4);
+    Kraite::calculateBudgetDistribution('1000', [2, -1.5, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Multiplier at index 1 must be a positive number');
 
 test('throws exception for non-numeric multiplier', function () {
-    Engine::calculateBudgetDistribution('1000', [2, 'invalid', 2, 2], 4);
+    Kraite::calculateBudgetDistribution('1000', [2, 'invalid', 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Multiplier at index 1 must be a positive number');
 
 // ============================================================================
@@ -436,7 +436,7 @@ test('simulates 5% max position on 30000 balance with 4 limit orders', function 
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // CRITICAL: Total margin must NOT exceed 5% of balance (1500 USDT)
     expect((float) $result['total'])->toBeLessThanOrEqual(1500.0);
@@ -458,7 +458,7 @@ test('simulates 10% max position on 50000 balance with 6 limit orders', function
     $multipliers = [2, 2, 2, 2, 2, 2];
     $N = 6;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total margin must NOT exceed 10% of balance (5000 USDT)
     expect((float) $result['total'])->toBeLessThanOrEqual(5000.0);
@@ -481,7 +481,7 @@ test('simulates 3% max position on 100000 balance with variable multipliers', fu
     $multipliers = [1.5, 2.0, 2.5, 3.0];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // Total margin must equal budget (within floating point tolerance)
     expect((float) $result['total'])->toEqualWithDelta(3000.0, 0.01);
@@ -504,7 +504,7 @@ test('verifies S formula calculation for [2,2,2,2] with N=4', function () {
     $multipliers = [2, 2, 2, 2];
     $N = 4;
 
-    $result = Engine::calculateBudgetDistribution($budget, $multipliers, $N);
+    $result = Kraite::calculateBudgetDistribution($budget, $multipliers, $N);
 
     // last_limit = 1000 / 1.9375 = 516.129...
     $lastLimit = (float) $result['limits'][3];
@@ -525,7 +525,7 @@ test('verifies all positions sum to budget exactly regardless of multipliers', f
     ];
 
     foreach ($configs as $config) {
-        $result = Engine::calculateBudgetDistribution(
+        $result = Kraite::calculateBudgetDistribution(
             $config['budget'],
             $config['multipliers'],
             $config['N']

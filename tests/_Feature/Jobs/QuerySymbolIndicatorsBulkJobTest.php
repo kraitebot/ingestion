@@ -9,7 +9,7 @@ use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Indicator;
 use Kraite\Core\Models\IndicatorHistory;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Symbol;
 use StepDispatcher\Models\Step;
 use StepDispatcher\Models\StepsDispatcher;
@@ -29,7 +29,7 @@ function createExchangeSymbolForIndicatorBulkTest(#[SensitiveParameter] string $
     $symbol = Symbol::factory()->create(['token' => $token]);
 
     // Ensure Engine has TAAPI secret
-    Engine::first()->update(['taapi_secret' => 'test-secret-key']);
+    Kraite::first()->update(['taapi_secret' => 'test-secret-key']);
 
     return ExchangeSymbol::factory()->create([
         'token' => $token,

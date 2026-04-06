@@ -6,7 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ForbiddenHostname;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\User;
 use Tests\Support\StepTester;
 use Tests\Support\TestAlternativeMeApiableJob;
@@ -15,7 +15,7 @@ uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'altern
 
 beforeEach(function () {
     // Create Engine admin record (required for forbidden hostname notifications)
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',

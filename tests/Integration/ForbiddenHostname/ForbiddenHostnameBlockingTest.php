@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ForbiddenHostname;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\User;
 use Tests\Support\StepTester;
 use Tests\Support\TestBinanceApiableJob;
@@ -37,7 +37,7 @@ describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => $account->id,
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_NOT_WHITELISTED,
             'forbidden_until' => null, // Permanent until user fixes
         ]);
@@ -82,7 +82,7 @@ describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => $account->id,
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_ACCOUNT_BLOCKED,
             'forbidden_until' => null, // Permanent until user fixes
         ]);
@@ -133,7 +133,7 @@ describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => $account1->id,
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_NOT_WHITELISTED,
             'forbidden_until' => null,
         ]);
@@ -179,7 +179,7 @@ describe('System-Wide Bans (IP Rate Limited, IP Banned)', function () {
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => null, // System-wide (affects ALL accounts)
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_RATE_LIMITED,
             'forbidden_until' => now()->addMinutes(10), // Temporary ban
         ]);
@@ -222,7 +222,7 @@ describe('System-Wide Bans (IP Rate Limited, IP Banned)', function () {
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => null, // System-wide
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_BANNED,
             'forbidden_until' => null, // Permanent
         ]);
@@ -273,7 +273,7 @@ describe('System-Wide Bans (IP Rate Limited, IP Banned)', function () {
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => null, // System-wide
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_BANNED,
             'forbidden_until' => null,
         ]);
@@ -323,7 +323,7 @@ describe('Temporary Ban Expiry', function () {
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => null,
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_RATE_LIMITED,
             'forbidden_until' => now()->subMinutes(5), // Expired 5 minutes ago
         ]);
@@ -367,7 +367,7 @@ describe('Temporary Ban Expiry', function () {
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => null,
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_RATE_LIMITED,
             'forbidden_until' => now()->addMinutes(5), // Expires in 5 minutes
         ]);
@@ -416,7 +416,7 @@ describe('Cross-Exchange Isolation', function () {
         ForbiddenHostname::create([
             'api_system_id' => $bybitSystem->id,
             'account_id' => null,
-            'ip_address' => Engine::ip(),
+            'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_BANNED,
             'forbidden_until' => null,
         ]);

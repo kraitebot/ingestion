@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Notification;
 use Kraite\Core\Models\ApiRequestLog;
 use Kraite\Core\Models\ApiSystem;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Notifications\AlertNotification;
 
 // Test case and RefreshDatabase configured in Pest.php for Integration folder
@@ -31,7 +31,7 @@ it('sends server_rate_limit_exceeded notification when API returns 429', functio
     ]);
 
     // Create Engine record (singleton) for admin notifications
-    $admin = Engine::create([
+    $admin = Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -50,7 +50,7 @@ it('sends server_rate_limit_exceeded notification when API returns 429', functio
 
     // Assert notification was sent to admin
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class,
         function ($notification, $channels) {
             // Verify notification contains correct canonical and message
@@ -79,7 +79,7 @@ it('sends server_ip_forbidden notification when API returns 418', function () {
     ]);
 
     // Create Engine record (singleton) for admin notifications
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -97,7 +97,7 @@ it('sends server_ip_forbidden notification when API returns 418', function () {
 
     // Assert notification was sent to admin
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class,
         function ($notification) {
             return $notification->canonical === 'server_ip_forbidden'
@@ -153,7 +153,7 @@ it('sends exchange_symbol_no_taapi_data notification when TAAPI consistently ret
     ]);
 
     // Create Engine record (singleton) for admin notifications
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -195,7 +195,7 @@ it('sends exchange_symbol_no_taapi_data notification when TAAPI consistently ret
 
     // Assert notification was sent to admin
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class,
         function ($notification) {
             return $notification->canonical === 'exchange_symbol_no_taapi_data';
@@ -239,7 +239,7 @@ it('sends token_delisting notification when token is delisted', function () {
     ]);
 
     // Create Engine record (singleton) for admin notifications
-    Engine::create([
+    Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -249,7 +249,7 @@ it('sends token_delisting notification when token is delisted', function () {
 
     // Trigger notification via NotificationService
     \Kraite\Core\Support\NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'token_delisting',
         referenceData: [
             'apiSystem' => $apiSystem,
@@ -267,7 +267,7 @@ it('sends token_delisting notification when token is delisted', function () {
 
     // Assert notification was sent to admin
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class,
         function ($notification) use ($exchangeSymbol) {
             $pairText = $exchangeSymbol->parsed_trading_pair ?? 'TEST/USDT';

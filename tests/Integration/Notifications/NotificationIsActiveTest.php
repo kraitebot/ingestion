@@ -3,16 +3,16 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Notification;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\NotificationService;
 
 /**
  * Helper to create admin user for notification tests.
  */
-function createAdminForIsActiveTests(): Engine
+function createAdminForIsActiveTests(): Kraite
 {
-    return Engine::create([
+    return Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
         'admin_pushover_user_key' => 'test_key',
@@ -33,7 +33,7 @@ it('does not send notifications when notification is_active is false', function 
     createAdminForIsActiveTests();
 
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0
@@ -55,7 +55,7 @@ it('sends notifications when notification is_active is true', function () {
     createAdminForIsActiveTests();
 
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0
@@ -64,7 +64,7 @@ it('sends notifications when notification is_active is true', function () {
     expect($result)->toBeTrue();
 
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class,
         function ($notification) {
             return $notification->canonical === 'server_rate_limit_exceeded';
@@ -88,7 +88,7 @@ it('sends notifications when is_active defaults to true', function () {
     createAdminForIsActiveTests();
 
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0
@@ -97,7 +97,7 @@ it('sends notifications when is_active defaults to true', function () {
     expect($result)->toBeTrue();
 
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class
     );
 });
@@ -119,7 +119,7 @@ it('blocks inactive notification even when throttle would allow it', function ()
 
     // First call with cache-based throttling (would normally be allowed)
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         cacheKeys: ['api_system' => 'binance']
@@ -149,7 +149,7 @@ it('respects is_active per notification independently', function () {
 
     // Inactive notification should NOT be sent
     $result1 = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0
@@ -157,7 +157,7 @@ it('respects is_active per notification independently', function () {
 
     // Active notification should be sent
     $result2 = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_ip_forbidden',
         referenceData: ['exchange' => 'binance'],
         duration: 0
@@ -168,7 +168,7 @@ it('respects is_active per notification independently', function () {
 
     // Only one notification should have been sent
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class,
         function ($notification) {
             return $notification->canonical === 'server_ip_forbidden';
@@ -176,7 +176,7 @@ it('respects is_active per notification independently', function () {
     );
 
     Notification::assertNotSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class,
         function ($notification) {
             return $notification->canonical === 'server_rate_limit_exceeded';
@@ -196,7 +196,7 @@ it('global toggle takes precedence over is_active', function () {
     createAdminForIsActiveTests();
 
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'server_rate_limit_exceeded',
         referenceData: ['exchange' => 'binance'],
         duration: 0
@@ -217,7 +217,7 @@ it('sends notification when canonical does not exist in database', function () {
     createAdminForIsActiveTests();
 
     $result = NotificationService::send(
-        user: Engine::admin(),
+        user: Kraite::admin(),
         canonical: 'unknown_notification_canonical',
         referenceData: ['test' => 'data'],
         duration: 0
@@ -227,7 +227,7 @@ it('sends notification when canonical does not exist in database', function () {
     expect($result)->toBeTrue();
 
     Notification::assertSentTo(
-        Engine::admin(),
+        Kraite::admin(),
         AlertNotification::class
     );
 });

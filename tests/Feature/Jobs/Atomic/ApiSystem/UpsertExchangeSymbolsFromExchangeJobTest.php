@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Kraite\Core\Jobs\Atomic\ApiSystem\UpsertExchangeSymbolsFromExchangeJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Symbol;
 
 test('does not run for non-exchange API systems', function () {
@@ -32,7 +32,7 @@ test('runs for exchange API systems', function () {
 });
 
 test('assigns correct exception handler', function () {
-    Engine::first()->update([
+    Kraite::first()->update([
         'binance_api_key' => 'test-key',
         'binance_api_secret' => 'test-secret',
     ]);

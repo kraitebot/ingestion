@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.0 - 2026-04-06
+
+### Improvements
+
+- [IMPROVED] Rename `Engine` to `Kraite` across all test files, routes, and config
+- [IMPROVED] Rename `tests/Unit/Engine/` directory to `tests/Unit/Kraite/`
+- [DEPENDENCIES] Sync kraitebot/core with Engine → Kraite rename
+
 ## 1.3.9 - 2026-04-05
 
 ### Features

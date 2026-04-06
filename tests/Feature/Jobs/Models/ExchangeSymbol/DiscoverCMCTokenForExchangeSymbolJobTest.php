@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Kraite\Core\Jobs\Models\ExchangeSymbol\DiscoverCMCTokenForExchangeSymbolJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Symbol;
 
 /**
@@ -13,7 +13,7 @@ use Kraite\Core\Models\Symbol;
  */
 function setupCmcApiSystemForSingleTokenDiscovery(): ApiSystem
 {
-    Engine::first()->update([
+    Kraite::first()->update([
         'coinmarketcap_api_key' => 'test-cmc-key',
     ]);
 

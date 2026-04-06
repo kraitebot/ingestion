@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Kraite\Core\Trading\Engine;
 use Kraite\Core\Models\Candle;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Trading\Kraite;
 
 /**
  * Helper to create a candle with current_price for an ExchangeSymbol.
@@ -36,7 +36,7 @@ test('meetsMinNotional returns true when amount equals min_notional', function (
         'min_notional' => 10.00,
     ]);
 
-    expect(Engine::meetsMinNotional($symbol, 10.00))->toBeTrue();
+    expect(Kraite::meetsMinNotional($symbol, 10.00))->toBeTrue();
 });
 
 test('meetsMinNotional returns true when amount exceeds min_notional', function () {
@@ -44,7 +44,7 @@ test('meetsMinNotional returns true when amount exceeds min_notional', function 
         'min_notional' => 10.00,
     ]);
 
-    expect(Engine::meetsMinNotional($symbol, 15.00))->toBeTrue();
+    expect(Kraite::meetsMinNotional($symbol, 15.00))->toBeTrue();
 });
 
 test('meetsMinNotional returns false when amount is below min_notional', function () {
@@ -52,7 +52,7 @@ test('meetsMinNotional returns false when amount is below min_notional', functio
         'min_notional' => 10.00,
     ]);
 
-    expect(Engine::meetsMinNotional($symbol, 9.99))->toBeFalse();
+    expect(Kraite::meetsMinNotional($symbol, 9.99))->toBeFalse();
 });
 
 /*
@@ -71,8 +71,8 @@ test('meetsMinNotional returns true for KuCoin when amount meets calculated min'
     // min_order = 1 * 0.001 * 50000 = $50
     createCandleWithPrice($symbol, '50000.00');
 
-    expect(Engine::meetsMinNotional($symbol, 50.00))->toBeTrue();
-    expect(Engine::meetsMinNotional($symbol, 100.00))->toBeTrue();
+    expect(Kraite::meetsMinNotional($symbol, 50.00))->toBeTrue();
+    expect(Kraite::meetsMinNotional($symbol, 100.00))->toBeTrue();
 });
 
 test('meetsMinNotional returns false for KuCoin when amount is below calculated min', function () {
@@ -85,7 +85,7 @@ test('meetsMinNotional returns false for KuCoin when amount is below calculated 
     // min_order = 1 * 0.001 * 50000 = $50
     createCandleWithPrice($symbol, '50000.00');
 
-    expect(Engine::meetsMinNotional($symbol, 49.99))->toBeFalse();
+    expect(Kraite::meetsMinNotional($symbol, 49.99))->toBeFalse();
 });
 
 /*
@@ -101,7 +101,7 @@ test('meetsMinNotional returns false when symbol has no min order data', functio
         'kucoin_multiplier' => null,
     ]);
 
-    expect(Engine::meetsMinNotional($symbol, 100.00))->toBeFalse();
+    expect(Kraite::meetsMinNotional($symbol, 100.00))->toBeFalse();
 });
 
 test('meetsMinNotional returns false for KuCoin without current_price', function () {
@@ -113,7 +113,7 @@ test('meetsMinNotional returns false for KuCoin without current_price', function
 
     // No candle created - no current_price available
 
-    expect(Engine::meetsMinNotional($symbol, 100.00))->toBeFalse();
+    expect(Kraite::meetsMinNotional($symbol, 100.00))->toBeFalse();
 });
 
 test('meetsMinNotional returns false for KuCoin with only lot_size (missing multiplier)', function () {
@@ -125,7 +125,7 @@ test('meetsMinNotional returns false for KuCoin with only lot_size (missing mult
 
     createCandleWithPrice($symbol, '50000.00');
 
-    expect(Engine::meetsMinNotional($symbol, 100.00))->toBeFalse();
+    expect(Kraite::meetsMinNotional($symbol, 100.00))->toBeFalse();
 });
 
 test('meetsMinNotional accepts string amounts', function () {
@@ -133,8 +133,8 @@ test('meetsMinNotional accepts string amounts', function () {
         'min_notional' => 10.00,
     ]);
 
-    expect(Engine::meetsMinNotional($symbol, '15.00'))->toBeTrue();
-    expect(Engine::meetsMinNotional($symbol, '5.00'))->toBeFalse();
+    expect(Kraite::meetsMinNotional($symbol, '15.00'))->toBeTrue();
+    expect(Kraite::meetsMinNotional($symbol, '5.00'))->toBeFalse();
 });
 
 /*
@@ -148,7 +148,7 @@ test('hasMinOrderRequirements returns true for symbol with min_notional', functi
         'min_notional' => 10.00,
     ]);
 
-    expect(Engine::hasMinOrderRequirements($symbol))->toBeTrue();
+    expect(Kraite::hasMinOrderRequirements($symbol))->toBeTrue();
 });
 
 test('hasMinOrderRequirements returns true for KuCoin symbol with current_price', function () {
@@ -160,7 +160,7 @@ test('hasMinOrderRequirements returns true for KuCoin symbol with current_price'
 
     createCandleWithPrice($symbol, '50000.00');
 
-    expect(Engine::hasMinOrderRequirements($symbol))->toBeTrue();
+    expect(Kraite::hasMinOrderRequirements($symbol))->toBeTrue();
 });
 
 test('hasMinOrderRequirements returns false for symbol without any min order data', function () {
@@ -170,5 +170,5 @@ test('hasMinOrderRequirements returns false for symbol without any min order dat
         'kucoin_multiplier' => null,
     ]);
 
-    expect(Engine::hasMinOrderRequirements($symbol))->toBeFalse();
+    expect(Kraite::hasMinOrderRequirements($symbol))->toBeFalse();
 });

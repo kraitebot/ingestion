@@ -8,7 +8,7 @@ use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Carbon;
 use Kraite\Core\Abstracts\BaseExceptionHandler;
 use Kraite\Core\Models\ForbiddenHostname;
-use Kraite\Core\Models\Engine;
+use Kraite\Core\Models\Kraite;
 use Throwable;
 
 /**
@@ -79,7 +79,7 @@ final class TestExceptionHandler extends BaseExceptionHandler
             ForbiddenHostname::create([
                 'account_id' => $this->account->id,
                 'api_system_id' => $this->account->apiSystem->id,
-                'ip_address' => Engine::ip(),
+                'ip_address' => Kraite::ip(),
             ]);
         }
     }
