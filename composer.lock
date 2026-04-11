@@ -320,7 +320,7 @@
             "dist": {
                 "type": "path",
                 "url": "./packages/brunocfalcao/laravel-helpers",
-                "reference": "791af9932a81b537a6e044af1edfbb6ced00e02a"
+                "reference": "6574e733a0fc5b631e5e8ce00b83158556b73737"
             },
             "require": {
                 "php": "^8.2",
@@ -413,7 +413,7 @@
             "dist": {
                 "type": "path",
                 "url": "./packages/brunocfalcao/step-dispatcher",
-                "reference": "9a2f01d418c83bf8fca93c43811d04df9fd24969"
+                "reference": "f532bf44c57065a89bf1bea56cdcb3de3b847743"
             },
             "require": {
                 "illuminate/console": "^11.0|^12.0",
@@ -1548,7 +1548,7 @@
             "dist": {
                 "type": "path",
                 "url": "./packages/kraitebot/core",
-                "reference": "a52cef411b8b30bb5e6a035ddb2819a46d9500e7"
+                "reference": "c1efbb02c4d65cec029daa967a67a88394696c0e"
             },
             "require": {
                 "angle/chrono": "^1.0",
