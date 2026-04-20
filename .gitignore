@@ -37,5 +37,8 @@ thoughts/
 # Local documentation for Claude Code (not tracked in git)
 /docs/
 
+# Step dispatcher runtime state (active.flag etc.)
+/storage/step-dispatcher/
+
 # Miscellaneous
 backup-old-project
