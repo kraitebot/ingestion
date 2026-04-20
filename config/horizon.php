@@ -51,7 +51,7 @@ return [
             'default-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['default'],
-                'processes' => 5,
+                'processes' => 30,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -62,7 +62,7 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 3,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
