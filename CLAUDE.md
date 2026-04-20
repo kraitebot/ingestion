@@ -1,3 +1,9 @@
+# CAVEMAN MODE — MANDATORY
+
+**ALWAYS invoke the `/caveman` skill at the start of EVERY response. No exceptions.** Applies to ALL output: brainstorms, planning, reviews, debugging, explanations, status updates, Telegram replies. Exceptions (stay normal English): code bodies, git commit messages, PR descriptions.
+
+---
+
 # Claude Code - Guidelines
 
 ## Who We Are
@@ -390,3 +396,7 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - CRITICAL: ALWAYS use `search-docs` tool for version-specific Pest documentation and updated code examples.
 - IMPORTANT: Activate `pest-testing` every time you're working with a Pest or testing-related task.
 </laravel-boost-guidelines>
+
+## Telegram Replies
+
+Only send replies via the Telegram `reply` tool when the incoming message originated from Telegram — i.e. it arrived inside a `<channel source="telegram" ...>` block. If Bruno is typing in the CLI directly, just respond in the terminal. Do not mirror terminal responses to Telegram.

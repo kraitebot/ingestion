@@ -1,0 +1,132 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use StepDispatcher\Models\Step;
+use StepDispatcher\States\Cancelled;
+use StepDispatcher\States\Completed;
+use StepDispatcher\States\Failed;
+use StepDispatcher\States\Skipped;
+use StepDispatcher\States\Stopped;
+use Tests\Support\TestQueueableJob;
+
+uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
+
+it('Cleans laravel.log', function () {
+    file_put_contents(storage_path('logs/laravel.log'), '');
+
+    expect(true)->toBe(true);
+});
+
+// Reproduces the exact production bug: a step is dispatched to the queue,
+// then cancelled by cascade cancellation before the worker picks it up.
+// The worker calls handle() on a Cancelled step, which tries Cancelled → Running
+// and then Cancelled → Failed, both unregistered transitions, causing an
+// infinite retry loop that wrote 64GB of logs.
+it('silently skips execution when step is already Cancelled', function () {
+    $step = Step::factory()->create([
+        'class' => TestQueueableJob::class,
+        'queue' => 'sync',
+    ]);
+
+    // Simulate: step was dispatched, then cancelled before worker picks it up
+    $step->state->transitionTo(Cancelled::class);
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Cancelled::class);
+
+    // Simulate Horizon worker calling handle() on the job
+    $job = new TestQueueableJob;
+    $job->step = $step;
+
+    // This should NOT throw — it should bail out silently
+    $job->handle();
+
+    // Step should still be Cancelled (not Failed, not Running)
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Cancelled::class);
+});
+
+it('silently skips execution when step is already Failed', function () {
+    $step = Step::factory()->create([
+        'class' => TestQueueableJob::class,
+        'queue' => 'sync',
+    ]);
+
+    // Transition to Failed via valid path: Pending → Running → Failed
+    $step->state->transitionTo(\StepDispatcher\States\Running::class);
+    $step->state->transitionTo(Failed::class);
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Failed::class);
+
+    $job = new TestQueueableJob;
+    $job->step = $step;
+
+    $job->handle();
+
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Failed::class);
+});
+
+it('silently skips execution when step is already Completed', function () {
+    $step = Step::factory()->create([
+        'class' => TestQueueableJob::class,
+        'queue' => 'sync',
+    ]);
+
+    // Transition to Completed via valid path: Pending → Running → Completed
+    $step->state->transitionTo(\StepDispatcher\States\Running::class);
+    $step->state->transitionTo(Completed::class);
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Completed::class);
+
+    $job = new TestQueueableJob;
+    $job->step = $step;
+
+    $job->handle();
+
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Completed::class);
+});
+
+it('silently skips execution when step is already Stopped', function () {
+    $step = Step::factory()->create([
+        'class' => TestQueueableJob::class,
+        'queue' => 'sync',
+    ]);
+
+    // Transition to Stopped via valid path: Pending → Running → Stopped
+    $step->state->transitionTo(\StepDispatcher\States\Running::class);
+    $step->state->transitionTo(Stopped::class);
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Stopped::class);
+
+    $job = new TestQueueableJob;
+    $job->step = $step;
+
+    $job->handle();
+
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Stopped::class);
+});
+
+it('silently skips execution when step is already Skipped', function () {
+    $step = Step::factory()->create([
+        'class' => TestQueueableJob::class,
+        'queue' => 'sync',
+    ]);
+
+    // Transition to Skipped via valid path: Pending → Running → Skipped
+    $step->state->transitionTo(\StepDispatcher\States\Running::class);
+    $step->state->transitionTo(Skipped::class);
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Skipped::class);
+
+    $job = new TestQueueableJob;
+    $job->step = $step;
+
+    $job->handle();
+
+    $step->refresh();
+    expect($step->state)->toBeInstanceOf(Skipped::class);
+});
