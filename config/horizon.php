@@ -51,7 +51,8 @@ return [
             'default-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['default'],
-                'processes' => 30,
+                'balance' => 'simple',
+                'processes' => 50,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -62,6 +63,7 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
+                'balance' => 'simple',
                 'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
@@ -73,6 +75,7 @@ return [
             'step-dispatcher-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['step-dispatcher'],
+                'balance' => 'simple',
                 'processes' => 3,
                 'timeout' => 120,
                 'sleep' => 1,

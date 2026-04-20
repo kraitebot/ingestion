@@ -49,14 +49,8 @@ if (! $isCoolingDown()) {
     Schedule::command('kraite:cron-fetch-klines --timeframe=4h')
         ->cron('5 */4 * * *');
 
-    Schedule::command('kraite:cron-fetch-klines --timeframe=6h')
-        ->cron('5 */6 * * *');
-
     Schedule::command('kraite:cron-fetch-klines --timeframe=12h')
         ->cron('5 */12 * * *');
-
-    Schedule::command('kraite:cron-fetch-klines --timeframe=1d')
-        ->dailyAt('00:05');
 
     Schedule::command('kraite:cron-store-accounts-balances')
         ->everyFiveMinutes();

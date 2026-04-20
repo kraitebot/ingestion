@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.2 - 2026-04-20
+
+### Improvements
+
+- [IMPROVED] Horizon `default-supervisor` bumped 5 → 30 (crypto step jobs dispatch to `default` queue, not `step-dispatcher`) and `balance: 'simple'` added to all local supervisors so workers stay spawned rather than scaling down during queue lulls.
+- [IMPROVED] Removed obsolete 6h and 1d kline fetch schedules — timeframes trimmed to `[1h, 4h, 12h]` in the exchange config, so those schedules had no consumers.
+
 ## 1.4.1 - 2026-04-20
 
 ### Fixes
