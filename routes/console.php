@@ -26,6 +26,11 @@ if (config('kraite.can_dispatch_steps')) {
         });
 }
 
+// Reclaim zombie Running steps (worker died mid-job). Not gated by cooldown — cleanup, not new work.
+Schedule::command('steps:recover-stale')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 // Scheduled jobs that create NEW steps should NOT run during cooldown
 // This prevents new work from being added while we wait for existing steps to finish
 // When cooling down, these tasks won't appear in schedule:list at all
@@ -61,4 +66,12 @@ if (! $isCoolingDown()) {
 
     Schedule::command('kraite:cron-conclude-symbols-direction')
         ->hourlyAt(30);
+
+    // Purge old candles daily at 03:00 (keeps last 500 per symbol/timeframe)
+    Schedule::command('kraite:purge-candles')
+        ->dailyAt('03:00');
+
+    // Archive fully-resolved step trees daily at 04:00 (keeps last 1 day)
+    Schedule::command('steps:archive --duration=1')
+        ->dailyAt('04:00');
 }

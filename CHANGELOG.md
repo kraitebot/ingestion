@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.1 - 2026-04-20
+
+### Fixes
+
+- [BUG FIX] Schedule `steps:recover-stale` every minute so orphaned Running steps get reclaimed automatically after worker crashes (command existed in the step-dispatcher package but was never wired to the scheduler)
+
 ## 1.4.0 - 2026-04-06
 
 ### Improvements
