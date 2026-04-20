@@ -31,6 +31,12 @@ Schedule::command('steps:recover-stale')
     ->everyMinute()
     ->withoutOverlapping();
 
+// Reconcile exchange order state into the DB. Not gated by cooldown — open positions
+// must be tracked/closed even when new-work creation is paused.
+Schedule::command('kraite:cron-sync-orders')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 // Scheduled jobs that create NEW steps should NOT run during cooldown
 // This prevents new work from being added while we wait for existing steps to finish
 // When cooling down, these tasks won't appear in schedule:list at all

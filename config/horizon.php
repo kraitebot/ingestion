@@ -52,7 +52,7 @@ return [
                 'connection' => 'redis',
                 'queue' => ['default'],
                 'balance' => 'simple',
-                'processes' => 50,
+                'processes' => 20,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
