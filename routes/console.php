@@ -26,14 +26,14 @@ $isCoolingDown = function (): bool {
 // logging. Do NOT re-enable all at once.
 // ======================================================================
 
-// // Step dispatcher always runs - it processes existing steps
-// if (config('kraite.can_dispatch_steps')) {
-//     Schedule::command('steps:dispatch')
-//         ->everySecond()
-//         ->when(function () {
-//             return config('kraite.can_dispatch_steps');
-//         });
-// }
+// Step dispatcher always runs - it processes existing steps
+if (config('kraite.can_dispatch_steps')) {
+    Schedule::command('steps:dispatch')
+        ->everySecond()
+        ->when(function () {
+            return config('kraite.can_dispatch_steps');
+        });
+}
 
 // // Reclaim zombie Running steps (worker died mid-job). Not gated by cooldown — cleanup, not new work.
 // Schedule::command('steps:recover-stale')
