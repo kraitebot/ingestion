@@ -111,11 +111,6 @@
         },
         "composer-patches": {
             "ignore-patch-failure": true
-        },
-        "patches": {
-            "laravel/boost": {
-                "Fix mixed content error by using relative URL for browser-logs endpoint": "patches/laravel-boost-https-fix.patch"
-            }
         }
     },
     "config": {

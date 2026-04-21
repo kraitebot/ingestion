@@ -188,8 +188,10 @@ test('skips if exchange symbol already has symbol_id', function () {
 
     $job = new DiscoverCMCTokenForExchangeSymbolJob($exchangeSymbol->id);
 
-    // startOrFail should return false
-    expect($job->startOrFail())->toBeFalse();
+    // startOrSkip returns false so the step transitions to Skipped rather
+    // than Failed when a sibling job has already linked this symbol
+    // (renamed from startOrFail in kraitebot/core v1.3.6).
+    expect($job->startOrSkip())->toBeFalse();
 });
 
 test('generates correct token candidates for complex token names', function () {

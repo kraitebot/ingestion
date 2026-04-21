@@ -49,9 +49,15 @@ it('stores metadata as JSON', function () {
         metadata: $metadata
     );
 
-    // Re-fetch from database to verify JSON round-trip
+    // Re-fetch from database to verify JSON round-trip. MySQL's JSON type
+    // doesn't guarantee key order on retrieval, so compare canonically
+    // (same keys, same values) rather than by literal array structure.
     $freshLog = AppLog::find($log->id);
-    expect($freshLog->metadata)->toBe($metadata);
+    $actual = $freshLog->metadata;
+    ksort($actual);
+    $expected = $metadata;
+    ksort($expected);
+    expect($actual)->toBe($expected);
 });
 
 it('prevents logging when disabled', function () {
