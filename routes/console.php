@@ -17,15 +17,6 @@ $isCoolingDown = function (): bool {
     }
 };
 
-// ======================================================================
-// ALL SCHEDULED COMMANDS DISABLED — 2026-04-21
-//
-// Temporarily commented out while we investigate step-dispatcher behaviour
-// after today's revert. Re-enable section by section once we have baseline
-// observations and the dispatcher / throttler layers are instrumented with
-// logging. Do NOT re-enable all at once.
-// ======================================================================
-
 // Step dispatcher always runs - it processes existing steps
 if (config('kraite.can_dispatch_steps')) {
     Schedule::command('steps:dispatch')
@@ -35,52 +26,54 @@ if (config('kraite.can_dispatch_steps')) {
         });
 }
 
-// // Reclaim zombie Running steps (worker died mid-job). Not gated by cooldown — cleanup, not new work.
-// Schedule::command('steps:recover-stale')
-//     ->everyMinute()
-//     ->withoutOverlapping();
+// Reclaim stalled steps (Running zombies, Dispatched stalls) and release wedged
+// dispatcher locks. Not gated by cooldown — cleanup, not new work.
+// Flags owned by brunocfalcao/step-dispatcher >= 1.11; notifications wired via
+// the StaleStepsDetected event (SendStaleStepsNotification listener in kraitebot/core).
+Schedule::command('steps:recover-stale --recover-dispatched --release-locks')
+    ->everyMinute()
+    ->withoutOverlapping();
 
-// // Reconcile exchange order state into the DB. Not gated by cooldown — open positions
-// // must be tracked/closed even when new-work creation is paused.
-// Schedule::command('kraite:cron-sync-orders')
-//     ->everyMinute()
-//     ->withoutOverlapping();
+// Reconcile exchange order state into the DB. Not gated by cooldown — open positions
+// must be tracked/closed even when new-work creation is paused.
+Schedule::command('kraite:cron-sync-orders')
+    ->everyMinute()
+    ->withoutOverlapping();
 
-// // Scheduled jobs that create NEW steps should NOT run during cooldown
-// // This prevents new work from being added while we wait for existing steps to finish
-// // When cooling down, these tasks won't appear in schedule:list at all
-// if (! $isCoolingDown()) {
-//     Schedule::command('kraite:cron-check-stale-data')
-//         ->everyMinute();
-//
-//     // Fetch klines for active positions only (5m timeframe)
-//     Schedule::command('kraite:cron-fetch-klines --only-active-positions')
-//         ->everyFiveMinutes();
-//
-//     // Fetch klines for all symbols at indicator timeframes (for correlation data)
-//     Schedule::command('kraite:cron-fetch-klines --timeframe=1h')
-//         ->hourlyAt(5);
-//
-//     Schedule::command('kraite:cron-fetch-klines --timeframe=4h')
-//         ->cron('5 */4 * * *');
-//
-//     Schedule::command('kraite:cron-fetch-klines --timeframe=12h')
-//         ->cron('5 */12 * * *');
-//
-//     Schedule::command('kraite:cron-store-accounts-balances')
-//         ->everyFiveMinutes();
-//
-//     Schedule::command('kraite:cron-refresh-exchange-symbols')
-//         ->hourlyAt(15);
-//
-//     Schedule::command('kraite:cron-conclude-symbols-direction')
-//         ->hourlyAt(30);
-//
-//     // Purge old candles daily at 03:00 (keeps last 500 per symbol/timeframe)
-//     Schedule::command('kraite:purge-candles')
-//         ->dailyAt('03:00');
-//
-//     // Archive fully-resolved step trees daily at 04:00 (keeps last 1 day)
-//     Schedule::command('steps:archive --duration=1')
-//         ->dailyAt('04:00');
-// }
+// Scheduled jobs that create NEW steps should NOT run during cooldown
+// This prevents new work from being added while we wait for existing steps to finish
+// When cooling down, these tasks won't appear in schedule:list at all
+if (! $isCoolingDown()) {
+    // Fetch klines for active positions only (5m timeframe)
+    Schedule::command('kraite:cron-fetch-klines --only-active-positions')
+        ->everyFiveMinutes();
+
+    // Fetch klines for all symbols at indicator timeframes (for correlation data)
+    Schedule::command('kraite:cron-fetch-klines --timeframe=1h')
+        ->hourlyAt(5);
+
+    Schedule::command('kraite:cron-fetch-klines --timeframe=4h')
+        ->cron('5 */4 * * *');
+
+    Schedule::command('kraite:cron-fetch-klines --timeframe=12h')
+        ->cron('5 */12 * * *');
+
+    Schedule::command('kraite:cron-store-accounts-balances')
+        ->everyFiveMinutes();
+
+    // Temporarily disabled — triggered manually during testing.
+    // Schedule::command('kraite:cron-refresh-exchange-symbols')
+    //     ->hourlyAt(15);
+
+    // Temporarily disabled — triggered manually during testing.
+    // Schedule::command('kraite:cron-conclude-symbols-direction')
+    //     ->hourlyAt(30);
+
+    // Purge old candles daily at 03:00 (keeps last 500 per symbol/timeframe)
+    Schedule::command('kraite:purge-candles')
+        ->dailyAt('03:00');
+
+    // Archive fully-resolved step trees daily at 04:00 (keeps last 1 day)
+    Schedule::command('steps:archive --duration=1')
+        ->dailyAt('04:00');
+}

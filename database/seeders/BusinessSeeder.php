@@ -21,7 +21,7 @@ final class BusinessSeeder extends Seeder
         $apiSystems = ApiSystem::all()->keyBy('canonical');
 
         $trader = $this->seedUser();
-        $this->seedBinanceAccount($trader, $apiSystems['binance']);
+        $this->seedBinanceAccount($apiSystems['binance']);
         $this->updatePositionProfitPrices();
         $this->migrateAccountCredentials();
         $this->setupBybitIntegration($trader, $apiSystems['bybit']);
@@ -33,7 +33,10 @@ final class BusinessSeeder extends Seeder
     }
 
     /**
-     * Seed the Binance+Bybit user/trader.
+     * Seed the Binance+Bybit user/trader. Currently created inactive — the
+     * live account is the admin's Binance one; this record exists mostly so
+     * older fixtures keep resolving and so we can flip `is_active` back on
+     * if we ever want to revive the second trader path.
      */
     private function seedUser(): User
     {
@@ -41,7 +44,7 @@ final class BusinessSeeder extends Seeder
             'name' => config('kraite-ingestion.traders.binance_bybit.name'),
             'email' => config('kraite-ingestion.traders.binance_bybit.email'),
             'password' => bcrypt(config('kraite-ingestion.traders.binance_bybit.password', 'password')),
-            'is_active' => true,
+            'is_active' => false,
             'is_admin' => true,
             'pushover_key' => config('kraite-ingestion.traders.binance_bybit.pushover_key'),
             'notification_channels' => ['mail', 'pushover'],
@@ -54,13 +57,17 @@ final class BusinessSeeder extends Seeder
     }
 
     /**
-     * Seed the Binance account for the Binance+Bybit trader.
+     * Seed the primary Binance account under the admin user. This is the
+     * single live persisted account — every other account created later in
+     * this seeder is deactivated by `deactivateNonPrimaryAccounts()`.
      */
-    private function seedBinanceAccount(User $trader, ApiSystem $binance): void
+    private function seedBinanceAccount(ApiSystem $binance): void
     {
+        $admin = User::where('email', config('kraite.admin_user_email'))->firstOrFail();
+
         Account::updateOrCreate(
             [
-                'user_id' => $trader->id,
+                'user_id' => $admin->id,
                 'api_system_id' => $binance->id,
             ],
             [
@@ -73,6 +80,7 @@ final class BusinessSeeder extends Seeder
                 'binance_api_secret' => config('kraite-ingestion.traders.binance_bybit.binance_api_secret'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
+                'is_active' => true,
             ]
         );
     }
@@ -144,6 +152,7 @@ final class BusinessSeeder extends Seeder
                 'bybit_api_secret' => config('kraite-ingestion.traders.binance_bybit.bybit_api_secret'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
+                'is_active' => false,
             ]);
         }
     }
@@ -164,7 +173,7 @@ final class BusinessSeeder extends Seeder
             [
                 'name' => config('kraite-ingestion.traders.binance_only.name'),
                 'password' => bcrypt(config('kraite-ingestion.traders.binance_only.password', 'password')),
-                'is_active' => true,
+                'is_active' => false,
                 'is_admin' => false,
                 'pushover_key' => config('kraite-ingestion.traders.binance_only.pushover_key'),
                 'notification_channels' => ['mail', 'pushover'],
@@ -188,6 +197,7 @@ final class BusinessSeeder extends Seeder
                 'binance_api_secret' => config('kraite-ingestion.traders.binance_only.binance_api_secret'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
+                'is_active' => false,
             ]);
         }
     }
@@ -208,7 +218,7 @@ final class BusinessSeeder extends Seeder
             [
                 'name' => config('kraite-ingestion.traders.kucoin.name'),
                 'password' => bcrypt(config('kraite-ingestion.traders.kucoin.password', 'password')),
-                'is_active' => true,
+                'is_active' => false,
                 'is_admin' => false,
                 'pushover_key' => config('kraite-ingestion.traders.kucoin.pushover_key'),
                 'notification_channels' => ['mail', 'pushover'],
@@ -233,6 +243,7 @@ final class BusinessSeeder extends Seeder
                 'kucoin_passphrase' => config('kraite-ingestion.traders.kucoin.passphrase'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
+                'is_active' => false,
             ]);
         }
     }
@@ -253,7 +264,7 @@ final class BusinessSeeder extends Seeder
             [
                 'name' => config('kraite-ingestion.traders.bitget.name'),
                 'password' => bcrypt(config('kraite-ingestion.traders.bitget.password', 'password')),
-                'is_active' => true,
+                'is_active' => false,
                 'is_admin' => false,
                 'pushover_key' => config('kraite-ingestion.traders.bitget.pushover_key'),
                 'notification_channels' => ['mail', 'pushover'],
@@ -278,6 +289,7 @@ final class BusinessSeeder extends Seeder
                 'bitget_passphrase' => config('kraite-ingestion.traders.bitget.passphrase'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
+                'is_active' => false,
             ]);
         }
     }
@@ -312,10 +324,34 @@ final class BusinessSeeder extends Seeder
     }
 
     /**
-     * Activate all accounts (ensures accounts are active after seeding).
+     * Keep only the admin's Binance account active and shut every other
+     * persisted account off. Belt-and-braces: individual `create`/`update`
+     * calls above already flag the secondary accounts as inactive, but
+     * this ensures an authoritative final state regardless of re-seed
+     * ordering or columns whose defaults drift over time.
      */
     private function deactivateNonPrimaryAccounts(): void
     {
-        Account::query()->update(['is_active' => true]);
+        $admin = User::where('email', config('kraite.admin_user_email'))->first();
+
+        if (! $admin) {
+            return;
+        }
+
+        $primaryBinance = Account::where('user_id', $admin->id)
+            ->whereHas('apiSystem', static function ($query) {
+                $query->where('canonical', 'binance');
+            })
+            ->value('id');
+
+        Account::query()
+            ->when($primaryBinance, static function ($query) use ($primaryBinance) {
+                $query->where('id', '!=', $primaryBinance);
+            })
+            ->update(['is_active' => false]);
+
+        if ($primaryBinance) {
+            Account::whereKey($primaryBinance)->update(['is_active' => true]);
+        }
     }
 }

@@ -48,9 +48,45 @@ return [
 
         'local' => array_merge([
 
-            'default-supervisor' => [
+            'positions-supervisor' => [
                 'connection' => 'redis',
-                'queue' => ['default'],
+                'queue' => ['positions'],
+                'balance' => 'simple',
+                'processes' => 5,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'orders-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['orders'],
+                'balance' => 'simple',
+                'processes' => 10,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'cronjobs-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['cronjobs'],
+                'balance' => 'simple',
+                'processes' => 20,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'indicators-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['indicators'],
                 'balance' => 'simple',
                 'processes' => 20,
                 'timeout' => 0,
@@ -72,20 +108,9 @@ return [
                 'memory' => 256,
             ],
 
-            'step-dispatcher-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['step-dispatcher'],
-                'balance' => 'simple',
-                'processes' => 3,
-                'timeout' => 120,
-                'sleep' => 1,
-                'tries' => 1,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
-
         ], [
-            // Dynamic hostname-based queue (e.g., 'server-1', 'worker-2', etc.)
+            // Dynamic hostname-based queue for server-specific work
+            // (e.g., ConnectivityTestController).
             mb_strtolower(str_replace('-', '', gethostname() ?: 'unknown')).'-supervisor' => [
                 'connection' => 'redis',
                 'queue' => [mb_strtolower(str_replace('-', '', gethostname() ?: 'unknown'))],
@@ -99,10 +124,43 @@ return [
         ]),
 
         'ingestion' => [
-            'default-supervisor' => [
+            'positions-supervisor' => [
                 'connection' => 'redis',
-                'queue' => ['default'],
-                'processes' => 50,
+                'queue' => ['positions'],
+                'processes' => 5,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'orders-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['orders'],
+                'processes' => 10,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'cronjobs-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['cronjobs'],
+                'processes' => 20,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'indicators-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['indicators'],
+                'processes' => 20,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -113,21 +171,10 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 10,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
-
-            'step-dispatcher-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['step-dispatcher'],
-                'processes' => 10,
-                'timeout' => 120,
-                'sleep' => 1,
-                'tries' => 1,
                 'backoff' => 10,
                 'memory' => 256,
             ],
@@ -145,10 +192,43 @@ return [
         ],
 
         'worker1' => [
-            'default-supervisor' => [
+            'positions-supervisor' => [
                 'connection' => 'redis',
-                'queue' => ['default'],
-                'processes' => 50,
+                'queue' => ['positions'],
+                'processes' => 5,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'orders-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['orders'],
+                'processes' => 10,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'cronjobs-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['cronjobs'],
+                'processes' => 20,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'indicators-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['indicators'],
+                'processes' => 20,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -159,21 +239,10 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 10,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
-
-            'step-dispatcher-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['step-dispatcher'],
-                'processes' => 10,
-                'timeout' => 120,
-                'sleep' => 1,
-                'tries' => 1,
                 'backoff' => 10,
                 'memory' => 256,
             ],
@@ -191,10 +260,43 @@ return [
         ],
 
         'worker2' => [
-            'default-supervisor' => [
+            'positions-supervisor' => [
                 'connection' => 'redis',
-                'queue' => ['default'],
-                'processes' => 50,
+                'queue' => ['positions'],
+                'processes' => 5,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'orders-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['orders'],
+                'processes' => 10,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'cronjobs-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['cronjobs'],
+                'processes' => 20,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'indicators-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['indicators'],
+                'processes' => 20,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -205,21 +307,10 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 10,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
-
-            'step-dispatcher-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['step-dispatcher'],
-                'processes' => 10,
-                'timeout' => 120,
-                'sleep' => 1,
-                'tries' => 1,
                 'backoff' => 10,
                 'memory' => 256,
             ],

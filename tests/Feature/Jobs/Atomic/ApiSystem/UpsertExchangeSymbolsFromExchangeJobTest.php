@@ -290,3 +290,118 @@ test('handles negative precision values correctly', function () {
     expect($exchangeSymbol->price_precision)->toBe(0);
     expect($exchangeSymbol->quantity_precision)->toBe(0);
 });
+
+test('flags DB symbols that are missing from the fresh API response as delisted', function () {
+    $binance = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance',
+    ]);
+
+    $bybit = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'bybit',
+        'name' => 'Bybit',
+    ]);
+
+    // Three live-looking Binance symbols; two of them will still be in the
+    // API response, the third (DENT) will have vanished from the exchange.
+    $btc = ExchangeSymbol::factory()->create([
+        'token' => 'BTC',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    $eth = ExchangeSymbol::factory()->create([
+        'token' => 'ETH',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    $dent = ExchangeSymbol::factory()->create([
+        'token' => 'DENT',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    // Unrelated exchange, must not be touched by a Binance refresh.
+    $dentBybit = ExchangeSymbol::factory()->create([
+        'token' => 'DENT',
+        'quote' => 'USDT',
+        'api_system_id' => $bybit->id,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    // The mapper output schema uses baseAsset + quoteAsset as the pair key.
+    // Bitget returned DENT's row in the past but no longer lists it at all.
+    $apiResult = [
+        ['baseAsset' => 'BTC', 'quoteAsset' => 'USDT', 'pair' => 'BTCUSDT'],
+        ['baseAsset' => 'ETH', 'quoteAsset' => 'USDT', 'pair' => 'ETHUSDT'],
+    ];
+
+    $job = new UpsertExchangeSymbolsFromExchangeJob($binance->id);
+
+    $flagged = $job->flagMissingSymbolsForDelisting($apiResult);
+
+    expect($flagged)->toBe(1);
+
+    expect($btc->fresh()->is_marked_for_delisting)->toBeFalse();
+    expect($eth->fresh()->is_marked_for_delisting)->toBeFalse();
+    expect($dent->fresh()->is_marked_for_delisting)->toBeTrue();
+    expect($dentBybit->fresh()->is_marked_for_delisting)->toBeFalse();
+});
+
+test('flagMissingSymbolsForDelisting is idempotent on rows already flagged', function () {
+    $binance = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance',
+    ]);
+
+    ExchangeSymbol::factory()->create([
+        'token' => 'BTC',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    $alreadyFlagged = ExchangeSymbol::factory()->create([
+        'token' => 'DENT',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_marked_for_delisting' => true,
+    ]);
+
+    $originalUpdatedAt = $alreadyFlagged->updated_at;
+
+    $apiResult = [
+        ['baseAsset' => 'BTC', 'quoteAsset' => 'USDT', 'pair' => 'BTCUSDT'],
+    ];
+
+    $job = new UpsertExchangeSymbolsFromExchangeJob($binance->id);
+
+    // No new flags — DENT was already flagged, skip it.
+    expect($job->flagMissingSymbolsForDelisting($apiResult))->toBe(0);
+    expect($alreadyFlagged->fresh()->updated_at->eq($originalUpdatedAt))->toBeTrue();
+});
+
+test('flagMissingSymbolsForDelisting is a no-op when the API response is empty', function () {
+    // Empty responses are treated as an API anomaly (e.g. partial outage),
+    // not as mass delisting — do not flag anything.
+    $binance = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance',
+    ]);
+
+    $symbol = ExchangeSymbol::factory()->create([
+        'token' => 'BTC',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    $job = new UpsertExchangeSymbolsFromExchangeJob($binance->id);
+
+    expect($job->flagMissingSymbolsForDelisting([]))->toBe(0);
+    expect($symbol->fresh()->is_marked_for_delisting)->toBeFalse();
+});

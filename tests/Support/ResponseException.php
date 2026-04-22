@@ -194,6 +194,15 @@ final class ResponseException
     }
 
     /**
+     * Binance: symbol has been delisted / is unknown to the exchange.
+     * HTTP 400 with vendor code -1121 ("Invalid symbol.").
+     */
+    public static function binanceSymbolDelisted(): RequestException
+    {
+        return self::binance(400, -1121, 'Invalid symbol.');
+    }
+
+    /**
      * Create a Binance-style RequestException.
      *
      * @param  int  $httpStatus  HTTP status code
@@ -392,6 +401,15 @@ final class ResponseException
     public static function bybitRecvWindowMismatch(): RequestException
     {
         return self::bybit(200, 10002, 'Invalid request, please check your timestamp or recv_window param');
+    }
+
+    /**
+     * Bybit: symbol has been delisted / is not supported by the exchange.
+     * HTTP 200 with retCode 10001 and a descriptive message.
+     */
+    public static function bybitSymbolDelisted(): RequestException
+    {
+        return self::bybit(200, 10001, 'Not supported symbols');
     }
 
     /**
@@ -973,6 +991,15 @@ final class ResponseException
     }
 
     /**
+     * KuCoin: symbol has been delisted / parameter is invalid.
+     * HTTP 200 with vendor code "200003" ("The symbol parameter is invalid.").
+     */
+    public static function kucoinSymbolDelisted(): RequestException
+    {
+        return self::kucoin(200, '200003', 'The symbol parameter is invalid.');
+    }
+
+    /**
      * Create a KuCoin-style RequestException.
      * KuCoin uses {"code": "200004", "msg": "Order not exist"} format.
      *
@@ -1143,6 +1170,15 @@ final class ResponseException
     public static function bitgetParameterVerificationException(): RequestException
     {
         return self::bitget(200, '40808', 'Parameter verification exception');
+    }
+
+    /**
+     * BitGet: symbol has been delisted / removed from the exchange.
+     * HTTP 400 with vendor code "40309" ("The contract has been removed").
+     */
+    public static function bitgetSymbolDelisted(): RequestException
+    {
+        return self::bitget(400, '40309', 'The contract has been removed');
     }
 
     /**

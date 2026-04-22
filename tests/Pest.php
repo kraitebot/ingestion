@@ -3,11 +3,23 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Once;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use Kraite\Core\Models\Kraite;
 use Tests\TestCase;
+
+/**
+ * Pre-seed `Kraite::ip()` for every test so the fallback — which reaches
+ * out to ipify.org — never fires under `Http::preventStrayRequests()`.
+ * Tests that need a specific server IP can still override the cache key.
+ */
+function seedKraiteServerIpCache(): void
+{
+    Cache::put(Kraite::IP_CACHE_KEY, '127.0.0.1', Kraite::IP_CACHE_TTL_SECONDS);
+}
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
@@ -20,7 +32,7 @@ pest()->extend(TestCase::class)
         $this->freezeTime();
 
         // Ensure Engine record exists for tests that need it
-        Kraite\Core\Models\Kraite::firstOrCreate(
+        Kraite::firstOrCreate(
             ['id' => 1],
             [
                 'allow_opening_positions' => true,
@@ -33,6 +45,8 @@ pest()->extend(TestCase::class)
 
         // Clear the once() cache to prevent cross-test pollution
         Once::flush();
+
+        seedKraiteServerIpCache();
     })
     ->in('Browser', 'Feature');
 
@@ -48,7 +62,7 @@ pest()->extend(TestCase::class)
         $this->freezeTime();
 
         // Ensure Engine record exists for tests that need it
-        Kraite\Core\Models\Kraite::firstOrCreate(
+        Kraite::firstOrCreate(
             ['id' => 1],
             [
                 'allow_opening_positions' => true,
@@ -61,6 +75,8 @@ pest()->extend(TestCase::class)
 
         // Clear the once() cache to prevent cross-test pollution
         Once::flush();
+
+        seedKraiteServerIpCache();
     })
     ->in('Unit');
 
@@ -77,6 +93,8 @@ pest()->extend(TestCase::class)
 
         // Clear the once() cache to prevent cross-test pollution
         Once::flush();
+
+        seedKraiteServerIpCache();
     })
     ->in('Integration');
 

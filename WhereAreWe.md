@@ -147,3 +147,40 @@ FROM orders WHERE position_id = 1 AND is_algo = 1;
 | Order API interactions | `Concerns/Order/InteractsWithApis.php` |
 | BitGet API client | `Support/Apis/REST/BitgetApi.php` |
 | Trading tech design | `docs/02-features/trading/tech-design.md` |
+
+---
+
+## TODO (2026-04-22) — Unify stale-step rescue into step-dispatcher
+
+Today we noticed that we have two overlapping stale-step watchdog commands:
+
+| Command | Package | Watches | Action |
+|---|---|---|---|
+| `steps:recover-stale` | `brunocfalcao/step-dispatcher` | `Running` state (worker died mid-job) | `Running → Pending` retry or `Running → Failed` if retries exhausted. Skips parents whose descendants are still in-flight. |
+| `kraite:cron-check-stale-data` | `kraitebot/core` | `Dispatched` state + stuck `steps_dispatcher.can_dispatch=false` locks | Release wedged dispatcher locks (>30s). Promote stuck Dispatched steps (>5m) to `queue=priority, priority=high`. Send pushover/email if self-healing fails. |
+
+They're not duplicates (different states, different fixes) but together they form the
+same conceptual responsibility: **keep the dispatcher unstuck and rescue steps the
+workers aren't processing.** Ownership-wise this belongs inside the step-dispatcher
+package — the promotion-to-priority-queue trick, the dispatcher-lock self-release and
+the notification hook are all generic dispatcher health concerns, nothing Kraite-specific.
+
+**Proposal for tomorrow:**
+
+- Merge the two commands into a single `steps:recover-stale` (or split into
+  `steps:recover-running` + `steps:recover-dispatched` + `steps:release-locks`
+  sub-behaviours, configurable via flags) living entirely in
+  `packages/brunocfalcao/step-dispatcher/`.
+- Move the dispatcher-lock release logic into the dispatcher package. It's already
+  touching `steps_dispatcher` rows, so it belongs here.
+- Move the priority-queue promotion into the dispatcher package. Kraite shouldn't
+  be the only app that benefits from this.
+- Keep the notification hook pluggable — dispatcher package publishes a
+  `StaleStepsDetected` event; Kraite (or any consumer) listens and sends the
+  pushover/email. Don't bake a specific notification channel into the package.
+- Delete `kraite:cron-check-stale-data`, update `routes/console.php` to schedule
+  the consolidated dispatcher command only.
+
+**Why not today:** requires cross-package refactor, event plumbing, and some
+thinking about how to keep per-app notification preferences outside the shared
+dispatcher package. Logging today's intent so we pick it up cleanly tomorrow.
