@@ -44,32 +44,47 @@ Schedule::command('kraite:cron-sync-orders')
 // This prevents new work from being added while we wait for existing steps to finish
 // When cooling down, these tasks won't appear in schedule:list at all
 if (! $isCoolingDown()) {
+    // Open new positions every 3 minutes. Runs PreparePositionsOpeningJob
+    // per account/can_trade=true combo, which in turn fans out the
+    // Verify/Query/Assign/Dispatch chain only if slots are available.
+    Schedule::command('kraite:cron-create-positions')
+        ->cron('*/3 * * * *')
+        ->withoutOverlapping();
+
     // Fetch klines for active positions only (5m timeframe)
-    // Schedule::command('kraite:cron-fetch-klines --only-active-positions')
-    //     ->everyFiveMinutes();
+    Schedule::command('kraite:cron-fetch-klines --only-active-positions')
+        ->everyFiveMinutes();
 
     // Fetch klines for all symbols at indicator timeframes (for correlation data)
-    // Schedule::command('kraite:cron-fetch-klines --timeframe=1h')
-    //     ->hourlyAt(5);
+    Schedule::command('kraite:cron-fetch-klines --timeframe=1h')
+        ->hourlyAt(5);
 
-    // Schedule::command('kraite:cron-fetch-klines --timeframe=4h')
-    //     ->cron('5 */4 * * *');
+    Schedule::command('kraite:cron-fetch-klines --timeframe=4h')
+        ->cron('5 */4 * * *');
 
-    // Schedule::command('kraite:cron-fetch-klines --timeframe=12h')
-    //     ->cron('5 */12 * * *');
+    Schedule::command('kraite:cron-fetch-klines --timeframe=12h')
+        ->cron('5 */12 * * *');
 
-    // Schedule::command('kraite:cron-store-accounts-balances')
-    //     ->everyFiveMinutes();
+    Schedule::command('kraite:cron-store-accounts-balances')
+        ->everyFiveMinutes();
 
-    // Schedule::command('kraite:cron-refresh-exchange-symbols')
-    //     ->hourlyAt(15);
+    Schedule::command('kraite:cron-refresh-exchange-symbols')
+        ->hourlyAt(15);
 
-    // Schedule::command('kraite:cron-conclude-symbols-direction')
-    //     ->hourlyAt(30);
+    Schedule::command('kraite:cron-conclude-symbols-direction')
+        ->hourlyAt(30);
+
+    // Enforce the deny-list every hour: sweeps exchange_symbols for memes,
+    // speculative listings, and structurally brittle low-notional tokens and
+    // flips is_manually_enabled=false across all exchanges. Additive only —
+    // re-enabling a token is an explicit operator action.
+    Schedule::command('kraite:disable-volatile-tokens')
+        ->hourlyAt(45)
+        ->withoutOverlapping();
 
     // Purge old candles daily at 03:00 (keeps last 500 per symbol/timeframe)
-    // Schedule::command('kraite:purge-candles')
-    //     ->dailyAt('03:00');
+    Schedule::command('kraite:purge-candles')
+        ->dailyAt('03:00');
 
     // Purge old model_logs daily at 03:30 — keeps a 30-day rolling window of
     // attribute-change history (position lifecycle, fills, WAP transitions,

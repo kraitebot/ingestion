@@ -80,6 +80,12 @@ final class BusinessSeeder extends Seeder
                 'binance_api_secret' => config('kraite-ingestion.traders.binance_bybit.binance_api_secret'),
                 'market_order_margin_percentage_long' => '5.00',
                 'market_order_margin_percentage_short' => '5.00',
+                // Open up to 6 LONG slots and 6 SHORT slots concurrently on
+                // this account. The migration default is 1 per side —
+                // overridden here so the main live account actually runs a
+                // trading book rather than a single pair per direction.
+                'total_positions_long' => 6,
+                'total_positions_short' => 6,
                 'is_active' => true,
             ]
         );
