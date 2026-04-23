@@ -36,9 +36,9 @@ Schedule::command('steps:recover-stale --recover-dispatched --release-locks')
 
 // Reconcile exchange order state into the DB. Not gated by cooldown — open positions
 // must be tracked/closed even when new-work creation is paused.
-// Schedule::command('kraite:cron-sync-orders')
-//     ->everyMinute()
-//     ->withoutOverlapping();
+Schedule::command('kraite:cron-sync-orders')
+    ->everyMinute()
+    ->withoutOverlapping();
 
 // Scheduled jobs that create NEW steps should NOT run during cooldown
 // This prevents new work from being added while we wait for existing steps to finish
@@ -70,6 +70,13 @@ if (! $isCoolingDown()) {
     // Purge old candles daily at 03:00 (keeps last 500 per symbol/timeframe)
     // Schedule::command('kraite:purge-candles')
     //     ->dailyAt('03:00');
+
+    // Purge old model_logs daily at 03:30 — keeps a 30-day rolling window of
+    // attribute-change history (position lifecycle, fills, WAP transitions,
+    // close chains). Beyond that, the log volume outweighs the forensics
+    // value and the table growth starts to hurt.
+    Schedule::command('kraite:purge-model-logs --duration=30')
+        ->dailyAt('03:30');
 
     // Archive fully-resolved step trees daily at 04:00 (keeps last 1 day)
     Schedule::command('steps:archive --duration=1')
