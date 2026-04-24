@@ -45,23 +45,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Candle Data Fetching
-    |--------------------------------------------------------------------------
-    |
-    | default_results: Number of candles to fetch per symbol/timeframe.
-    |                  Bulk mode (default): Max 20 (TAAPI bulk API limit)
-    |                  Legacy mode: Max 500 per request (uses backtrack batching)
-    |
-    | bulk_max_results: Maximum results allowed per construct in bulk mode.
-    |                   This is a TAAPI API limitation, do not increase.
-    */
-    'candles' => [
-        'default_results' => (int) env('CANDLES_DEFAULT_RESULTS', 20),
-        'bulk_max_results' => 20, // TAAPI bulk API hard limit - do not change
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | BTC Correlation Analysis
     |--------------------------------------------------------------------------
     |
@@ -186,18 +169,6 @@ return [
         'min_candles' => (int) env('ELASTICITY_MIN_CANDLES', 0),
         'min_movement_threshold' => (float) env('ELASTICITY_MIN_MOVEMENT_THRESHOLD', 0.0001), // 0.01% minimum movement
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Default Throttle Seconds
-    |--------------------------------------------------------------------------
-    |
-    | Default throttle window for auto-created throttle rules.
-    | When a throttle rule doesn't exist in the database, this default is used.
-    |
-    | default: 300 seconds (5 minutes)
-    */
-    'default_throttle_seconds' => (int) env('DEFAULT_THROTTLE_SECONDS', 300),
 
     /*
     |--------------------------------------------------------------------------
