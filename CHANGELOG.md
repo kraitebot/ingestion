@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.5.5 - 2026-04-24
+
+### Features
+
+- [NEW FEATURE] `database/migrations/2026_04_24_214654_add_api_system_response_created_index_to_api_request_logs.php` + `2026_04_24_214655_add_state_completed_at_index_to_steps.php` — composite indexes on `api_request_logs(api_system_id, http_response_code, created_at)` and `steps(state, completed_at)` to accelerate the dashboard query hotspots that were showing up in slow-query logs.
+
+### Improvements
+
+- [IMPROVED] `routes/console.php` — wired `kraite:watch-price-stream` to the scheduler (every minute, `withoutOverlapping`). External watchdog for the Binance mark-price daemon; belt-and-suspenders on top of the internal `BaseWebsocketClient` idle watchdog. Not gated by cooldown since fresh prices are load-bearing for selection + S/R gating regardless of trade-pause state.
+- [IMPROVED] Test fixtures across 5 Feature suites — stripped `'timeframes' => [...]` from `ApiSystem::firstOrCreate` / `update` / factory calls (the column moved to `kraite.timeframes` globally) and seed the singleton via `Kraite::updateOrCreate(['id' => 1], ['timeframes' => [...]])` where the test needs a specific timeframe fixture. `HasTokenDiscoveryTest` gained a `beforeEach` default seed of `["1h","4h","12h","1d"]`; the account-building helper overrides with `["5m","1h","4h","12h","1d"]` for the scoring scenarios that need the extra timeframes. Removed the now-useless `if (empty($apiSystem->timeframes)) { $apiSystem->update(...) }` defensive blocks.
+
 ## 1.5.4 - 2026-04-24
 
 ### Fixes

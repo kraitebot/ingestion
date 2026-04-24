@@ -6,30 +6,43 @@ use Illuminate\Support\Facades\Config;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Kraite as KraiteSettings;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\TradeConfiguration;
 use StepDispatcher\Models\StepsDispatcher;
+
+beforeEach(function (): void {
+    // The timeframe list used to live per-exchange on `api_systems.timeframes`;
+    // after the 2026-04-24 move it's a single kraite-singleton column. Seed
+    // the canonical four-slot set so every test that doesn't call the
+    // helper below (which overrides with a larger set) still has a
+    // sensible default for the code under test.
+    KraiteSettings::updateOrCreate(
+        ['id' => 1],
+        ['timeframes' => ['1h', '4h', '12h', '1d']]
+    );
+});
 
 /**
  * Helper to create a test account with all required relationships
  */
 function createAccountForTokenDiscoveryTest(string $suffix = ''): Account
 {
-    // Use existing valid ApiSystem (binance) for ApiDataMapperProxy compatibility
     $apiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
         [
             'name' => 'Binance',
             'is_exchange' => true,
-            'timeframes' => ['5m', '1h', '4h', '12h', '1d'],
         ]
     );
 
-    // Ensure timeframes are set if record already existed
-    if (empty($apiSystem->timeframes)) {
-        $apiSystem->update(['timeframes' => ['5m', '1h', '4h', '12h', '1d']]);
-    }
+    // Override the default beforeEach set with the 5-timeframe fixture
+    // this helper's suite of tests expects (tests scoring across 5m..1d).
+    KraiteSettings::updateOrCreate(
+        ['id' => 1],
+        ['timeframes' => ['5m', '1h', '4h', '12h', '1d']]
+    );
 
     // Create ISOLATED test quote to avoid collision with seeded symbols
     $testQuoteCanonical = 'TESTQUOTE'.fake()->randomNumber(6);
@@ -1612,12 +1625,12 @@ test('excludes tokens from other accounts when have_distinct_position_tokens_on_
     // Create two accounts for the same user on different exchanges
     $binanceApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
-        ['name' => 'Binance', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Binance', 'is_exchange' => true]
     );
 
     $bybitApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'bybit'],
-        ['name' => 'Bybit', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Bybit', 'is_exchange' => true]
     );
 
     $tradeConfig = TradeConfiguration::firstOrCreate(
@@ -1729,12 +1742,12 @@ test('does not exclude tokens from other accounts when have_distinct_position_to
 
     $binanceApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
-        ['name' => 'Binance', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Binance', 'is_exchange' => true]
     );
 
     $bybitApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'bybit'],
-        ['name' => 'Bybit', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Bybit', 'is_exchange' => true]
     );
 
     $tradeConfig = TradeConfiguration::firstOrCreate(
@@ -1818,12 +1831,12 @@ test('excludes TokenMapper equivalent tokens across accounts', function () {
 
     $binanceApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
-        ['name' => 'Binance', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Binance', 'is_exchange' => true]
     );
 
     $bybitApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'bybit'],
-        ['name' => 'Bybit', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Bybit', 'is_exchange' => true]
     );
 
     $tradeConfig = TradeConfiguration::firstOrCreate(
@@ -1937,12 +1950,12 @@ test('excludes reverse TokenMapper equivalent tokens across accounts', function 
 
     $binanceApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
-        ['name' => 'Binance', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Binance', 'is_exchange' => true]
     );
 
     $bybitApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'bybit'],
-        ['name' => 'Bybit', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Bybit', 'is_exchange' => true]
     );
 
     $tradeConfig = TradeConfiguration::firstOrCreate(
@@ -2041,7 +2054,7 @@ test('does not exclude tokens when user has no active positions on other account
 
     $binanceApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
-        ['name' => 'Binance', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Binance', 'is_exchange' => true]
     );
 
     $tradeConfig = TradeConfiguration::firstOrCreate(
@@ -2093,7 +2106,7 @@ test('expandTokensWithMappings expands binance tokens to other tokens', function
 
     $bybitApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'bybit'],
-        ['name' => 'Bybit', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Bybit', 'is_exchange' => true]
     );
 
     // Create mappings
@@ -2118,7 +2131,7 @@ test('expandTokensWithMappings expands other tokens to binance tokens', function
 
     $bybitApiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'bybit'],
-        ['name' => 'Bybit', 'is_exchange' => true, 'timeframes' => ['1h', '4h']]
+        ['name' => 'Bybit', 'is_exchange' => true]
     );
 
     // Create mappings

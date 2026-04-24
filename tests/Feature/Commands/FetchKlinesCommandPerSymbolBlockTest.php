@@ -6,6 +6,7 @@ use Kraite\Core\Jobs\Models\ExchangeSymbol\DispatchPerSymbolKlineBlocksJob;
 use Kraite\Core\Jobs\Models\ExchangeSymbol\FetchKlinesJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Kraite as KraiteSettings;
 use StepDispatcher\Models\Step;
 
 beforeEach(function () {
@@ -17,8 +18,14 @@ beforeEach(function () {
             'is_exchange' => true,
             'name' => 'Binance',
             'recvwindow_margin' => 1000,
-            'timeframes' => ['1h', '4h'],
         ]
+    );
+
+    // Timeframes used to live per-exchange on `api_systems`; now on the
+    // kraite singleton. Seed the 2-timeframe set this suite asserts over.
+    KraiteSettings::updateOrCreate(
+        ['id' => 1],
+        ['timeframes' => ['1h', '4h']]
     );
 
     // BTC baseline (shared block will fetch these)

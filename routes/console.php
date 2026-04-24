@@ -40,6 +40,15 @@ Schedule::command('kraite:cron-sync-orders')
     ->everyMinute()
     ->withoutOverlapping();
 
+// External watchdog for the Binance mark-price daemon. Belt-and-suspenders on top of
+// the BaseWebsocketClient idle watchdog — if the PHP process itself stalls (OS stall,
+// deadlock, etc.), this bounces it via supervisorctl. Not gated by cooldown — fresh
+// prices are load-bearing for selection + S/R gating + residual detection even when
+// new trades are paused.
+Schedule::command('kraite:watch-price-stream')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 // Scheduled jobs that create NEW steps should NOT run during cooldown
 // This prevents new work from being added while we wait for existing steps to finish
 // When cooling down, these tasks won't appear in schedule:list at all

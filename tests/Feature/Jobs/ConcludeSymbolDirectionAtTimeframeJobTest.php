@@ -11,6 +11,7 @@ use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Indicator;
 use Kraite\Core\Models\IndicatorHistory;
+use Kraite\Core\Models\Kraite as KraiteSettings;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\TradeConfiguration;
 use StepDispatcher\Models\Step;
@@ -26,14 +27,15 @@ function createExchangeSymbolForConcludeTest(#[SensitiveParameter] string $token
         [
             'name' => 'Binance',
             'is_exchange' => true,
-            'timeframes' => ['1m', '5m', '15m', '1h', '4h'],
         ]
     );
 
-    // Ensure timeframes are set if record already existed
-    if (empty($apiSystem->timeframes)) {
-        $apiSystem->update(['timeframes' => ['1m', '5m', '15m', '1h', '4h']]);
-    }
+    // Timeframes used to live per-exchange on `api_systems`; now on the
+    // kraite singleton. Seed the exact set this suite iterates over.
+    KraiteSettings::updateOrCreate(
+        ['id' => 1],
+        ['timeframes' => ['1m', '5m', '15m', '1h', '4h']]
+    );
 
     $symbol = Symbol::factory()->create(['token' => $token]);
 

@@ -7,6 +7,7 @@ use Kraite\Core\Jobs\Models\ExchangeSymbol\CalculateBtcCorrelationJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\Candle;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Kraite as KraiteSettings;
 use Kraite\Core\Models\Symbol;
 use StepDispatcher\Models\Step;
 
@@ -23,7 +24,14 @@ beforeEach(function () {
 
     $this->apiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
-        ['is_exchange' => true, 'name' => 'Binance', 'recvwindow_margin' => 1000, 'timeframes' => ['1h']]
+        ['is_exchange' => true, 'name' => 'Binance', 'recvwindow_margin' => 1000]
+    );
+
+    // Timeframes used to live per-exchange on `api_systems`; now on the
+    // kraite singleton. This suite only exercises the 1h timeframe.
+    KraiteSettings::updateOrCreate(
+        ['id' => 1],
+        ['timeframes' => ['1h']]
     );
 
     $this->btcMetaSymbol = Symbol::firstOrCreate(['token' => 'BTC'], ['name' => 'Bitcoin']);

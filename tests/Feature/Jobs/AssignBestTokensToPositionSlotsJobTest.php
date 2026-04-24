@@ -8,6 +8,7 @@ use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSnapshot;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Kraite as KraiteSettings;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\TradeConfiguration;
@@ -23,14 +24,15 @@ function createAccountForSlotTest(string $suffix = '', int $maxLongs = 2, int $m
         [
             'name' => 'Binance',
             'is_exchange' => true,
-            'timeframes' => ['5m', '1h', '4h', '12h', '1d'],
         ]
     );
 
-    // Ensure timeframes are set if record already existed
-    if (empty($apiSystem->timeframes)) {
-        $apiSystem->update(['timeframes' => ['5m', '1h', '4h', '12h', '1d']]);
-    }
+    // Timeframes used to live per-exchange on `api_systems`; now on the
+    // kraite singleton. Seed the 5-timeframe fixture this suite exercises.
+    KraiteSettings::updateOrCreate(
+        ['id' => 1],
+        ['timeframes' => ['5m', '1h', '4h', '12h', '1d']]
+    );
 
     // Create ISOLATED test quote to avoid collision with seeded symbols
     $testQuoteCanonical = 'SLOTTEST'.fake()->randomNumber(6);
