@@ -16,7 +16,12 @@ use Kraite\Core\Trading\Kraite;
  * These tests assert the contract at two levels:
  *
  *   1. The ladder calculator throws for the exact USELESS-shaped scenario, so
- *      calling it from the pre-gate produces the desired abort.
+ *      calling it from the pre-gate produces the desired abort. The original
+ *      incident's root cause was a corrupt `limit_quantity_multipliers` JSON
+ *      column on the exchange_symbol (`[0.2, 0.2, 2, 2]` instead of the
+ *      default `[2, 2, 2, 2]`) — rung #1 quantity shrank to 83 and its
+ *      notional at the SHORT entry price of ~0.04466 came in at $3.71,
+ *      below the $5 min_notional floor. That's the shape we pin here.
  *   2. The pre-gate method references the calculator by name, so future edits
  *      can't silently regress the call site.
  */
@@ -40,7 +45,7 @@ it('the limit ladder calculator rejects a USELESS-shaped rung before any market 
             referencePrice: '0.0407820',
             marketOrderQty: '415',
             exchangeSymbol: $symbol,
-            limitQuantityMultipliers: [2, 2, 2, 2],
+            limitQuantityMultipliers: [0.2, 0.2, 2, 2],
         );
     })->toThrow(RuntimeException::class, 'below min_notional');
 });

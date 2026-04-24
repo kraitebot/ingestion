@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.5.4 - 2026-04-24
+
+### Fixes
+
+- [BUG FIX] `tests/Unit/Jobs/Atomic/Position/VerifyNotionalPreValidatesLimitLadderTest.php` — corrected the `limitQuantityMultipliers` from `[2, 2, 2, 2]` to `[0.2, 0.2, 2, 2]` to actually reproduce the USELESS #64 incident shape. With the default `[2, 2, 2, 2]` multipliers and `marketOrderQty=415`, rung #1 came in at ~$37 notional — nowhere near the $5 min_notional floor, so the throw never fired and the test sat red at HEAD. The real incident was driven by a corrupt multipliers JSON (`[0.2, 0.2, 2, 2]`) that shrank rung #1 qty to 83 and produced the $3.71 notional the guard exists to catch. Docblock updated with the root cause.
+
 ## 1.5.3 - 2026-04-24
 
 ### Features
