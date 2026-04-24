@@ -78,8 +78,8 @@ final class BusinessSeeder extends Seeder
                 'trade_configuration_id' => 1,
                 'binance_api_key' => config('kraite-ingestion.traders.binance_bybit.binance_api_key'),
                 'binance_api_secret' => config('kraite-ingestion.traders.binance_bybit.binance_api_secret'),
-                'market_order_margin_percentage_long' => '5.00',
-                'market_order_margin_percentage_short' => '5.00',
+                'margin_percentage_long' => '5.00',
+                'margin_percentage_short' => '5.00',
                 // Open up to 6 LONG slots and 6 SHORT slots concurrently on
                 // this account. The migration default is 1 per side —
                 // overridden here so the main live account actually runs a
@@ -156,8 +156,8 @@ final class BusinessSeeder extends Seeder
                 'trade_configuration_id' => 1,
                 'bybit_api_key' => config('kraite-ingestion.traders.binance_bybit.bybit_api_key'),
                 'bybit_api_secret' => config('kraite-ingestion.traders.binance_bybit.bybit_api_secret'),
-                'market_order_margin_percentage_long' => '5.00',
-                'market_order_margin_percentage_short' => '5.00',
+                'margin_percentage_long' => '5.00',
+                'margin_percentage_short' => '5.00',
                 'is_active' => false,
             ]);
         }
@@ -201,8 +201,8 @@ final class BusinessSeeder extends Seeder
                 'trade_configuration_id' => 1,
                 'binance_api_key' => config('kraite-ingestion.traders.binance_only.binance_api_key'),
                 'binance_api_secret' => config('kraite-ingestion.traders.binance_only.binance_api_secret'),
-                'market_order_margin_percentage_long' => '5.00',
-                'market_order_margin_percentage_short' => '5.00',
+                'margin_percentage_long' => '5.00',
+                'margin_percentage_short' => '5.00',
                 'is_active' => false,
             ]);
         }
@@ -247,8 +247,8 @@ final class BusinessSeeder extends Seeder
                 'kucoin_api_key' => config('kraite-ingestion.traders.kucoin.api_key'),
                 'kucoin_api_secret' => config('kraite-ingestion.traders.kucoin.api_secret'),
                 'kucoin_passphrase' => config('kraite-ingestion.traders.kucoin.passphrase'),
-                'market_order_margin_percentage_long' => '5.00',
-                'market_order_margin_percentage_short' => '5.00',
+                'margin_percentage_long' => '5.00',
+                'margin_percentage_short' => '5.00',
                 'is_active' => false,
             ]);
         }
@@ -293,8 +293,8 @@ final class BusinessSeeder extends Seeder
                 'bitget_api_key' => config('kraite-ingestion.traders.bitget.api_key'),
                 'bitget_api_secret' => config('kraite-ingestion.traders.bitget.api_secret'),
                 'bitget_passphrase' => config('kraite-ingestion.traders.bitget.passphrase'),
-                'market_order_margin_percentage_long' => '5.00',
-                'market_order_margin_percentage_short' => '5.00',
+                'margin_percentage_long' => '5.00',
+                'margin_percentage_short' => '5.00',
                 'is_active' => false,
             ]);
         }

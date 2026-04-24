@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.5.3 - 2026-04-24
+
+### Features
+
+- [NEW FEATURE] `tests/Unit/Support/Backtest/BacktestSimulatorDividerTest.php` — 2-case regression guard for `get_market_order_amount_divider($N) = 2^(N+1)` being applied at the simulator's market-sizing call site (source-inspection level so a future refactor that silently drops the divider re-exposes the min-notional gating divergence between backtest and live trading).
+- [NEW FEATURE] `tests/Unit/Support/TradingMappers/DelistingFlagPersistenceTest.php` — 8 cases pinning the `isNowDelisted()` contract across all four TradingMappers. Covers pre-save (`saving()`-hook) context, post-save (`saved()`-hook) context, perpetual-default false-positive guard on Binance, no-change → false, and a source-level architectural consistency check that all four mappers use both `isDirty` and `wasChanged` detection.
+- [NEW FEATURE] `tests/Unit/Jobs/Atomic/Position/PreparePositionDataDirectionAwareMarginTest.php` — 5 cases pinning the direction-aware margin calculation. LONG reads `margin_percentage_long`, SHORT reads `margin_percentage_short`, the two can diverge on the same account, missing columns fall back to 5.00 for both, and a source-level guard on the method signature.
+
+### Improvements
+
+- [IMPROVED] `database/seeders/BusinessSeeder.php` — seeds the Main Binance Account with `margin_percentage_long=5.00` and `margin_percentage_short=5.00` to align with the direction-aware margin migration in `kraitebot/core`.
+
+### Removals (deadcode cleanup)
+
+- [IMPROVED] Deleted `tests/_Feature/Jobs/QuerySymbolIndicatorsBulkJobTest.php` (underscore-prefixed directory Pest skipped; referenced a `QuerySymbolIndicatorsBulkJob` class that no longer exists). Empty `_Feature/` tree removed.
+- [IMPROVED] Removed the empty `function something(): void` stub from `tests/Pest.php`.
+- [IMPROVED] Removed `cleanLogsFolder()` helper (zero call sites) and the now-unused `Illuminate\Support\Facades\File` import from `app/helpers.php`.
+- [IMPROVED] Removed dead config keys `kraite.candles` + `kraite.default_throttle_seconds` from `config/kraite.php`.
+
 ## 1.5.2 - 2026-04-23
 
 ### Features
