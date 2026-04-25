@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.5.8 - 2026-04-25
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.5.6 to pull in the `DispatchPositionSlotsJob` idempotency guard. Closes the twin-workflow race that produced the 12 Failed steps + realised loss on positions #241 + #242 during the 2026-04-25 17:33-17:34 wedge debug window.
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/DispatchPositionSlotsJobIdempotencyTest` — pins the new contract: a 'new' position with a live `DispatchPositionJob` step is skipped on a duplicate dispatch run; a position with only terminal-state prior attempts is treated as orphan and dispatched fresh.
+
 ## 1.5.7 - 2026-04-25
 
 ### Improvements
