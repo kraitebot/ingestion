@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.5.6 - 2026-04-25
+
+### Tests
+
+- [IMPROVED] `tests/Feature/Jobs/Lifecycles/ApiSystem/DiscoverCMCTokensForOrphanedSymbolsJobTest` — updated to match the new self-elect contract enforced in `kraitebot/core` v1.5.4: the test helper no longer pre-sets `child_block_uuid` on the seeded step (mirroring real-world callers that now leave it null at create time), and the empty-children assertion verifies the orchestrator did NOT elect to parent mode (`child_block_uuid` stays null) instead of the prior "manually nulled on empty-path" expectation.
+
 ## 1.5.5 - 2026-04-24
 
 ### Features

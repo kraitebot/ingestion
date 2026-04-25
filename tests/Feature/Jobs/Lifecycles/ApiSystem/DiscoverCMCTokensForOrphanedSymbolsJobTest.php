@@ -65,17 +65,19 @@ function createLinkedSymbolForCMCLifecycle(#[SensitiveParameter] ?string $token 
 }
 
 /**
- * Helper to execute lifecycle job with a mock step
+ * Helper to execute lifecycle job with a mock step.
+ *
+ * The step is created WITHOUT a pre-set child_block_uuid — orchestrators
+ * self-elect to parent mode inside compute() only when they have children
+ * to spawn. The returned `child_block_uuid` is read from the step AFTER
+ * compute() finishes (null when no children were spawned).
  */
 function executeCMCLifecycleJobWithStep(): array
 {
-    $childBlockUuid = (string) Illuminate\Support\Str::uuid();
-
     $step = Step::create([
         'class' => DiscoverCMCTokensForOrphanedSymbolsJob::class,
         'arguments' => [],
         'block_uuid' => (string) Illuminate\Support\Str::uuid(),
-        'child_block_uuid' => $childBlockUuid,
         'index' => 1,
     ]);
 
@@ -89,7 +91,7 @@ function executeCMCLifecycleJobWithStep(): array
     return [
         'result' => $result,
         'step' => $step,
-        'child_block_uuid' => $childBlockUuid,
+        'child_block_uuid' => $step->child_block_uuid,
     ];
 }
 
@@ -152,14 +154,18 @@ test('does not create steps for linked symbols', function () {
     expect($result['steps_created'])->toBe(0);
 });
 
-test('clears child_block_uuid when no children to create', function () {
+test('leaves child_block_uuid null when no children to create', function () {
     // No orphaned symbols - all are linked or already processed
     createLinkedSymbolForCMCLifecycle();
 
     $execution = executeCMCLifecycleJobWithStep();
     $step = $execution['step'];
 
-    // child_block_uuid should be cleared so StepDispatcher can complete the step
+    // Orchestrator must NOT self-elect to parent on the empty path —
+    // electing without spawning children is the zombie pattern. With
+    // no pre-set child_block_uuid and no makeItAParent() call, the
+    // step row's child_block_uuid stays null and StepDispatcher can
+    // complete it normally.
     expect($step->child_block_uuid)->toBeNull();
 });
 
