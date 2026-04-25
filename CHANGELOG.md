@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.5.9 - 2026-04-25
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.5.7 to pull in the command-entry idempotency guard on `CreatePositionsCommand`. Closes the actual cause of the 2026-04-25 17:33 twin-orchestrator incident. Pairs with the v1.5.6 `DispatchPositionSlotsJob` guard (defence-in-depth).
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/Commands/CreatePositionsCommandIdempotencyTest` — pins the new contract: the command skips an account that already carries a non-terminal `PreparePositionsOpeningJob` step; first-time dispatches still happen; past concluded workflows do not count as in-flight.
+
 ## 1.5.8 - 2026-04-25
 
 ### Improvements
