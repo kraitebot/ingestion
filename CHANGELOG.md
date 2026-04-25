@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.6.1 - 2026-04-25
+
+### Fixes
+
+- [BUG FIX] Pulls in `kraitebot/core` v1.5.9 — atomic slot reservation in `AssignBestTokensToPositionSlotsJob`. The 2026-04-25 17:33 incident (2 SHORT positions created when only 1 slot was free, slot cap breached, realised loss on positions #241 + #242) was a textbook check-then-act race that's now closed at the database transaction layer with `lockForUpdate` on the accounts row.
+
+### Improvements
+
+- [IMPROVED] Pulls the v1.5.7 command-entry idempotency revert. With the cap enforced as a database invariant the command-side guard was redundant defence-in-depth on top of a real bug. The proper fix lives in the domain logic now.
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/Jobs/AssignBestTokensAtomicSlotReservationTest` — pins the contract: `createPositionSlots` body uses `DB::transaction` + `lockForUpdate` (source pin so a future refactor can't quietly drop the lock), and the SHORT slot cap holds when the account starts one slot below cap.
+- [REMOVED] `tests/Feature/Commands/CreatePositionsCommandIdempotencyTest.php` — pinned the now-removed command-entry guard.
+
 ## 1.6.0 - 2026-04-25
 
 ### Improvements
