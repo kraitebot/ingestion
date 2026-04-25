@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.6.0 - 2026-04-25
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.5.8 to pull in the wired-up group-progress watchdog notification path. The `--watchdog-progress` flag scheduled in v1.5.7 now produces actual operator alerts (severity=critical, 10-min throttle per group); previously the event landed silently. Closes the operational-visibility hole that would have let the next cleanup-phase wedge go unnoticed for hours.
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/Listeners/SendStaleStepsGroupProgressNotificationTest` — pins the listener mapping: `group_no_progress` event routes to `group_no_progress_detected` canonical, respects the global `notifications_enabled` config gate, does not bleed into other reasons.
+
 ## 1.5.9 - 2026-04-25
 
 ### Improvements
