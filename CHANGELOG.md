@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.5.7 - 2026-04-25
+
+### Improvements
+
+- [IMPROVED] `routes/console.php` — moved `kraite:cron-sync-orders` inside the `! $isCoolingDown()` gate. Lets an operator drain ALL new-work creation (not just opens) before patching the dispatcher / consumer side; outside cooldown windows behaviour is unchanged. Added `--watchdog-progress` to the `steps:recover-stale` schedule so the new group-progress alarm fires on the existing every-minute cron.
+- [IMPROVED] `composer.lock` — bumped `brunocfalcao/step-dispatcher` to v1.11.6 and `kraitebot/core` to v1.5.5 to pull in the cleanup-phase fixes (`skipAllChildStepsOnParentAndChildSingleStep` + `promoteResolveExceptionSteps` no-op return-true bugs), the per-tick `max_per_tick` cap, the group-progress watchdog, and the orphan-position recovery in `CreatePositionsCommand`.
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/Commands/CreatePositionsCommandOrphanRecoveryTest` — three cases pinning the orphan-recovery contract: re-dispatches a stranded `status='new'` position with no live step, idempotent when a live step already exists, and re-dispatches when the only existing step is in a terminal state (cancelled mid-flight).
+
 ## 1.5.6 - 2026-04-25
 
 ### Tests

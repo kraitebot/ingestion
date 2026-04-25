@@ -27,16 +27,14 @@ if (config('kraite.can_dispatch_steps')) {
 }
 
 // Reclaim stalled steps (Running zombies, Dispatched stalls) and release wedged
-// dispatcher locks. Not gated by cooldown — cleanup, not new work.
+// dispatcher locks. Not gated by cooldown — cleanup, not new work. The
+// --watchdog-progress flag (added 2026-04-25) generalises stall detection
+// beyond per-step zombies: any group with Pending work but no terminal-state
+// progress in the last 10 minutes fires a critical StaleStepsDetected event,
+// catching cleanup-phase wedges that don't surface a stuck step.
 // Flags owned by brunocfalcao/step-dispatcher >= 1.11; notifications wired via
 // the StaleStepsDetected event (SendStaleStepsNotification listener in kraitebot/core).
-Schedule::command('steps:recover-stale --recover-dispatched --release-locks')
-    ->everyMinute()
-    ->withoutOverlapping();
-
-// Reconcile exchange order state into the DB. Not gated by cooldown — open positions
-// must be tracked/closed even when new-work creation is paused.
-Schedule::command('kraite:cron-sync-orders')
+Schedule::command('steps:recover-stale --recover-dispatched --release-locks --watchdog-progress')
     ->everyMinute()
     ->withoutOverlapping();
 
@@ -53,6 +51,15 @@ Schedule::command('kraite:watch-price-stream')
 // This prevents new work from being added while we wait for existing steps to finish
 // When cooling down, these tasks won't appear in schedule:list at all
 if (! $isCoolingDown()) {
+    // Reconcile exchange order state into the DB. Gated by cooldown so an operator
+    // patching the dispatcher / consumer side can drain ALL new-work creation —
+    // including sync — before touching code. Outside cooldown windows, open
+    // positions still need active reconciliation; the gate flips back the moment
+    // cooldown lifts.
+    Schedule::command('kraite:cron-sync-orders')
+        ->everyMinute()
+        ->withoutOverlapping();
+
     // Open new positions every 3 minutes. Runs PreparePositionsOpeningJob
     // per account/can_trade=true combo, which in turn fans out the
     // Verify/Query/Assign/Dispatch chain only if slots are available.

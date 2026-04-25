@@ -1,0 +1,172 @@
+<?php
+
+declare(strict_types=1);
+
+use Kraite\Core\Jobs\Lifecycles\Position\Binance\DispatchPositionJob as BinanceDispatchPositionJob;
+use Kraite\Core\Jobs\Lifecycles\Position\DispatchPositionJob as BaseDispatchPositionJob;
+use Kraite\Core\Models\Account;
+use Kraite\Core\Models\ApiSystem;
+use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Position;
+use Kraite\Core\Models\Symbol;
+use Kraite\Core\Models\User;
+use StepDispatcher\Models\Step;
+use StepDispatcher\States\Cancelled;
+use StepDispatcher\States\Completed;
+use StepDispatcher\States\Pending;
+
+beforeEach(function (): void {
+    $apiSystem = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance',
+    ]);
+
+    $user = User::factory()->create([
+        'can_trade' => true,
+    ]);
+
+    $this->account = Account::factory()->create([
+        'api_system_id' => $apiSystem->id,
+        'user_id' => $user->id,
+        'is_active' => true,
+        'can_trade' => true,
+        'total_positions_long' => 1,
+        'total_positions_short' => 0,
+    ]);
+
+    $symbol = Symbol::factory()->create(['token' => 'BTC']);
+
+    $this->exchangeSymbol = ExchangeSymbol::factory()->create([
+        'token' => 'BTC',
+        'quote' => 'USDT',
+        'api_system_id' => $apiSystem->id,
+        'symbol_id' => $symbol->id,
+    ]);
+});
+
+/**
+ * Position 235 / sweep-casualty recovery contract.
+ *
+ * The 2026-04-25 dispatcher wedge was drained by manually deleting stale
+ * Pending/Running rows. Two positions (233, 235) survived the sweep but
+ * their `DispatchPositionJob` follow-up step did NOT — the row was
+ * deleted alongside the genuinely-stale work. Result: positions stuck in
+ * `status='new'` with a token assigned, no live workflow to advance
+ * them, no automatic recovery path. Operator had to manually re-dispatch
+ * via tinker.
+ *
+ * Contract: every `kraite:cron-create-positions` tick must re-dispatch
+ * orphan 'new' positions (status='new', exchange_symbol_id NOT NULL)
+ * that have no live `DispatchPositionJob` step. Self-heals the next tick
+ * after any operational disturbance — operator drain, supervisor
+ * restart, half-truncated cleanup, anything that loses a step row while
+ * leaving the domain row behind.
+ *
+ * The recovery path runs BEFORE the engine guards (slot-cap, directional,
+ * exchange cooldown). Orphans must be recovered even when the slot pool
+ * is full — they ARE the slot, just stranded.
+ */
+it('re-dispatches DispatchPositionJob for an orphan position in new status with no live step', function (): void {
+    $orphan = Position::factory()->create([
+        'account_id' => $this->account->id,
+        'exchange_symbol_id' => $this->exchangeSymbol->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    expect(stepsForPosition($orphan))->toHaveCount(0);
+
+    $this->artisan('kraite:cron-create-positions')->assertSuccessful();
+
+    $recoveredSteps = Step::query()
+        ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
+        ->whereJsonContains('arguments->positionId', $orphan->id)
+        ->get();
+
+    expect($recoveredSteps)->toHaveCount(
+        1,
+        'Orphan position with status=new and no live DispatchPositionJob step must be self-healed '
+        .'by CreatePositionsCommand on the next tick. Without the recovery path, sweep casualties '
+        .'(stale Pending wipes that took follow-up steps with them) leave positions stranded forever '
+        .'until manual operator intervention.'
+    );
+
+    expect($recoveredSteps->first()->state)->toBeInstanceOf(
+        Pending::class,
+        'Recovered step must land in Pending so the next dispatcher tick promotes it.'
+    );
+});
+
+it('does not re-dispatch when the orphan position already has a live DispatchPositionJob step', function (): void {
+    $position = Position::factory()->create([
+        'account_id' => $this->account->id,
+        'exchange_symbol_id' => $this->exchangeSymbol->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    // Existing live step — recovery must NOT duplicate it.
+    Step::create([
+        'class' => BinanceDispatchPositionJob::class,
+        'queue' => 'positions',
+        'arguments' => ['positionId' => $position->id],
+    ]);
+
+    $this->artisan('kraite:cron-create-positions')->assertSuccessful();
+
+    $count = Step::query()
+        ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
+        ->whereJsonContains('arguments->positionId', $position->id)
+        ->count();
+
+    expect($count)->toBe(
+        1,
+        'Recovery must be idempotent — a position with a live (non-terminal) DispatchPositionJob '
+        .'step is healthy, not orphaned. Re-dispatching would create a duplicate workflow.'
+    );
+});
+
+it('treats terminal-state DispatchPositionJob steps as "no live step" for recovery purposes', function (): void {
+    $position = Position::factory()->create([
+        'account_id' => $this->account->id,
+        'exchange_symbol_id' => $this->exchangeSymbol->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    // A previous dispatch attempt that already concluded in a terminal
+    // state (Completed / Cancelled / Failed). The position is still
+    // 'new' which means the previous workflow must have been cancelled
+    // mid-flight. Recovery must treat this as orphan and re-dispatch.
+    $oldStep = Step::create([
+        'class' => BinanceDispatchPositionJob::class,
+        'queue' => 'positions',
+        'arguments' => ['positionId' => $position->id],
+    ]);
+    Step::withoutEvents(function () use ($oldStep) {
+        Step::where('id', $oldStep->id)->update(['state' => Cancelled::class]);
+    });
+
+    $this->artisan('kraite:cron-create-positions')->assertSuccessful();
+
+    $liveSteps = Step::query()
+        ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
+        ->whereJsonContains('arguments->positionId', $position->id)
+        ->where('state', '!=', Cancelled::class)
+        ->where('state', '!=', Completed::class)
+        ->get();
+
+    expect($liveSteps)->toHaveCount(
+        1,
+        'Recovery must consider only NON-terminal DispatchPositionJob steps when deciding whether '
+        .'a position is orphaned. A position whose only step ended Cancelled is still stranded.'
+    );
+});
+
+function stepsForPosition(Position $position): Illuminate\Database\Eloquent\Collection
+{
+    return Step::query()
+        ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
+        ->whereJsonContains('arguments->positionId', $position->id)
+        ->get();
+}
