@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.7.1 - 2026-04-26
+
+### Fixes
+
+- [BUG FIX] `database/migrations/2026_04_26_150000_drop_stop_market_wait_minutes_from_accounts` — drops the obsolete `accounts.stop_market_wait_minutes` column on already-migrated environments. The original-design SL cooldown was retired from the trading flow and no longer reads/writes the column; `kraitebot/core`'s create-schema migration is already updated to omit it on fresh installs.
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.6.1 to pull in the Bitget create-positions hardening (`doubleCheck` fast-path + try/catch, cross-exchange interface rename for trade-fills queries, symmetric audit-log events on TP/SL placement).
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Jobs/Atomic/Order/Bitget/PlacePositionTpslJobDoubleCheckTest` — 4 cases pinning the `doubleCheck()` invariants: fast-path short-circuits to `true` without any API call when both `exchange_order_id`s are populated, slow-path returns `false` (not throws) on transient failure, slow-path triggered when either id is null, and null Order properties don't crash. Regression guard for the 2026-04-26 THETAUSDT cancel.
+- [NEW FEATURE] `tests/Unit/Support/ApiDataMappers/Bitget/BitgetCloseTradeQueryTest` — 5 cases pinning the cross-exchange interface contract: `BitgetApiDataMapper` exposes `prepareQueryTokenTradesProperties` + `resolveQueryTradeResponse`, `BitgetApi` exposes `accountTrades`, and the trade-fills response parses into the flat shape `extractClosingPriceFromTrades` expects. Regression guard for the silent `closing_price` failure.
+- [IMPROVED] `tests/Unit/Support/ApiDataMappers/Bitget/BitgetApiDataMapperTest` — updated 5 existing test cases to call the renamed mapper methods.
+
 ## 1.7.0 - 2026-04-26
 
 ### Features

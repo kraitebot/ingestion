@@ -368,26 +368,26 @@ test('resolveCancelOrdersResponse parses response with success and failure lists
 // MapsAccountQueryTrades Tests
 // =============================================================================
 
-test('prepareAccountQueryTradesProperties sets correct properties', function () {
+test('prepareQueryTokenTradesProperties sets correct properties', function () {
     $position = createBitgetTestPosition('QUERY_TRADES');
     $mapper = new BitgetApiDataMapper;
 
-    $properties = $mapper->prepareAccountQueryTradesProperties($position);
+    $properties = $mapper->prepareQueryTokenTradesProperties($position);
 
     expect($properties->get('relatable'))->toBe($position);
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');
 });
 
-test('prepareAccountQueryTradesProperties includes orderId when provided', function () {
+test('prepareQueryTokenTradesProperties includes orderId when provided', function () {
     $position = createBitgetTestPosition('QUERY_TRADES_ORDER');
     $mapper = new BitgetApiDataMapper;
 
-    $properties = $mapper->prepareAccountQueryTradesProperties($position, '1234567890');
+    $properties = $mapper->prepareQueryTokenTradesProperties($position, '1234567890');
 
     expect($properties->get('options.orderId'))->toBe('1234567890');
 });
 
-test('resolveAccountQueryTradesResponse parses fillList correctly', function () {
+test('resolveQueryTradeResponse parses fillList correctly', function () {
     $mapper = new BitgetApiDataMapper;
 
     // BitGet order fills response per documentation
@@ -426,7 +426,7 @@ test('resolveAccountQueryTradesResponse parses fillList correctly', function () 
         'msg' => 'success',
     ]);
 
-    $result = $mapper->resolveAccountQueryTradesResponse($response);
+    $result = $mapper->resolveQueryTradeResponse($response);
 
     expect($result)->toHaveCount(2);
     expect($result[0]['tradeId'])->toBe('123456');
@@ -674,7 +674,7 @@ test('resolvers handle empty data gracefully', function () {
 
     // These should not throw exceptions
     expect($mapper->resolveCancelOrdersResponse($emptyResponse))->toBe([]);
-    expect($mapper->resolveAccountQueryTradesResponse($emptyResponse))->toBe([]);
+    expect($mapper->resolveQueryTradeResponse($emptyResponse))->toBe([]);
     expect($mapper->resolveLeverageBracketsDataResponse($emptyResponse))->toBe([]);
 });
 
@@ -688,7 +688,7 @@ test('resolvers handle missing data key gracefully', function () {
 
     expect($mapper->resolvePlaceOrderResponse($response))->toHaveKeys(['_price', '_orderType']);
     expect($mapper->resolveCancelOrdersResponse($response))->toBe([]);
-    expect($mapper->resolveAccountQueryTradesResponse($response))->toBe([]);
+    expect($mapper->resolveQueryTradeResponse($response))->toBe([]);
 });
 
 test('sideType converts canonical sides to BitGet format', function () {
