@@ -203,6 +203,38 @@ final class ResponseException
     }
 
     /**
+     * Binance: order positionSide does not match the account's position
+     * mode. Symmetric error — fires for both directions:
+     *   - hedge payload (positionSide=LONG/SHORT) → one-way account
+     *   - one-way payload (positionSide=BOTH or omit) → hedge account
+     * HTTP 400 with vendor code -4061.
+     */
+    public static function binancePositionSideMismatch(): RequestException
+    {
+        return self::binance(400, -4061, "Order's position side does not match user's setting.");
+    }
+
+    /**
+     * Binance: invalid position side (e.g. positionSide=INVALID).
+     * HTTP 400 with vendor code -4060.
+     */
+    public static function binanceInvalidPositionSide(): RequestException
+    {
+        return self::binance(400, -4060, 'Invalid position side.');
+    }
+
+    /**
+     * Binance: reduceOnly conflict — typically fires when reduceOnly is
+     * set on a one-way order that would open instead of close, or when
+     * reduceOnly and closePosition are both set on the same order.
+     * HTTP 400 with vendor code -4062.
+     */
+    public static function binanceReduceOnlyConflict(): RequestException
+    {
+        return self::binance(400, -4062, 'Invalid or improper reduceOnly value.');
+    }
+
+    /**
      * Create a Binance-style RequestException.
      *
      * @param  int  $httpStatus  HTTP status code

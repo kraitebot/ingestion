@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.7.0 - 2026-04-26
+
+### Features
+
+- [NEW FEATURE] Pulls in `kraitebot/core` v1.6.0 — **dual position-mode support** for Binance Futures (Hedge + One-Way). Live-validated against Bruno's hedge-mode account (12/12 active, no regression) and Karine's one-way account (11/12 active, all opens via new one-way payload, zero -4061 errors, 290 Binance order calls × HTTP 200). Reactive auto-flip on Binance error family (-4060/-4061/-4062/-4067) handles user-initiated mode changes within one cron tick. Full design in `kraitebot/core docs/02-features/dual-position-mode.md`.
+- [NEW FEATURE] `BusinessSeeder` — sets `on_hedge_mode=false` on the Karine row to match her live Binance one-way reality. Bruno's main account stays at the migration-default `true` (hedge), no change.
+- [NEW FEATURE] `tests/Support/ResponseException` — three new factory methods (`binancePositionSideMismatch` -4061, `binanceInvalidPositionSide` -4060, `binanceReduceOnlyConflict` -4062) for stubbing the position-mode error family in tests.
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Support/ApiDataMappers/Binance/BinanceMapperHedgeAwareTest` — 8 cases pinning the mapper's payload contract across (mode × order type × intent). Hedge sends `positionSide=LONG/SHORT`, one-way omits `positionSide` and sets `reduceOnly=true` on closing-intent orders. Algo path keeps `closePosition=true` in both modes; never sets `reduceOnly` (mutually exclusive per Binance docs).
+- [NEW FEATURE] `tests/Unit/Jobs/Models/Account/AssignBestCountByDirectionOneWayTest` — 6 cases pinning the slot-counter's interpretation of one-way response shape (`positionSide=BOTH` + signed `positionAmt`).
+- [NEW FEATURE] `tests/Integration/ExceptionHandlers/PositionModeAutoFlipTest` — 6 cases pinning the auto-flip catch: hedge → one-way flip on -4061, symmetric one-way → hedge flip, family-of-codes coverage (-4060, -4062), dual audit log (Log::warning + Account::modelLog), no false-positive on unrelated RequestExceptions.
+
 ## 1.6.2 - 2026-04-26
 
 ### Features

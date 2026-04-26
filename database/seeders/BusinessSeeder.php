@@ -256,6 +256,12 @@ final class BusinessSeeder extends Seeder
                 'margin_percentage_long' => '5.00',
                 'margin_percentage_short' => '5.00',
                 'is_active' => false,
+                // Karine's Binance Futures account is in One-Way mode.
+                // Per the dual-position-mode design (docs/02-features/
+                // dual-position-mode.md) the flag matches her live
+                // exchange setting; the auto-flip catch keeps it correct
+                // if she ever toggles it on Binance.
+                'on_hedge_mode' => false,
             ]);
         }
     }
