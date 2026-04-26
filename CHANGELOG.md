@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.7.2 - 2026-04-26
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.6.2 to pull in: Bitget algo-order drift correction via `place-pos-tpsl` overwrite (replaces the cancel+recreate workflow that fails for Bitget position-level TP/SL), credential leak fix for `api_request_logs` (Eloquent `$hidden` + new `HeaderSanitizer`), notification-lifecycle hardening (slow-query recursion guard, `Notification` lookup cache, fail-loud builder, `NotificationLogStatus` enum, observer error-logging).
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Jobs/Atomic/Order/Bitget/ModifyAlgoOrderJobTest` — 9 cases pinning the new Bitget algo-order modify behavior: drift detection gates, sibling lookup, complete syncs price back to reference, position/order ownership guards.
+- [NEW FEATURE] `tests/Unit/Jobs/Lifecycles/Order/Bitget/PrepareOrderCorrectionJobTest` — 4 cases pinning the Bitget override workflow: dispatches modify+sync (NOT cancel+recreate) for algo, falls back to correct+sync for LIMIT, gates on drift + position status.
+- [NEW FEATURE] `tests/Unit/Models/CredentialSerializationTest` — 7 cases pinning Eloquent serialization filtering for Account + Kraite (every credential column excluded from `toArray`/`toJson`; direct attribute access + `all_credentials` accessor preserved).
+- [NEW FEATURE] `tests/Unit/Notifications/NotificationLifecycleTest` — 5 cases pinning the `NotificationLogStatus` enum values + helpers and the fail-loud `NotificationMessageBuilder` behavior.
+- [NEW FEATURE] `tests/Unit/Support/HeaderSanitizerTest` — 9 cases pinning auth-header redaction across Bitget / Binance / KuCoin / Bybit / Authorization / generic with case-insensitive matching and pass-through for non-auth headers (Content-Type, *-TIMESTAMP).
+
 ## 1.7.1 - 2026-04-26
 
 ### Fixes
