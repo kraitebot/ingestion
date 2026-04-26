@@ -21,6 +21,8 @@ final class BusinessSeeder extends Seeder
         $apiSystems = ApiSystem::all()->keyBy('canonical');
 
         $trader = $this->seedUser();
+        $this->seedKraiteTrader();
+        $this->migrateAccountOwnership();
         $this->seedBinanceAccount($apiSystems['binance']);
         $this->updatePositionProfitPrices();
         $this->migrateAccountCredentials();
@@ -57,17 +59,67 @@ final class BusinessSeeder extends Seeder
     }
 
     /**
-     * Seed the primary Binance account under the admin user. This is the
-     * single live persisted account — every other account created later in
-     * this seeder is deactivated by `deactivateNonPrimaryAccounts()`.
+     * Seed the Kraite primary trader. Owns the Main Binance Account; kept
+     * separate from the sysadmin (admin_user_email) so administrative login
+     * and live trading identity are decoupled.
+     */
+    private function seedKraiteTrader(): User
+    {
+        $userData = [
+            'name' => config('kraite-ingestion.traders.kraite.name'),
+            'email' => config('kraite-ingestion.traders.kraite.email'),
+            'password' => bcrypt(config('kraite-ingestion.traders.kraite.password', 'password')),
+            'is_active' => true,
+            'is_admin' => false,
+            'pushover_key' => config('kraite-ingestion.traders.kraite.pushover_key'),
+            'notification_channels' => ['mail', 'pushover'],
+        ];
+
+        return User::updateOrCreate(
+            ['email' => $userData['email']],
+            $userData
+        );
+    }
+
+    /**
+     * One-shot ownership migration: the Main Binance Account (Account#1)
+     * historically pointed at the sysadmin (admin_user_email). Decoupling
+     * sysadmin from any account means re-anchoring this row to the Kraite
+     * trader before `seedBinanceAccount`'s updateOrCreate runs — otherwise
+     * the (user_id, api_system_id) lookup misses and a duplicate row is
+     * inserted. Idempotent: no-op once user_id already matches the trader.
+     */
+    private function migrateAccountOwnership(): void
+    {
+        $trader = User::where('email', config('kraite-ingestion.traders.kraite.email'))->first();
+
+        if (! $trader) {
+            return;
+        }
+
+        $account = Account::find(1);
+
+        if ($account && (int) $account->user_id !== (int) $trader->id) {
+            $account->update(['user_id' => $trader->id]);
+        }
+    }
+
+    /**
+     * Seed the primary Binance account under the Kraite trader user. This
+     * is the single live persisted account — every other account created
+     * later in this seeder is deactivated by `deactivateNonPrimaryAccounts()`.
+     *
+     * Ownership lives on the Kraite trader (bruno@kraite.com) rather than
+     * the sysadmin so the admin identity stays free of any account-bound
+     * trading state.
      */
     private function seedBinanceAccount(ApiSystem $binance): void
     {
-        $admin = User::where('email', config('kraite.admin_user_email'))->firstOrFail();
+        $trader = User::where('email', config('kraite-ingestion.traders.kraite.email'))->firstOrFail();
 
         Account::updateOrCreate(
             [
-                'user_id' => $admin->id,
+                'user_id' => $trader->id,
                 'api_system_id' => $binance->id,
             ],
             [
@@ -330,21 +382,21 @@ final class BusinessSeeder extends Seeder
     }
 
     /**
-     * Keep only the admin's Binance account active and shut every other
-     * persisted account off. Belt-and-braces: individual `create`/`update`
-     * calls above already flag the secondary accounts as inactive, but
-     * this ensures an authoritative final state regardless of re-seed
+     * Keep only the Kraite trader's Binance account active and shut every
+     * other persisted account off. Belt-and-braces: individual `create`/
+     * `update` calls above already flag the secondary accounts as inactive,
+     * but this ensures an authoritative final state regardless of re-seed
      * ordering or columns whose defaults drift over time.
      */
     private function deactivateNonPrimaryAccounts(): void
     {
-        $admin = User::where('email', config('kraite.admin_user_email'))->first();
+        $trader = User::where('email', config('kraite-ingestion.traders.kraite.email'))->first();
 
-        if (! $admin) {
+        if (! $trader) {
             return;
         }
 
-        $primaryBinance = Account::where('user_id', $admin->id)
+        $primaryBinance = Account::where('user_id', $trader->id)
             ->whereHas('apiSystem', static function ($query) {
                 $query->where('canonical', 'binance');
             })

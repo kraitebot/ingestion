@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.6.2 - 2026-04-26
+
+### Features
+
+- [NEW FEATURE] `BusinessSeeder::seedKraiteTrader()` + `migrateAccountOwnership()` — new dedicated Kraite trader user (owner of Main Binance Account), kept separate from the sysadmin (`admin_user_email`) so administrative login and live trading identity are decoupled. Existing accounts get reassigned to the new trader on first run; idempotent on subsequent runs.
+- [NEW FEATURE] `config/kraite-ingestion.php` `traders.kraite` block + matching `TRADER_KRAITE_*` env vars — name, email, password, pushover key for the new trader identity.
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.5.10 to pull in the backtest recency fetcher + simulator refinements.
+
 ## 1.6.1 - 2026-04-25
 
 ### Fixes

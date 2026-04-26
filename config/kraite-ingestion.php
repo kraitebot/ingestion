@@ -33,6 +33,13 @@ return [
             'binance_api_secret' => env('TRADER_B_BINANCE_API_SECRET'),
         ],
 
+        'kraite' => [
+            'name' => env('TRADER_KRAITE_NAME'),
+            'email' => env('TRADER_KRAITE_EMAIL'),
+            'password' => env('TRADER_KRAITE_PASSWORD', 'password'),
+            'pushover_key' => env('TRADER_KRAITE_PUSHOVER_KEY'),
+        ],
+
         'kucoin' => [
             'name' => env('TRADER_KC_NAME'),
             'email' => env('TRADER_KC_EMAIL'),
