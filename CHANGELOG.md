@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.2 - 2026-04-27
+
+### Features
+
+- [NEW FEATURE] `ExchangeSymbolObserver` now propagates ladder-gap percentages (`percentage_gap_long`, `percentage_gap_short`) Binance→siblings (asymmetric) AND the new `backtesting_review_status` admin-state symmetrically alongside the boolean approval gate (core v1.7.2). Operator-driven changes on a Binance row now fan out to every sibling exchange row automatically.
+
+### Fixes
+
+- [BUG FIX] SL placement (Binance + Bitget) now falls back to the account default when the position's `stop_market_percentage` snapshot is null — closes the half-baked-deploy hazard where a worker running new placement code against a position prepared by old code would silently skip SL placement.
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Observers/ExchangeSymbolGapPropagationTest` — 5 cases: Binance gap_long/gap_short propagation, combined edit, asymmetric (Bitget no-propagate), idempotent re-save no-op.
+- [NEW FEATURE] `tests/Unit/Observers/ExchangeSymbolBacktestingReviewPropagationTest` — 6 cases pinning the symmetric propagation of `was_backtesting_approved` + `backtesting_review_status` from any source row to siblings.
+- [NEW FEATURE] `tests/Unit/Jobs/Atomic/Order/PlaceStopLossOrderFallbackTest` — 6 cases pinning the snapshot-first / live-resolve fallback chain in `resolveStopLossPercentage()`.
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.7.2.
+
 ## 1.8.1 - 2026-04-27
 
 ### Features
