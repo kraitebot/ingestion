@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.4 - 2026-04-27
+
+### Fixes
+
+- [BUG FIX] Bumps `kraitebot/core` to v1.7.4 — closes the BSCS Phase 1 issues uncovered during first-day observation: `range_blowout` formula corrected to per-day comparison (was over-firing on per-hour-max), Phase 1 invariant pinned (`bscs_block_active=false` regardless of score), freshness window default bumped 5400→6900s.
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/MarketRegime/ComputeMarketRegimeJobTest` — 5 cases pinning the Phase 1 read-only contract for the BSCS compute job (snapshot write, kraite denormalisation, Phase 1 invariant on `bscs_block_active`, insufficient-history skip, audit trail).
+
 ## 1.8.3 - 2026-04-27
 
 ### Fixes
