@@ -114,6 +114,13 @@ if (! $isCoolingDown()) {
     Schedule::command('kraite:purge-candles')
         ->dailyAt('03:00');
 
+    // Purge candles for ExchangeSymbols whose backtest review was rejected.
+    // Runs hourly so a fresh reject quickly drops dead candle weight.
+    Schedule::command('kraite:cron-purge-failed-backtested-klines')
+        ->hourly()
+        ->withoutOverlapping()
+        ->onOneServer();
+
     // Purge old model_logs daily at 03:30 — keeps a 30-day rolling window of
     // attribute-change history (position lifecycle, fills, WAP transitions,
     // close chains). Beyond that, the log volume outweighs the forensics

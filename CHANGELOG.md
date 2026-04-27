@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.1 - 2026-04-27
+
+### Features
+
+- [NEW FEATURE] **Per-symbol TP/SL overrides** (core v1.7.1). Three new migrations: `2026_04_27_120000_add_tpsl_overrides_to_exchange_symbols` (`profit_percentage` + `stop_market_percentage` decimals, both nullable), `2026_04_27_120100_add_tpsl_overrides_to_accounts` (`override_tp` + `override_sl` boolean kill-switches), `2026_04_27_120200_add_stop_market_percentage_to_positions` (SL snapshot column, parallel to existing `profit_percentage` snapshot). Position `PreparePositionDataJob` resolves both via `TpSlResolver` and snapshots them; `PlaceStopLossOrderJob` (Binance) + Bitget `PlacePositionTpslJob` read the snapshot.
+- [NEW FEATURE] Backfilled `positions.stop_market_percentage` for 26 in-flight active positions from `accounts.stop_market_initial_percentage` (Binance accounts 1+5: 10 each, BitGet account 4: 6) so the new gates don't fail open positions opened before the migration.
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Support/TpSlResolverTest` — 8 cases covering the resolution matrix (symbol-NULL, empty-string, value × override true/false × decimal precision preservation).
+- [NEW FEATURE] `tests/Unit/Observers/ExchangeSymbolTpSlPropagationTest` — 7 cases pinning the Binance→siblings asymmetric fan-out: TP edit, SL edit, combined edit, non-Binance no-propagate, NULL clear, idempotent re-save guard, orphan rows skip.
+- [NEW FEATURE] `tests/Unit/Jobs/Atomic/Position/PreparePositionDataTpSlSnapshotTest` — 5 source-string regression assertions pinning the resolver wire-up + snapshot writes.
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.7.1 to pull in TP/SL override resolver + observer + scoring recalibration + new purge-failed-backtested-klines command.
+
 ## 1.8.0 - 2026-04-27
 
 ### Features
