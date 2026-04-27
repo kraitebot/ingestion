@@ -84,9 +84,12 @@ it('exposes accountTrades on BitgetApi (cross-exchange interface name)', functio
 it('parses a Bitget fillList close response into the flat shape extractClosingPriceFromTrades expects', function (): void {
     $mapper = new BitgetApiDataMapper;
 
-    // Real-world Bitget V2 fillList shape — opening fill followed by
-    // a closing fill (the reducing leg). The downstream
-    // `extractClosingPriceFromTrades` reads `side` and `price`.
+    // Real-world Bitget V2 fillList shape — newest-first order, with
+    // `side: "buy"` on BOTH open and close fills (hedge-mode: side stays
+    // as the original opening direction; tradeSide is the open/close
+    // discriminator). Mapper reverses to oldest-first AND flips the close
+    // fill's side so the cross-exchange `extractClosingPriceFromTrades`
+    // matches `closeSide=SELL` for LONG.
     $response = new Response(
         200,
         ['Content-Type' => 'application/json'],
@@ -94,6 +97,16 @@ it('parses a Bitget fillList close response into the flat shape extractClosingPr
             'code' => '00000',
             'data' => [
                 'fillList' => [
+                    [
+                        'tradeId' => 'close-1',
+                        'symbol' => 'ETHUSDT',
+                        'orderId' => 'order-close',
+                        'price' => '2360.50',
+                        'baseVolume' => '0.01',
+                        'side' => 'buy',
+                        'tradeSide' => 'close',
+                        'cTime' => '1730000600000',
+                    ],
                     [
                         'tradeId' => 'open-1',
                         'symbol' => 'ETHUSDT',
@@ -103,16 +116,6 @@ it('parses a Bitget fillList close response into the flat shape extractClosingPr
                         'side' => 'buy',
                         'tradeSide' => 'open',
                         'cTime' => '1730000000000',
-                    ],
-                    [
-                        'tradeId' => 'close-1',
-                        'symbol' => 'ETHUSDT',
-                        'orderId' => 'order-close',
-                        'price' => '2360.50',
-                        'baseVolume' => '0.01',
-                        'side' => 'sell',
-                        'tradeSide' => 'close',
-                        'cTime' => '1730000600000',
                     ],
                 ],
                 'endId' => 'close-1',
@@ -125,9 +128,11 @@ it('parses a Bitget fillList close response into the flat shape extractClosingPr
 
     expect($result)->toBeArray()
         ->and($result)->toHaveCount(2)
-        ->and($result[1]['side'])->toBe('sell')
+        ->and($result[0]['tradeSide'])->toBe('open')
+        ->and($result[0]['side'])->toBe('buy')
+        ->and($result[1]['tradeSide'])->toBe('close')
         ->and($result[1]['price'])->toBe('2360.50')
-        ->and($result[1]['tradeSide'])->toBe('close');
+        ->and($result[1]['side'])->toBe('sell');
 });
 
 it('builds Bitget trade-query properties scoped to the position symbol', function (): void {

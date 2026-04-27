@@ -428,11 +428,14 @@ test('resolveQueryTradeResponse parses fillList correctly', function () {
 
     $result = $mapper->resolveQueryTradeResponse($response);
 
+    // Mapper now reverses Bitget's newest-first response to oldest-first
+    // (Binance convention). Input was [123456 (open), 123457 (close)] in
+    // input order; reversed output is [123457, 123456].
     expect($result)->toHaveCount(2);
-    expect($result[0]['tradeId'])->toBe('123456');
-    expect($result[0]['price'])->toBe('40000');
-    expect($result[0]['baseVolume'])->toBe('0.001');
-    expect($result[1]['tradeId'])->toBe('123457');
+    expect($result[0]['tradeId'])->toBe('123457');
+    expect($result[1]['tradeId'])->toBe('123456');
+    expect($result[1]['price'])->toBe('40000');
+    expect($result[1]['baseVolume'])->toBe('0.001');
 });
 
 // =============================================================================

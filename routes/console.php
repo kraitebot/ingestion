@@ -90,13 +90,25 @@ if (! $isCoolingDown()) {
     Schedule::command('kraite:cron-conclude-symbols-direction')
         ->hourlyAt(30);
 
-    // Enforce the deny-list every hour: sweeps exchange_symbols for memes,
-    // speculative listings, and structurally brittle low-notional tokens and
-    // flips is_manually_enabled=false across all exchanges. Additive only —
-    // re-enabling a token is an explicit operator action.
-    Schedule::command('kraite:disable-volatile-tokens')
-        ->hourlyAt(45)
-        ->withoutOverlapping();
+    // Disabled 2026-04-27: deny-list sweep retired in favour of the
+    // per-token `was_backtesting_approved` flag — operator now decides
+    // tradability one token at a time after reviewing backtest data.
+    // The `kraite:disable-volatile-tokens` command + ALLOWED_TOKENS list
+    // remain in core (still callable manually) in case the deny-list
+    // sweep is reintroduced later.
+    //
+    // Schedule::command('kraite:disable-volatile-tokens')
+    //     ->hourlyAt(45)
+    //     ->withoutOverlapping();
+
+    // Hourly Black Swan Composite Score (BSCS) recompute — Phase 1
+    // telemetry only. Reads BTC + 4 reference alts klines, computes the
+    // five sub-signals, persists a snapshot, denormalises onto the kraite
+    // singleton. NO trading-flow side effects in Phase 1.
+    Schedule::command('kraite:cron-compute-market-regime')
+        ->hourlyAt(50)
+        ->withoutOverlapping()
+        ->onOneServer();
 
     // Purge old candles daily at 03:00 (keeps last 500 per symbol/timeframe)
     Schedule::command('kraite:purge-candles')

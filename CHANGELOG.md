@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.0 - 2026-04-27
+
+### Features
+
+- [NEW FEATURE] Hourly schedule for `kraite:cron-compute-market-regime` at `:50` — the BSCS Phase 1 telemetry cron from `kraitebot/core` v1.7.0. Reads BTC + 4 reference alts klines, persists snapshot, denormalises onto `kraite` singleton. No trading-flow side effects.
+- [NEW FEATURE] `database/migrations/2026_04_26_220000_drop_was_backtracking_analysed_from_exchange_symbols` — drops the in-flight `was_backtracking_analysed` column (replaced by the new `was_backtesting_approved` operator-driven flag in core v1.7.0).
+
+### Improvements
+
+- [IMPROVED] `composer.lock` — bumped `kraitebot/core` to v1.7.0 to pull in BSCS Phase 1 telemetry, Bitget closing_price recording fix, and the `was_backtesting_approved` per-token trading gate with cross-exchange propagation observer.
+- [IMPROVED] `routes/console.php` — `kraite:disable-volatile-tokens` hourly schedule commented out. Operator now controls per-token tradability via the `was_backtesting_approved` flag (set in admin UI or DB after reviewing backtest results); the deny-list sweep was made redundant by the per-token gate. Command itself remains callable manually if the deny-list approach is reintroduced later.
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Support/MarketRegime/RegimeCalculatorTest` — 11 cases pinning each of the five BSCS sub-signal formulas + threshold mapping + composite score arithmetic + `RegimeBand` boundary behaviour.
+- [NEW FEATURE] `tests/Unit/Support/ApiDataMappers/Bitget/BitgetTradesNormalizationTest` — 7 cases pinning the `side` flip on `tradeSide=close` and the oldest-first reverse the mapper now applies (regression guard for the SFPUSDT mis-recorded `closing_price` issue).
+- [IMPROVED] `tests/Unit/Support/ApiDataMappers/Bitget/BitgetApiDataMapperTest` + `BitgetCloseTradeQueryTest` — fixtures updated to reflect the real Bitget hedge-mode response shape (newest-first input, both open and close fills carry the original opening side).
+
 ## 1.7.2 - 2026-04-26
 
 ### Improvements
