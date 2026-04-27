@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.3 - 2026-04-27
+
+### Fixes
+
+- [BUG FIX] Bumps `kraitebot/core` to v1.7.3 — closes TypeError in `ExchangeSymbolObserver::decimalsEqual()` triggered by admin gap saves (admin controller `(float)` casts gap input; observer wrapper was strictly typed `?string`). Every admin save that changed a gap was silently failing propagation. Regression test added in `ExchangeSymbolGapPropagationTest`.
+
 ## 1.8.2 - 2026-04-27
 
 ### Features

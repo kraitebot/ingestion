@@ -109,6 +109,21 @@ it('Bitget gap edit does NOT propagate to Binance (asymmetric)', function (): vo
         ->and((float) $binance->percentage_gap_short)->toBe(9.50);
 });
 
+it('accepts float-typed gap values without TypeError (regression)', function (): void {
+    // BacktrackingController in admin.kraite.com casts the gap_long_percent
+    // request input through (float) before assigning to $symbol->percentage_gap_long.
+    // The observer's decimalsEqual helper must accept the resulting float,
+    // not throw a TypeError mid-fan-out.
+    [$binance, $bitget] = makeBinanceAndSiblingForGapTest();
+
+    $binance->percentage_gap_long = 9.0;
+    $binance->save();
+
+    $bitget->refresh();
+
+    expect((float) $bitget->percentage_gap_long)->toBe(9.0);
+});
+
 it('idempotent re-save with equal-but-differently-formatted gap decimals does not flap siblings', function (): void {
     // '9.50' and '9.5' are numerically equal — the precision-safe
     // comparator must treat them as no-op so we don't write a useless
