@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.8 - 2026-04-27
+
+### Fixes
+
+- [BUG FIX] Bumps `kraitebot/core` to v1.7.11 — fixes silent WAP failure on one-way mode accounts. Affected Karine Esnault / Binance Only Account on 2026-04-27 (JTO/USDT pos 289 — repaired manually).
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Jobs/Atomic/Order/CalculateWapBuildPositionKeyTest.php` — 8 cases pinning `buildPositionKey()` for hedge/one-way × LONG/SHORT × base/Binance/Bitget variant.
+- [NEW FEATURE] `tests/Feature/WapWorkflow/CalculateWapSnapshotLookupTest.php` — 6 cases pinning the full ApiSnapshot roundtrip: WAP-built key MUST match `MapsPositionsQuery` snapshot key for Binance hedge LONG, Binance one-way LONG/SHORT, Bitget hedge SHORT, Bitget one-way LONG, plus a regression sanity assertion documenting why the bug bit.
+
 ## 1.8.7 - 2026-04-27
 
 ### Features
