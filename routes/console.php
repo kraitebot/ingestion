@@ -71,6 +71,15 @@ if (! $isCoolingDown()) {
     Schedule::command('kraite:cron-fetch-klines --only-active-positions')
         ->everyFiveMinutes();
 
+    // Fetch 15m klines for the BSCS reference basket (BTC + ETH/SOL/BNB/XRP
+    // by default, configurable via MARKET_REGIME_SYMBOLS). Required by the
+    // upcoming MarketShockCircuitBreaker which reads 15m intra-hour moves
+    // to catch cascades before the hourly BSCS compute would notice them.
+    // Active-positions-only schedule above doesn't reliably cover this set.
+    Schedule::command('kraite:cron-fetch-klines --reference-set --canonical=binance --timeframe=15m')
+        ->everyFifteenMinutes()
+        ->withoutOverlapping();
+
     // Fetch klines for all symbols at indicator timeframes (for correlation data)
     Schedule::command('kraite:cron-fetch-klines --timeframe=1h')
         ->hourlyAt(5);
@@ -117,6 +126,18 @@ if (! $isCoolingDown()) {
     // while the cooldown is active. Existing positions untouched.
     Schedule::command('kraite:cron-analyse-bscs')
         ->hourlyAt(55)
+        ->withoutOverlapping()
+        ->onOneServer();
+
+    // Cascade detector — fast safety net that closes the hourly BSCS
+    // compute blind spot. Runs every minute on 15m klines for BTC + 4
+    // reference alts. When any rule fires (BTC -3%/15m, BTC -5%/1h,
+    // alt-basket -7%/1h, or corr ≥ 0.85 + |BTC 1h| ≥ 3%), arms the
+    // SHARED bscs_cooldown_until column for cooldown_hours (default
+    // 24h, same column the BSCS analyse cron uses). Silent re-fire
+    // while a cooldown is already active to avoid notification spam.
+    Schedule::command('kraite:cron-detect-market-shock')
+        ->everyMinute()
         ->withoutOverlapping()
         ->onOneServer();
 

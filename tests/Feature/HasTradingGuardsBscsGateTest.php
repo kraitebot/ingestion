@@ -37,6 +37,13 @@ function setKraiteForGateTest(bool $allowOpens, ?CarbonImmutable $cooldown = nul
         'allow_opening_positions' => $allowOpens,
         'bscs_cooldown_until' => $cooldown,
         'bscs_override_until' => $override,
+        // Fresh synced_at so the 3-tier staleness model returns Fresh
+        // and shouldBlockOpens() doesn't bypass the cooldown via the
+        // StaleHard fail-open clause. The gate-specific cases here
+        // exercise cooldown semantics, not staleness — keep that
+        // orthogonal axis at its happy-path value.
+        'bscs_synced_at' => now(),
+        'bscs_freshness_max_seconds' => 6900,
     ]);
 
     return $kraite;

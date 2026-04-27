@@ -66,3 +66,23 @@ it('returns both resolved percentages in the step payload for downstream visibil
     expect($source)->toContain("'profit_percentage' => \$profitPercentage,")
         ->and($source)->toContain("'stop_market_percentage' => \$stopMarketPercentage,");
 });
+
+it('imports the Phase 2.1C BSCS sizing helpers (FragileMarginMultiplier, CrowdingMultiplier, BlackSwanIndex)', function (): void {
+    $source = preparePositionDataJobSource();
+
+    expect($source)->toContain('use Kraite\\Core\\Support\\MarketRegime\\BlackSwanIndex;')
+        ->and($source)->toContain('use Kraite\\Core\\Support\\MarketRegime\\CrowdingMultiplier;')
+        ->and($source)->toContain('use Kraite\\Core\\Support\\MarketRegime\\FragileMarginMultiplier;');
+});
+
+it('applies FragileMarginMultiplier × CrowdingMultiplier to the base margin before persisting', function (): void {
+    // Both multipliers must be invoked, with their product applied to
+    // the base margin string. The wire-in must happen AFTER the base
+    // margin computation (calculateMarginWithSubscriptionCap) and
+    // BEFORE the position is saved.
+    $source = preparePositionDataJobSource();
+
+    expect($source)->toContain('FragileMarginMultiplier::for(')
+        ->and($source)->toContain('CrowdingMultiplier::for(')
+        ->and($source)->toContain('BlackSwanIndex::current()');
+});

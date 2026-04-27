@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.7 - 2026-04-27
+
+### Features
+
+- [NEW FEATURE] **BSCS Phase 2.1 complete** — bumps `kraitebot/core` to v1.7.10. All three sub-phases shipped same day: 2.1A cascade detector, 2.1B portfolio shape + 3-tier staleness, 2.1C Fragile + crowding margin multipliers.
+- [NEW FEATURE] New schedule `kraite:cron-detect-market-shock` every minute (cascade safety net).
+- [NEW FEATURE] New schedule `kraite:cron-fetch-klines --reference-set --canonical=binance --timeframe=15m` every 15 minutes (feeds the cascade detector).
+
+### Tests
+
+- [NEW FEATURE] 6 new test files covering the entire Phase 2.1 surface: `FetchKlinesReferenceSetTest`, `DetectMarketShockJobTest`, `MarketShockCircuitBreakerTest`, `DirectionalBookRiskTest`, `FragileMarginMultiplierTest`, `CrowdingMultiplierTest`.
+- [IMPROVED] `BlackSwanIndexTest` extended with 7 new cases for `portfolioRisk()`, `staleness()` 3-tier transitions, and StaleHard fail-open.
+- [IMPROVED] `HasTradingGuardsBscsGateTest` fixture pinned to fresh `synced_at` so cooldown gate cases stay orthogonal from staleness behaviour.
+- [IMPROVED] `PreparePositionDataTpSlSnapshotTest` extended with 2 cases pinning the Phase 2.1C size-adaptation imports + multiplier wire-in.
+
 ## 1.8.6 - 2026-04-27
 
 ### Fixes

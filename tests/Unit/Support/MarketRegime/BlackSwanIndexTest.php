@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Carbon\Carbon;
 use Kraite\Core\Enums\RegimeBand;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Support\MarketRegime\BlackSwanIndex;
@@ -145,6 +144,79 @@ it('toArray exposes a full payload for dashboards', function (): void {
         ->and($payload)->toHaveKey('cooldown_active', true)
         ->and($payload)->toHaveKey('override_active', false)
         ->and($payload)->toHaveKey('is_stale', false);
+});
+
+it('exposes DirectionalBookRisk via portfolioRisk()', function (): void {
+    setKraiteBscs(['bscs_score' => 60, 'bscs_band' => RegimeBand::Fragile->value]);
+
+    $index = BlackSwanIndex::current();
+
+    expect($index->portfolioRisk())
+        ->toBeInstanceOf(\Kraite\Core\Support\MarketRegime\DirectionalBookRisk::class);
+});
+
+it('toArray includes portfolio_risk block', function (): void {
+    setKraiteBscs(['bscs_score' => 60]);
+
+    $payload = BlackSwanIndex::current()->toArray();
+
+    expect($payload)->toHaveKey('portfolio_risk')
+        ->and($payload['portfolio_risk'])->toHaveKey('largest_side')
+        ->and($payload['portfolio_risk'])->toHaveKey('largest_side_ratio');
+});
+
+it('staleness() returns Fresh when synced_at is recent', function (): void {
+    setKraiteBscs(['bscs_synced_at' => now()->subMinutes(30), 'bscs_freshness_max_seconds' => 6900]);
+
+    expect(BlackSwanIndex::current()->staleness())
+        ->toBe(\Kraite\Core\Enums\BscsStaleness::Fresh);
+});
+
+it('staleness() returns StaleSoft between freshness_max and stale_hard cutoff', function (): void {
+    // 3 hours old. freshness_max_seconds = 6900s (~115min). stale_hard cutoff = 6h (default).
+    setKraiteBscs(['bscs_synced_at' => now()->subHours(3), 'bscs_freshness_max_seconds' => 6900]);
+
+    expect(BlackSwanIndex::current()->staleness())
+        ->toBe(\Kraite\Core\Enums\BscsStaleness::StaleSoft);
+});
+
+it('staleness() returns StaleHard past the 6h cutoff', function (): void {
+    setKraiteBscs(['bscs_synced_at' => now()->subHours(7), 'bscs_freshness_max_seconds' => 6900]);
+
+    expect(BlackSwanIndex::current()->staleness())
+        ->toBe(\Kraite\Core\Enums\BscsStaleness::StaleHard);
+});
+
+it('staleness() returns StaleHard when synced_at is null (never computed)', function (): void {
+    setKraiteBscs(['bscs_synced_at' => null]);
+
+    expect(BlackSwanIndex::current()->staleness())
+        ->toBe(\Kraite\Core\Enums\BscsStaleness::StaleHard);
+});
+
+it('shouldBlockOpens returns true under StaleSoft when cooldown is active (preserve last posture)', function (): void {
+    // Stale-soft means data is older than fresh but younger than 6h.
+    // Per spec, last cooldown/scaler state is PRESERVED — gate keeps
+    // blocking. Operator gets warned via appLog but the gate doesn't
+    // fail open until stale-hard.
+    setKraiteBscs([
+        'bscs_synced_at' => now()->subHours(3),
+        'bscs_cooldown_until' => now()->addHours(20),
+    ]);
+
+    expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeTrue();
+});
+
+it('shouldBlockOpens fails open (returns false) under StaleHard even if cooldown is active', function (): void {
+    // Stale-hard means we can't trust the cooldown state — could be
+    // arming on outdated data. Fail open so the bot doesn't lock out
+    // on stale signals during a multi-hour outage.
+    setKraiteBscs([
+        'bscs_synced_at' => now()->subHours(7),
+        'bscs_cooldown_until' => now()->addHours(20),
+    ]);
+
+    expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeFalse();
 });
 
 it('returns a sentinel "no data" instance when the kraite row is missing bscs_synced_at', function (): void {
