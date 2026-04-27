@@ -101,12 +101,22 @@ if (! $isCoolingDown()) {
     //     ->hourlyAt(45)
     //     ->withoutOverlapping();
 
-    // Hourly Black Swan Composite Score (BSCS) recompute — Phase 1
-    // telemetry only. Reads BTC + 4 reference alts klines, computes the
-    // five sub-signals, persists a snapshot, denormalises onto the kraite
-    // singleton. NO trading-flow side effects in Phase 1.
+    // Hourly Black Swan Composite Score (BSCS) recompute. Reads BTC + 4
+    // reference alts klines, computes the five sub-signals, persists a
+    // snapshot, denormalises score+band onto the kraite singleton.
     Schedule::command('kraite:cron-compute-market-regime')
         ->hourlyAt(50)
+        ->withoutOverlapping()
+        ->onOneServer();
+
+    // BSCS gate state machine — runs 5 minutes after the compute cron so
+    // it acts on the freshly-stamped score. Arms a 24h cooldown when score
+    // crosses threshold, re-arms on expiry if score still high, releases
+    // when score recovers below threshold. Wires `BlackSwanIndex::shouldBlockOpens()`
+    // through `HasTradingGuards::canOpenPositions()` to pause new opens
+    // while the cooldown is active. Existing positions untouched.
+    Schedule::command('kraite:cron-analyse-bscs')
+        ->hourlyAt(55)
         ->withoutOverlapping()
         ->onOneServer();
 

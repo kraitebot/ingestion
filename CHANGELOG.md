@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.5 - 2026-04-27
+
+### Features
+
+- [NEW FEATURE] **BSCS Phase 2 — system cooldown gate live.** Bumps `kraitebot/core` to v1.7.5. When the Black Swan Composite Score reaches the configured threshold (default 80), `kraite:cron-create-positions` is paused for 24h via `HasTradingGuards::canOpenPositions()`. Existing positions untouched. Operator override (`bscs_override_until`) bypasses the gate.
+- [NEW FEATURE] New schedule: `kraite:cron-analyse-bscs` at `:55` past the hour (single-server). Reads the latest BSCS score and arms / re-arms / releases the system cooldown.
+- [NEW FEATURE] `BlackSwanIndex::current()->toArray()` ready for admin dashboard consumption (full payload: score, band, cooldown / override state, freshness, sub-signal grid from latest snapshot).
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Support/MarketRegime/BlackSwanIndexTest` (10 cases).
+- [NEW FEATURE] `tests/Feature/MarketRegime/AnalyseBscsJobTest` (7 cases).
+- [NEW FEATURE] `tests/Feature/HasTradingGuardsBscsGateTest` (5 cases).
+
 ## 1.8.4 - 2026-04-27
 
 ### Fixes
