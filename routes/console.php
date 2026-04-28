@@ -60,6 +60,17 @@ if (! $isCoolingDown()) {
         ->everyMinute()
         ->withoutOverlapping();
 
+    // Proactive 5-minute drift spotter — safety net on top of the
+    // every-minute reactive sync. Audits active positions that have
+    // been quiet for 10+ minutes against the exchange, dispatches
+    // PrepareSyncOrdersJob on disagreements, and cleans orphan open
+    // orders attached to non-active positions (ghosts → DB CANCELLED
+    // inline, real algo → CancelSingleAlgoOrderJob). One pushover per
+    // affected position per cycle (admin-only).
+    Schedule::command('kraite:cron-check-drifts')
+        ->everyFiveMinutes()
+        ->withoutOverlapping();
+
     // Open new positions every 3 minutes. Runs PreparePositionsOpeningJob
     // per account/can_trade=true combo, which in turn fans out the
     // Verify/Query/Assign/Dispatch chain only if slots are available.
@@ -162,4 +173,11 @@ if (! $isCoolingDown()) {
     // Archive fully-resolved step trees daily at 04:00 (keeps last 1 day)
     Schedule::command('steps:archive --duration=1')
         ->dailyAt('04:00');
+
+    // Trim the archive itself daily at 04:30, 30 min after the archive
+    // run finishes. --only-archive keeps the live `steps` table and the
+    // ticks table off-limits — date-based delete on steps_archive only.
+    // 5-day retention window: anything older than that is gone.
+    Schedule::command('steps:purge --only-archive --days=5')
+        ->dailyAt('04:30');
 }

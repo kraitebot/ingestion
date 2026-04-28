@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.9 - 2026-04-28
+
+### Features
+
+- [NEW FEATURE] **Drift Spotter scheduled** — bumps `kraitebot/core` to v1.8.0. New `Schedule::command('kraite:cron-check-drifts')->everyFiveMinutes()->withoutOverlapping()` in `routes/console.php` wires the proactive 5-minute drift audit into the host scheduler (sits inside the cooldown gate so it shares the same kill-switch as the reactive sync).
+- [NEW FEATURE] **Archive purge scheduled** — bumps `brunocfalcao/step-dispatcher` to v1.11.7. New `Schedule::command('steps:purge --only-archive --days=5')->dailyAt('04:30')` runs 30 minutes after the daily archive, trimming `steps_archive` to a 5-day retention window. Live `steps` table and ticks remain untouched.
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/Cronjobs/CheckDriftsCommandTest.php` — 9 cases pinning the spotter command behaviour (drift / orphan / ghost / mixed / quiet window / mid-flight skip / status passthrough).
+- [NEW FEATURE] `tests/Unit/Jobs/Atomic/Order/CancelSingleAlgoOrderJobStartOrFailTest.php` — 12 cases covering Binance + Bitget startOrFail guards plus Phase 2 idempotent flag.
+- [NEW FEATURE] `tests/Unit/Jobs/Lifecycles/Position/PrepareCancelOrphanOrdersJobTest.php` — 5 cases pinning the orphan-cancel lifecycle wrapper.
+- [NEW FEATURE] `tests/Unit/Support/ApiClients/Bybit/BybitApiClientAuthHeadersTest.php` — pins the public-vs-signed header split that fixed the 02:05 retCode 10006.
+- [NEW FEATURE] `tests/Unit/Support/ApiExceptionHandlers/IgnorableOrderNotFoundCodesTest.php` — pins Bitget + Bybit ignorable-code expansions for cancel-of-missing-order.
+- [NEW FEATURE] `tests/Unit/Support/Drift/DriftCheckServiceTest.php` — 10 cases pinning the drift-comparison algorithm (synced / drift / db_only / exchange_only / transient with mid-flight suppression, 0.1% tolerance band, type aliasing, weighted-average entry recomputation).
+
 ## 1.8.8 - 2026-04-27
 
 ### Fixes
