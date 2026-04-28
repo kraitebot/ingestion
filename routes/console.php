@@ -110,6 +110,11 @@ if (! $isCoolingDown()) {
     Schedule::command('kraite:cron-conclude-symbols-direction')
         ->hourlyAt(30);
 
+    Schedule::command('kraite:cron-deduct-subscriptions')
+        ->dailyAt('00:00')
+        ->withoutOverlapping()
+        ->onOneServer();
+
     // Disabled 2026-04-27: deny-list sweep retired in favour of the
     // per-token `was_backtesting_approved` flag — operator now decides
     // tradability one token at a time after reviewing backtest data.

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.0 - 2026-04-29
+
+### Features
+
+- [NEW FEATURE] **Daily subscription deduction scheduled** — bumps `kraitebot/core` to v1.9.0. New `Schedule::command('kraite:cron-deduct-subscriptions')->dailyAt('00:00')->withoutOverlapping()->onOneServer()` in `routes/console.php` wires the per-user daily wallet debit into the scheduler. Skips trial-active users; surfaces closing-mode + low-balance notifications via the existing canonical pipeline.
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Support/Billing/WalletTest.php` — 7 cases for atomic credit/debit, ledger contract, insufficient-funds, bonus ladder.
+- [NEW FEATURE] `tests/Unit/Models/UserBillingTest.php` — 12 cases pinning `isTrialActive`, `isTrialExpired`, `walletRunwayDays`, `isInClosingMode`, and the `trial_days_override` per-user override semantics.
+- [NEW FEATURE] `tests/Feature/Billing/DeductSubscriptionsCommandTest.php` — 11 cases covering the cron's debit / trial-skip / closing-mode / low-balance / live-rate paths.
+- [NEW FEATURE] `tests/Feature/Billing/HasTradingGuardsBillingTest.php` — 5 cases pinning the trading-guard billing gate (closing-mode block, Starter active-account restriction, Unlimited free pass).
+- [NEW FEATURE] `tests/Feature/Billing/WalletLedgerContractTest.php` — 8 cases pinning the audit-log contract (every credit/debit/bonus writes a row with correct type, signed amount, balance_after, description, meta).
+
 ## 1.8.9 - 2026-04-28
 
 ### Features
