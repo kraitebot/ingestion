@@ -100,18 +100,6 @@ jobs:
       - name: Generate application key
         run: php artisan key:generate
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build frontend assets
-        run: npm run build
-
       - name: Run migrations
         run: php artisan migrate --force
         env:
