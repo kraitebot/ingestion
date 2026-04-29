@@ -105,6 +105,13 @@ jobs:
           mkdir -p storage/step-dispatcher
           echo "STEP_DISPATCHER_FLAG_PATH=$(pwd)/storage/step-dispatcher" >> .env
 
+      - name: Stub Pushover credentials so PushoverServiceProvider can boot
+        run: |
+          # Notification::fake() intercepts actual Pushover delivery in tests;
+          # the SP constructor still requires a non-null token at boot.
+          echo "ADMIN_USER_PUSHOVER_APPLICATION_KEY=ci-stub-token" >> .env
+          echo "ADMIN_USER_PUSHOVER_USER_KEY=ci-stub-user" >> .env
+
       - name: Run migrations
         run: php artisan migrate --force
         env:
