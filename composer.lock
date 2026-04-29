@@ -413,7 +413,7 @@
             "dist": {
                 "type": "path",
                 "url": "./packages/brunocfalcao/step-dispatcher",
-                "reference": "052b3763bbd3c482033f4c3b5f4786e7cb7710f1"
+                "reference": "423e4eb5a6250211cafaa05f10073d7ea201933d"
             },
             "require": {
                 "illuminate/console": "^11.0|^12.0|^13.0",
@@ -1548,7 +1548,7 @@
             "dist": {
                 "type": "path",
                 "url": "./packages/kraitebot/core",
-                "reference": "266a319e8d47d7e7356aa2a1d7cbbf1d4d9348fa"
+                "reference": "90086dc524e3065a925ce556b094e5f40aac2f6f"
             },
             "require": {
                 "angle/chrono": "^1.0",

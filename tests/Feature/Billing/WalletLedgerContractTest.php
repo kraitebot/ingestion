@@ -11,20 +11,20 @@ use Kraite\Core\Support\Billing\Wallet;
 uses(RefreshDatabase::class)->group('billing', 'ledger');
 
 /**
- * Every credit, debit, bonus, and admin override on a user's wallet
- * MUST land as one append-only row in `wallet_transactions`. The row
- * carries the type, signed amount, post-write balance snapshot,
+ * Every credit, debit, prorate refund, renewal, and admin override on a
+ * user's wallet MUST land as one append-only row in `wallet_transactions`.
+ * The row carries the type, signed amount, post-write balance snapshot,
  * description, and structured meta. This contract is what makes
  * customer-dispute resolution viable — the ledger is read top-to-bottom
  * to reconstruct any balance.
  */
-function ledgerTier(string $canonical = 'starter', float $rate = 2.5): Subscription
+function ledgerTier(string $canonical = 'starter', float $monthly = 75.0): Subscription
 {
     return Subscription::updateOrCreate(
         ['canonical' => $canonical],
         [
             'name' => ucfirst($canonical),
-            'daily_rate_usdt' => $rate,
+            'monthly_rate_usdt' => $monthly,
             'trial_days' => 7,
             'max_accounts' => $canonical === 'starter' ? 1 : null,
             'max_balance' => $canonical === 'starter' ? 10000 : null,
@@ -63,39 +63,36 @@ it('writes a positive ledger row on a top-up credit, with type and meta', functi
     expect($row->meta)->toEqual(['payment_id' => 'abc123', 'gateway' => 'nowpayments']);
 });
 
-it('writes a separate ledger row for the bonus credit on top of the top-up', function () {
+it('writes a separate ledger row for a prorate refund credit', function () {
     $user = ledgerUser();
     $wallet = new Wallet();
 
     $wallet->credit(
         user: $user,
-        amount: 100,
+        amount: 150,
         type: WalletTransaction::TYPE_CREDIT_TOPUP,
-        description: 'Top-up 100 USDT',
+        description: 'Top-up 150 USDT',
         meta: ['gateway' => 'nowpayments'],
     );
 
-    $bonusPct = Wallet::bonusPercentFor(100);
-    $bonusAmount = 100 * $bonusPct / 100;
-
     $wallet->credit(
         user: $user,
-        amount: $bonusAmount,
-        type: WalletTransaction::TYPE_CREDIT_TOPUP_BONUS,
-        description: "Bonus {$bonusPct}% on 100 USDT top-up",
-        meta: ['bonus_pct' => $bonusPct, 'on_amount' => 100],
+        amount: 30,
+        type: WalletTransaction::TYPE_CREDIT_PRORATE_REFUND,
+        description: 'Prorate refund · Unlimited · 6 unused days',
+        meta: ['days_remaining' => 6, 'monthly_rate_usdt' => 150.0],
     );
 
-    expect((float) $user->refresh()->wallet_balance_usdt)->toEqual(110.0);
+    expect((float) $user->refresh()->wallet_balance_usdt)->toEqual(180.0);
 
     $rows = WalletTransaction::where('user_id', $user->id)->orderBy('id')->get();
     expect($rows->count())->toBe(2);
 
     expect($rows[0]->type)->toBe(WalletTransaction::TYPE_CREDIT_TOPUP);
-    expect($rows[1]->type)->toBe(WalletTransaction::TYPE_CREDIT_TOPUP_BONUS);
-    expect((float) $rows[1]->amount_usdt)->toEqual(10.0);
-    expect((float) $rows[1]->balance_after)->toEqual(110.0);
-    expect($rows[1]->meta['bonus_pct'])->toBe(10);
+    expect($rows[1]->type)->toBe(WalletTransaction::TYPE_CREDIT_PRORATE_REFUND);
+    expect((float) $rows[1]->amount_usdt)->toEqual(30.0);
+    expect((float) $rows[1]->balance_after)->toEqual(180.0);
+    expect($rows[1]->meta['days_remaining'])->toBe(6);
 });
 
 it('writes a negative-amount row on a subscription debit', function () {
@@ -103,16 +100,36 @@ it('writes a negative-amount row on a subscription debit', function () {
     $wallet = new Wallet();
 
     $wallet->credit($user, 100, WalletTransaction::TYPE_CREDIT_TOPUP, 'Seed');
-    $wallet->debit($user, 2.5, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Daily Starter');
+    $wallet->debit($user, 75, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Monthly Starter');
 
     $debitRow = WalletTransaction::where('user_id', $user->id)
         ->where('type', WalletTransaction::TYPE_DEBIT_SUBSCRIPTION)
         ->sole();
 
-    expect((float) $debitRow->amount_usdt)->toEqual(-2.5);
-    expect((float) $debitRow->balance_after)->toEqual(97.5);
+    expect((float) $debitRow->amount_usdt)->toEqual(-75.0);
+    expect((float) $debitRow->balance_after)->toEqual(25.0);
     expect($debitRow->isDebit())->toBeTrue();
     expect($debitRow->isCredit())->toBeFalse();
+});
+
+it('runRenewal writes a single TYPE_DEBIT_SUBSCRIPTION row with renews_at meta', function () {
+    $tier = ledgerTier('starter', monthly: 75.0);
+    $user = User::factory()->create([
+        'subscription_id' => $tier->id,
+        'wallet_balance_usdt' => 200,
+        'subscription_renews_at' => now()->subDay(),
+    ]);
+
+    (new Wallet())->runRenewal($user);
+
+    $row = WalletTransaction::where('user_id', $user->id)->sole();
+
+    expect($row->type)->toBe(WalletTransaction::TYPE_DEBIT_SUBSCRIPTION);
+    expect((float) $row->amount_usdt)->toEqual(-75.0);
+    expect((float) $row->balance_after)->toEqual(125.0);
+    expect($row->meta['rate_at_run'])->toEqual(75.0);
+    expect($row->meta['subscription_canonical'])->toBe('starter');
+    expect($row->meta)->toHaveKey('renews_at_after');
 });
 
 it('records admin overrides with their own type and operator identity', function () {
@@ -155,12 +172,11 @@ it('preserves the cumulative balance_after sequence reconstructable from the led
     $wallet = new Wallet();
 
     $ops = [
-        ['credit', 50, WalletTransaction::TYPE_CREDIT_TOPUP, 'Topup #1'],
-        ['credit', 2.5, WalletTransaction::TYPE_CREDIT_TOPUP_BONUS, 'Bonus 5%'],
-        ['debit', 2.5, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Day 1'],
-        ['debit', 2.5, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Day 2'],
-        ['credit', 100, WalletTransaction::TYPE_CREDIT_TOPUP, 'Topup #2'],
-        ['credit', 10, WalletTransaction::TYPE_CREDIT_TOPUP_BONUS, 'Bonus 10%'],
+        ['credit', 100, WalletTransaction::TYPE_CREDIT_TOPUP, 'Topup #1'],
+        ['debit', 75, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Renewal #1'],
+        ['credit', 50, WalletTransaction::TYPE_CREDIT_PRORATE_REFUND, 'Prorate refund'],
+        ['credit', 200, WalletTransaction::TYPE_CREDIT_TOPUP, 'Topup #2'],
+        ['debit', 150, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Renewal #2'],
         ['debit', 5, WalletTransaction::TYPE_DEBIT_ADMIN, 'Manual reverse', ['admin_user_id' => 1]],
     ];
 
@@ -181,9 +197,9 @@ it('preserves the cumulative balance_after sequence reconstructable from the led
         ->map(fn ($v) => (float) $v)
         ->all();
 
-    // 50, 52.5, 50, 47.5, 147.5, 157.5, 152.5
-    expect($balances)->toBe([50.0, 52.5, 50.0, 47.5, 147.5, 157.5, 152.5]);
-    expect((float) $user->refresh()->wallet_balance_usdt)->toEqual(152.5);
+    // 100, 25, 75, 275, 125, 120
+    expect($balances)->toBe([100.0, 25.0, 75.0, 275.0, 125.0, 120.0]);
+    expect((float) $user->refresh()->wallet_balance_usdt)->toEqual(120.0);
 });
 
 it('does not write a ledger row when an InsufficientFundsException is thrown', function () {
@@ -193,7 +209,7 @@ it('does not write a ledger row when an InsufficientFundsException is thrown', f
     $wallet->credit($user, 1, WalletTransaction::TYPE_CREDIT_TOPUP, 'small');
 
     try {
-        $wallet->debit($user, 5, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Day 1');
+        $wallet->debit($user, 75, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Too much');
     } catch (\Throwable) {
         // expected
     }
@@ -210,9 +226,9 @@ it('exposes a chronological per-user history via the user relation', function ()
     $user = ledgerUser();
     $wallet = new Wallet();
 
-    $wallet->credit($user, 50, WalletTransaction::TYPE_CREDIT_TOPUP, '#1');
-    $wallet->debit($user, 5, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Day 1');
-    $wallet->credit($user, 10, WalletTransaction::TYPE_CREDIT_TOPUP_BONUS, 'bonus');
+    $wallet->credit($user, 100, WalletTransaction::TYPE_CREDIT_TOPUP, '#1');
+    $wallet->debit($user, 75, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Renewal');
+    $wallet->credit($user, 25, WalletTransaction::TYPE_CREDIT_PRORATE_REFUND, 'Prorate');
 
     $history = $user->refresh()->walletTransactions()->orderBy('id')->get();
 
@@ -220,6 +236,6 @@ it('exposes a chronological per-user history via the user relation', function ()
     expect($history->pluck('type')->all())->toBe([
         WalletTransaction::TYPE_CREDIT_TOPUP,
         WalletTransaction::TYPE_DEBIT_SUBSCRIPTION,
-        WalletTransaction::TYPE_CREDIT_TOPUP_BONUS,
+        WalletTransaction::TYPE_CREDIT_PRORATE_REFUND,
     ]);
 });

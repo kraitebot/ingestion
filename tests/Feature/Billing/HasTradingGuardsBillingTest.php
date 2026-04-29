@@ -25,13 +25,13 @@ beforeEach(function () {
     );
 });
 
-function starterTier(float $rate = 2.5): Subscription
+function starterTier(float $monthly = 75.0): Subscription
 {
     return Subscription::updateOrCreate(
         ['canonical' => 'starter'],
         [
             'name' => 'Starter',
-            'daily_rate_usdt' => $rate,
+            'monthly_rate_usdt' => $monthly,
             'trial_days' => 7,
             'max_accounts' => 1,
             'max_balance' => 10000,
@@ -40,13 +40,13 @@ function starterTier(float $rate = 2.5): Subscription
     );
 }
 
-function unlimitedTier(float $rate = 5.0): Subscription
+function unlimitedTier(float $monthly = 150.0): Subscription
 {
     return Subscription::updateOrCreate(
         ['canonical' => 'unlimited'],
         [
             'name' => 'Unlimited',
-            'daily_rate_usdt' => $rate,
+            'monthly_rate_usdt' => $monthly,
             'trial_days' => 7,
             'max_accounts' => null,
             'max_balance' => null,
@@ -55,8 +55,13 @@ function unlimitedTier(float $rate = 5.0): Subscription
     );
 }
 
-function billableUserWithAccount(Subscription $tier, float $balance, ?\DateTimeInterface $trialStart = null, ?int $activeAccountId = null): array
-{
+function billableUserWithAccount(
+    Subscription $tier,
+    float $balance,
+    ?\DateTimeInterface $trialStart = null,
+    ?int $activeAccountId = null,
+    ?\DateTimeInterface $renewsAt = null,
+): array {
     $apiSystem = ApiSystem::firstWhere('canonical', 'binance')
         ?? ApiSystem::factory()->exchange()->create([
             'canonical' => 'binance',
@@ -70,6 +75,7 @@ function billableUserWithAccount(Subscription $tier, float $balance, ?\DateTimeI
         'wallet_balance_usdt' => $balance,
         'trial_started_at' => $trialStart,
         'active_account_id' => $activeAccountId,
+        'subscription_renews_at' => $renewsAt,
     ]);
 
     $account = Account::factory()->create([
@@ -86,20 +92,45 @@ function billableUserWithAccount(Subscription $tier, float $balance, ?\DateTimeI
     return ['user' => $user->refresh(), 'account' => $account];
 }
 
-it('allows new opens when balance covers the daily rate and account is the active one', function () {
-    $tier = starterTier(2.5);
+it('allows new opens when renewal anchor is in the future and account is active', function () {
+    $tier = starterTier(75);
 
-    $f = billableUserWithAccount($tier, balance: 100);
+    $f = billableUserWithAccount(
+        $tier,
+        balance: 100,
+        trialStart: now()->subDays(30),
+        renewsAt: now()->addDays(15),
+    );
 
     $engine = KraiteEngine::withAccount($f['account']);
 
     expect($engine->canOpenNewPositions())->toBeTrue();
 });
 
-it('blocks new opens when the user is in closing-mode (wallet < daily rate, no trial)', function () {
-    $tier = starterTier(2.5);
+it('blocks new opens when renewal anchor is in the past (closing-mode)', function () {
+    $tier = starterTier(75);
 
-    $f = billableUserWithAccount($tier, balance: 1.0);
+    $f = billableUserWithAccount(
+        $tier,
+        balance: 100,
+        trialStart: now()->subDays(30),
+        renewsAt: now()->subDay(),
+    );
+
+    $engine = KraiteEngine::withAccount($f['account']);
+
+    expect($engine->canOpenNewPositions())->toBeFalse();
+});
+
+it('blocks new opens when post-trial user has no renewal anchor set', function () {
+    $tier = starterTier(75);
+
+    $f = billableUserWithAccount(
+        $tier,
+        balance: 100,
+        trialStart: now()->subDays(30),
+        renewsAt: null,
+    );
 
     $engine = KraiteEngine::withAccount($f['account']);
 
@@ -107,7 +138,7 @@ it('blocks new opens when the user is in closing-mode (wallet < daily rate, no t
 });
 
 it('does not block when trial is active even with empty wallet', function () {
-    $tier = starterTier(2.5);
+    $tier = starterTier(75);
 
     $f = billableUserWithAccount(
         $tier,
@@ -121,7 +152,7 @@ it('does not block when trial is active even with empty wallet', function () {
 });
 
 it('blocks new opens on a Starter user’s non-active account', function () {
-    $tier = starterTier(2.5);
+    $tier = starterTier(75);
 
     $apiSystem = ApiSystem::firstWhere('canonical', 'binance')
         ?? ApiSystem::factory()->exchange()->create([
@@ -134,7 +165,8 @@ it('blocks new opens on a Starter user’s non-active account', function () {
         'can_trade' => true,
         'subscription_id' => $tier->id,
         'wallet_balance_usdt' => 100,
-        'trial_started_at' => null,
+        'trial_started_at' => now()->subDays(30),
+        'subscription_renews_at' => now()->addDays(15),
     ]);
 
     $designated = Account::factory()->create([
@@ -159,7 +191,7 @@ it('blocks new opens on a Starter user’s non-active account', function () {
 });
 
 it('does not apply the active-account gate on Unlimited tier', function () {
-    $tier = unlimitedTier(5.0);
+    $tier = unlimitedTier(150);
 
     $apiSystem = ApiSystem::firstWhere('canonical', 'binance')
         ?? ApiSystem::factory()->exchange()->create([
@@ -171,9 +203,10 @@ it('does not apply the active-account gate on Unlimited tier', function () {
         'is_active' => true,
         'can_trade' => true,
         'subscription_id' => $tier->id,
-        'wallet_balance_usdt' => 100,
-        'trial_started_at' => null,
+        'wallet_balance_usdt' => 200,
+        'trial_started_at' => now()->subDays(30),
         'active_account_id' => null,
+        'subscription_renews_at' => now()->addDays(15),
     ]);
 
     $accountA = Account::factory()->create([
@@ -192,4 +225,21 @@ it('does not apply the active-account gate on Unlimited tier', function () {
 
     expect(KraiteEngine::withAccount($accountA->refresh())->canOpenNewPositions())->toBeTrue();
     expect(KraiteEngine::withAccount($accountB->refresh())->canOpenNewPositions())->toBeTrue();
+});
+
+it('blocks new opens when the user is paused', function () {
+    $tier = starterTier(75);
+
+    $f = billableUserWithAccount(
+        $tier,
+        balance: 100,
+        trialStart: now()->subDays(30),
+        renewsAt: now()->addDays(15),
+    );
+
+    $f['user']->update(['subscription_paused_at' => now()]);
+
+    $engine = KraiteEngine::withAccount($f['account']->refresh());
+
+    expect($engine->canOpenNewPositions())->toBeFalse();
 });

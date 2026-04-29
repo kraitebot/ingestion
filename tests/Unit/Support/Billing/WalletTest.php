@@ -11,13 +11,13 @@ use Kraite\Core\Support\Billing\Wallet;
 
 uses(RefreshDatabase::class)->group('billing', 'wallet');
 
-function billingTier(string $canonical = 'starter', float $rate = 2.5): Subscription
+function billingTier(string $canonical = 'starter', float $monthly = 75.0): Subscription
 {
     return Subscription::updateOrCreate(
         ['canonical' => $canonical],
         [
             'name' => ucfirst($canonical),
-            'daily_rate_usdt' => $rate,
+            'monthly_rate_usdt' => $monthly,
             'trial_days' => 7,
             'max_accounts' => $canonical === 'starter' ? 1 : null,
             'max_balance' => $canonical === 'starter' ? 10000 : null,
@@ -57,33 +57,33 @@ it('credits the wallet, updates balance and writes a ledger row', function () {
 });
 
 it('debits the wallet, updates balance and writes a signed-negative ledger row', function () {
-    $user = billingUser(balance: 50.0);
+    $user = billingUser(balance: 200.0);
 
     $tx = (new Wallet())->debit(
         user: $user,
-        amount: 12.5,
+        amount: 75.0,
         type: WalletTransaction::TYPE_DEBIT_SUBSCRIPTION,
-        description: 'Daily debit test',
+        description: 'Monthly debit test',
     );
 
-    expect($user->refresh()->wallet_balance_usdt)->toEqual(37.5);
+    expect($user->refresh()->wallet_balance_usdt)->toEqual(125.0);
 
-    expect($tx->amount_usdt)->toEqual(-12.5);
-    expect($tx->balance_after)->toEqual(37.5);
+    expect($tx->amount_usdt)->toEqual(-75.0);
+    expect($tx->balance_after)->toEqual(125.0);
     expect($tx->type)->toBe(WalletTransaction::TYPE_DEBIT_SUBSCRIPTION);
 });
 
 it('rejects a debit when balance is below the requested amount', function () {
-    $user = billingUser(balance: 1.0);
+    $user = billingUser(balance: 10.0);
 
     expect(fn () => (new Wallet())->debit(
         user: $user,
-        amount: 2.5,
+        amount: 75.0,
         type: WalletTransaction::TYPE_DEBIT_SUBSCRIPTION,
         description: 'Too much',
     ))->toThrow(InsufficientFundsException::class);
 
-    expect($user->refresh()->wallet_balance_usdt)->toEqual(1.0);
+    expect($user->refresh()->wallet_balance_usdt)->toEqual(10.0);
     expect(WalletTransaction::where('user_id', $user->id)->count())->toBe(0);
 });
 
@@ -106,7 +106,7 @@ it('rejects negative-or-zero amounts on credit', function () {
 });
 
 it('rejects negative-or-zero amounts on debit', function () {
-    $user = billingUser(balance: 100);
+    $user = billingUser(balance: 200);
 
     expect(fn () => (new Wallet())->debit(
         user: $user,
@@ -123,17 +123,84 @@ it('rejects negative-or-zero amounts on debit', function () {
     ))->toThrow(InvalidArgumentException::class);
 });
 
-it('exposes a bonus ladder matching the spec (50/100/500)', function () {
-    expect(Wallet::bonusPercentFor(0))->toBe(0);
-    expect(Wallet::bonusPercentFor(49.99))->toBe(0);
-    expect(Wallet::bonusPercentFor(50))->toBe(5);
-    expect(Wallet::bonusPercentFor(75))->toBe(5);
-    expect(Wallet::bonusPercentFor(99.99))->toBe(5);
-    expect(Wallet::bonusPercentFor(100))->toBe(10);
-    expect(Wallet::bonusPercentFor(250))->toBe(10);
-    expect(Wallet::bonusPercentFor(499.99))->toBe(10);
-    expect(Wallet::bonusPercentFor(500))->toBe(15);
-    expect(Wallet::bonusPercentFor(10_000))->toBe(15);
+it('runRenewal debits the monthly rate and pushes the anchor +1 month from the current value', function () {
+    $tier = billingTier('starter', monthly: 75.0);
+    $anchor = now()->subDay(); // due renewal
+    $user = User::factory()->create([
+        'subscription_id' => $tier->id,
+        'wallet_balance_usdt' => 200,
+        'subscription_renews_at' => $anchor,
+    ]);
+
+    $tx = (new Wallet())->runRenewal($user);
+
+    expect($user->refresh()->wallet_balance_usdt)->toEqual(125.0);
+
+    $expected = $anchor->copy()->addMonth();
+    expect($user->subscription_renews_at->toDateString())
+        ->toBe($expected->toDateString());
+
+    expect($tx->type)->toBe(WalletTransaction::TYPE_DEBIT_SUBSCRIPTION);
+    expect($tx->amount_usdt)->toEqual(-75.0);
+    expect($tx->balance_after)->toEqual(125.0);
+    expect($tx->meta['rate_at_run'])->toEqual(75.0);
+    expect($tx->meta['subscription_canonical'])->toBe('starter');
+});
+
+it('runRenewal anchors to now+1 month when the user has no existing renews_at', function () {
+    $tier = billingTier('unlimited', monthly: 150.0);
+    $user = User::factory()->create([
+        'subscription_id' => $tier->id,
+        'wallet_balance_usdt' => 200,
+        'subscription_renews_at' => null,
+    ]);
+
+    (new Wallet())->runRenewal($user);
+
+    $expected = now()->addMonth();
+    expect($user->refresh()->subscription_renews_at->toDateString())
+        ->toBe($expected->toDateString());
+});
+
+it('runRenewal honours an explicit anchor (read-only-unlock case)', function () {
+    $tier = billingTier('starter', monthly: 75.0);
+    $user = User::factory()->create([
+        'subscription_id' => $tier->id,
+        'wallet_balance_usdt' => 200,
+        'subscription_renews_at' => now()->subDays(5),
+    ]);
+
+    $explicit = now()->addMonth()->subDay();
+
+    (new Wallet())->runRenewal($user, $explicit);
+
+    expect($user->refresh()->subscription_renews_at->toDateString())
+        ->toBe($explicit->toDateString());
+});
+
+it('runRenewal throws InsufficientFundsException and rolls back when wallet is short', function () {
+    $tier = billingTier('starter', monthly: 75.0);
+    $user = User::factory()->create([
+        'subscription_id' => $tier->id,
+        'wallet_balance_usdt' => 30,
+        'subscription_renews_at' => now()->subDay(),
+    ]);
+
+    expect(fn () => (new Wallet())->runRenewal($user))
+        ->toThrow(InsufficientFundsException::class);
+
+    expect($user->refresh()->wallet_balance_usdt)->toEqual(30.0);
+    expect(WalletTransaction::where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('runRenewal rejects users without a subscription tier', function () {
+    $user = User::factory()->create([
+        'subscription_id' => null,
+        'wallet_balance_usdt' => 200,
+    ]);
+
+    expect(fn () => (new Wallet())->runRenewal($user))
+        ->toThrow(InvalidArgumentException::class);
 });
 
 it('keeps balance and ledger consistent across a sequence of operations', function () {
@@ -141,11 +208,11 @@ it('keeps balance and ledger consistent across a sequence of operations', functi
     $wallet = new Wallet();
 
     $wallet->credit($user, 100, WalletTransaction::TYPE_CREDIT_TOPUP, 'Topup #1');
-    $wallet->credit($user, 10, WalletTransaction::TYPE_CREDIT_TOPUP_BONUS, 'Bonus 10%');
-    $wallet->debit($user, 2.5, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Day 1');
-    $wallet->debit($user, 2.5, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Day 2');
+    $wallet->credit($user, 50, WalletTransaction::TYPE_CREDIT_PRORATE_REFUND, 'Prorate refund');
+    $wallet->debit($user, 75, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Renewal');
+    $wallet->debit($user, 5, WalletTransaction::TYPE_DEBIT_ADMIN, 'Adjustment');
 
-    expect($user->refresh()->wallet_balance_usdt)->toEqual(105.0);
+    expect($user->refresh()->wallet_balance_usdt)->toEqual(70.0);
 
     $rows = WalletTransaction::where('user_id', $user->id)
         ->orderBy('id')
@@ -153,5 +220,5 @@ it('keeps balance and ledger consistent across a sequence of operations', functi
         ->map(fn ($v) => (float) $v)
         ->all();
 
-    expect($rows)->toBe([100.0, 110.0, 107.5, 105.0]);
+    expect($rows)->toBe([100.0, 150.0, 75.0, 70.0]);
 });

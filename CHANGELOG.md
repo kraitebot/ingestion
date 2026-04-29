@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.10.0 - 2026-04-29
+
+### Features
+
+- [NEW FEATURE] **Renewal cron scheduled** — bumps `kraitebot/core` to v1.10.0. Schedule entry switched from `kraite:cron-deduct-subscriptions` (retired) to `kraite:cron-renew-subscriptions`. Same midnight cadence (`dailyAt('00:00')`, `withoutOverlapping`, `onOneServer`). The new command processes monthly renewals, fires 7-day low-balance pre-warnings, and fires 2-day trial-ending pre-warnings in one pass.
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/Billing/RenewSubscriptionsCommandTest.php` — 16 cases covering the new cron's renewal-due processing, anchor push, paused/trial/inactive skips, low-balance pre-warning at renews_at-7d, trial-ending pre-warning at trial_end-2d, closing-mode notification on insufficient funds, dry-run, and live-rate read paths.
+- [IMPROVED] `tests/Unit/Models/UserBillingTest.php` rewritten — pause/resume, renewal-anchored `isInClosingMode`, `subscriptionCoversNextRenewal`, `renewalShortfallUsdt`. 19 cases.
+- [IMPROVED] `tests/Unit/Support/Billing/WalletTest.php` rewritten — `runRenewal` happy path, explicit anchor, insufficient-funds rollback, no-tier guard. Bonus-ladder cases dropped (helper killed).
+- [IMPROVED] `tests/Feature/Billing/WalletLedgerContractTest.php` rewritten — ledger contract for credit/debit/runRenewal/admin overrides + new prorate refund. Bonus-row cases dropped.
+- [IMPROVED] `tests/Feature/Billing/HasTradingGuardsBillingTest.php` rewritten — trading-guard integration with renewal-anchored closing-mode + paused users + Starter active-account gate. 7 cases.
+- [BUG FIX] `tests/Feature/Billing/DeductSubscriptionsCommandTest.php` removed — covered the retired daily-debit command.
+
 ## 1.9.1 - 2026-04-29
 
 ### Fixes

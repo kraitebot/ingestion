@@ -110,7 +110,7 @@ if (! $isCoolingDown()) {
     Schedule::command('kraite:cron-conclude-symbols-direction')
         ->hourlyAt(30);
 
-    Schedule::command('kraite:cron-deduct-subscriptions')
+    Schedule::command('kraite:cron-renew-subscriptions')
         ->dailyAt('00:00')
         ->withoutOverlapping()
         ->onOneServer();
