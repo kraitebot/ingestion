@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.1 - 2026-04-29
+
+### Fixes
+
+- [BUG FIX] Bumps `kraitebot/core` to v1.9.1 — Bitget WAP no longer fails on `modify-tpsl-order`. Live verified on production position #792 (APE/USDT LONG, account #4 Main BitGet): TP repriced from $0.17210 → $0.16230 and quantity expanded from 182.30 → 546.90 to cover the full post-DCA-fill position.
+
+### Tests
+
+- [NEW FEATURE] `tests/Unit/Jobs/Atomic/Order/Bitget/CalculateWapPlacePosTpslTest.php` — 4 cases pinning the structural fix: `findSiblingStopLossOrder` returns the SL leg, returns null when missing, source uses `placePosTpsl` not `apiModifyTpsl`, source uses `preparePlacePosTpslProperties` (atomic both-leg request).
+
 ## 1.9.0 - 2026-04-29
 
 ### Features
