@@ -32,18 +32,22 @@ function buildSyncNormalizationStub(float|string|null $stored = '0.0456000'): Or
     return $order;
 }
 
-function invokeResolveSyncedPrice(Order $order, mixed $incoming): mixed
-{
-    $method = new ReflectionMethod($order, 'resolveSyncedPrice');
+if (! function_exists('invokeResolveSyncedPrice')) {
+    function invokeResolveSyncedPrice(Order $order, mixed $incoming): mixed
+    {
+        $method = new ReflectionMethod($order, 'resolveSyncedPrice');
 
-    return $method->invoke($order, $incoming);
+        return $method->invoke($order, $incoming);
+    }
 }
 
-function invokeResolveSyncedQuantity(Order $order, mixed $incoming): mixed
-{
-    $method = new ReflectionMethod($order, 'resolveSyncedQuantity');
+if (! function_exists('invokeResolveSyncedQuantity')) {
+    function invokeResolveSyncedQuantity(Order $order, mixed $incoming): mixed
+    {
+        $method = new ReflectionMethod($order, 'resolveSyncedQuantity');
 
-    return $method->invoke($order, $incoming);
+        return $method->invoke($order, $incoming);
+    }
 }
 
 it('preserves the stored price when the exchange echoes null or zero', function (): void {

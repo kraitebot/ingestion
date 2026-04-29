@@ -16,11 +16,16 @@ function buildOrderWithStoredPrice(string $storedPrice): Order
         'name' => 'Binance',
     ]);
     $symbol = Symbol::factory()->create(['token' => 'API3']);
+    // Pin tick_size + price_precision so api_format_price round-trips
+    // the test inputs ('6.93', '0.00000001') unchanged. The factory's
+    // randomised tick_size makes formatter-based assertions flaky.
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'token' => 'API3',
         'quote' => 'USDT',
         'api_system_id' => $apiSystem->id,
         'symbol_id' => $symbol->id,
+        'tick_size' => '0.00000001',
+        'price_precision' => 8,
     ]);
     $account = Account::factory()->create(['api_system_id' => $apiSystem->id]);
     $position = Position::factory()->create([
@@ -43,11 +48,13 @@ function buildOrderWithStoredPrice(string $storedPrice): Order
     ]);
 }
 
-function invokeResolveSyncedPrice(Order $order, mixed $incoming): mixed
-{
-    $method = new ReflectionMethod($order, 'resolveSyncedPrice');
+if (! function_exists('invokeResolveSyncedPrice')) {
+    function invokeResolveSyncedPrice(Order $order, mixed $incoming): mixed
+    {
+        $method = new ReflectionMethod($order, 'resolveSyncedPrice');
 
-    return $method->invoke($order, $incoming);
+        return $method->invoke($order, $incoming);
+    }
 }
 
 it('preserves the stored price when exchange returns null', function (): void {
