@@ -36,6 +36,30 @@ jobs:
           path: packages/kraitebot/core
           token: ${{ secrets.CORE_PAT }}
 
+      - name: Checkout brunocfalcao/step-dispatcher package
+        uses: actions/checkout@v4
+        with:
+          repository: brunocfalcao/step-dispatcher
+          path: packages/brunocfalcao/step-dispatcher
+
+      - name: Checkout brunocfalcao/blade-feather-icons package
+        uses: actions/checkout@v4
+        with:
+          repository: brunocfalcao/blade-feather-icons
+          path: packages/brunocfalcao/blade-feather-icons
+
+      - name: Checkout brunocfalcao/laravel-helpers package
+        uses: actions/checkout@v4
+        with:
+          repository: brunocfalcao/laravel-helpers
+          path: packages/brunocfalcao/laravel-helpers
+
+      - name: Checkout brunocfalcao/laravel-zepto-mail-api-driver package
+        uses: actions/checkout@v4
+        with:
+          repository: brunocfalcao/laravel-zepto-mail-api-driver
+          path: packages/brunocfalcao/laravel-zepto-mail-api-driver
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
