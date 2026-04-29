@@ -7,6 +7,15 @@ use Kraite\Core\Models\Kraite;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\NotificationService;
 
+beforeEach(function (): void {
+    // NotificationService memoises the resolved Notification row in a
+    // static array. Pest groups tests by file in the same PHP process,
+    // so without a flush the first test's notification (is_active=false)
+    // sticks around and short-circuits sends in subsequent tests that
+    // recreate the row with is_active=true.
+    NotificationService::flushNotificationCache();
+});
+
 /**
  * Helper to create admin user for notification tests.
  */
@@ -207,13 +216,17 @@ it('global toggle takes precedence over is_active', function () {
     Notification::assertNothingSent();
 });
 
-it('sends notification when canonical does not exist in database', function () {
-    // Backwards compatibility: if notification record doesn't exist,
-    // the is_active check should not block (notification is null)
+it('blocks notification when canonical does not exist (NotificationMessageBuilder rejects unknowns)', function () {
+    // The is_active gate doesn't block an unknown canonical — but
+    // NotificationMessageBuilder::build() throws InvalidArgumentException
+    // on unknown canonicals downstream, which NotificationService catches
+    // and converts to a logged failure with `return false`. The earlier
+    // backwards-compat behavior was retired when the builder switched to
+    // a strict match() that intentionally rejects typos at the call site.
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
-    // Do NOT create notification record - simulate unknown canonical
+    // Do NOT create notification record — simulate unknown canonical
     createAdminForIsActiveTests();
 
     $result = NotificationService::send(
@@ -223,11 +236,6 @@ it('sends notification when canonical does not exist in database', function () {
         duration: 0
     );
 
-    // Should still send (backwards compatible behavior)
-    expect($result)->toBeTrue();
-
-    Notification::assertSentTo(
-        Kraite::admin(),
-        AlertNotification::class
-    );
+    expect($result)->toBeFalse();
+    Notification::assertNothingSent();
 });

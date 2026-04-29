@@ -140,16 +140,19 @@ describe('Binance delisting detection', function () {
     });
 
     it('does NOT trigger notification when delivery_ts_ms is unchanged', function () {
-        Notification::fake();
         setupNotificationPrerequisites();
 
+        // Seed with a real date so the "create-time" notification fires
+        // OUTSIDE the assertion window. We're testing that a no-op save()
+        // doesn't re-fire — not the discovery notification on first sync.
         $exchangeSymbol = createExchangeSymbolForExchange(
             'binance',
             'BINANCE_NO_CHANGE',
             1735689600000
         );
 
-        // Simulate: same value (no change)
+        Notification::fake();
+
         $exchangeSymbol->delivery_ts_ms = 1735689600000;
         $exchangeSymbol->save();
 
@@ -220,16 +223,19 @@ describe('Bybit delisting detection', function () {
     });
 
     it('does NOT trigger notification when delivery_ts_ms is unchanged', function () {
-        Notification::fake();
         setupNotificationPrerequisites();
 
+        // Seed with a real date so the "create-time" notification fires
+        // OUTSIDE the assertion window — we're testing the no-op save(),
+        // not the initial discovery.
         $exchangeSymbol = createExchangeSymbolForExchange(
             'bybit',
             'BYBIT_NO_CHANGE',
             1735689600000
         );
 
-        // Simulate: same value
+        Notification::fake();
+
         $exchangeSymbol->delivery_ts_ms = 1735689600000;
         $exchangeSymbol->save();
 
