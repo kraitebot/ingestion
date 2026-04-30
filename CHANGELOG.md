@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.11.0 - 2026-04-30
+
+### Improvements
+
+- [IMPROVED] **Schedule swap: `kraite:watch-price-stream` → `kraite:cron-check-stale-data`.** The retired watchdog auto-restarted the price-stream daemon in a 2-day silent loop during the 2026-04-23 Binance WebSocket URL deprecation. Replaced by an alert-only check that fires `price_data_stale` Pushover when any non-delisted enabled exchange_symbol has `mark_price_synced_at` older than 1 minute. The daemon's internal idle watchdog still handles transient socket stalls; this layer catches unrecoverable cases that need human attention.
+- [IMPROVED] Bumps `kraitebot/core` to v1.11.0 (Binance WS migration restores price flow; new top-up coin curated list + sysadmin Coins tab; ops alert canonicals; delisting helpers on ExchangeSymbol).
+
 ## 1.10.0 - 2026-04-29
 
 ### Features

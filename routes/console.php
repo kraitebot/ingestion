@@ -38,12 +38,13 @@ Schedule::command('steps:recover-stale --recover-dispatched --release-locks --wa
     ->everyMinute()
     ->withoutOverlapping();
 
-// External watchdog for the Binance mark-price daemon. Belt-and-suspenders on top of
-// the BaseWebsocketClient idle watchdog — if the PHP process itself stalls (OS stall,
-// deadlock, etc.), this bounces it via supervisorctl. Not gated by cooldown — fresh
-// prices are load-bearing for selection + S/R gating + residual detection even when
-// new trades are paused.
-Schedule::command('kraite:watch-price-stream')
+// Stale-data alert. Pushes a `price_data_stale` Pushover when any enabled
+// exchange_symbol has not received a mark_price update in the last minute.
+// Does NOT auto-restart — the daemon's internal idle watchdog handles
+// transient socket stalls; this surfaces unrecoverable cases (URL
+// deprecation, IP ban, upstream outage) to a human instead of silently
+// looping a futile supervisorctl restart.
+Schedule::command('kraite:cron-check-stale-data')
     ->everyMinute()
     ->withoutOverlapping();
 
