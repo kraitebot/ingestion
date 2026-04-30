@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.12.0 - 2026-05-01
+
+### Features
+
+- [NEW FEATURE] **Supervisor program `kraite-ingestion-binance-user-data`.** Hosts the new `kraite:stream-binance-user-data` daemon. Same supervisor pattern as the price daemon (autostart=true / autorestart=true), separate stdout log at `storage/logs/binance-user-data.log`. One process, N concurrent WebSockets via the `BaseWebsocketClient::handleCallbackAsync` entry point.
+- [NEW FEATURE] **Dedicated `user-data-stream` Horizon supervisor** (8 processes, registered on both `local` and `ingestion` env arrays). Isolates the WS-driven Step throughput from `positions` / `default` / `cronjobs` so cron-driven step bursts never block real-time event reactivity. Bruno's framing: WS daemon = heart, step dispatcher = brain — queue isolation keeps the heart's latency floor independent of the brain's load.
+- [NEW FEATURE] **`user-data` log channel** at `storage/logs/user-data.log`, daily rotation, 14-day retention. Daemon WS lifecycle + per-frame one-liners go here, isolated from `jobs.log`.
+- [NEW FEATURE] **Schedule entry `kraite:cron-refresh-binance-listen-keys`** at every-minute cadence with `withoutOverlapping`. Listen-key keepalive surface for the user-data daemon — runs regardless of cooldown gate (operational maintenance, not new-work creation). Three consecutive failures on a single account fire `binance_listen_key_keepalive_failed` Pushover.
+
+### Improvements
+
+- [IMPROVED] Bumps `kraitebot/core` to v1.12.0 (Binance user-data-stream daemon + `api_data_stream` audit table + `binance_listen_keys` + `MapsUserDataStream` Binance mapper + per-execution-type dispatch allowlist + `apiSyncDefault` shadow-validation override).
+- [IMPROVED] Bumps `brunocfalcao/step-dispatcher` to v1.11.11 (queue allowlist now includes `user-data-stream` so the new Steps land on the dedicated queue instead of falling back to `default`).
+
 ## 1.11.0 - 2026-04-30
 
 ### Improvements

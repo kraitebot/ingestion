@@ -108,6 +108,18 @@ return [
                 'memory' => 256,
             ],
 
+            'user-data-stream-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['user-data-stream'],
+                'balance' => 'simple',
+                'processes' => 8,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
         ], [
             // Dynamic hostname-based queue for server-specific work
             // (e.g., ConnectivityTestController).
@@ -183,6 +195,17 @@ return [
                 'connection' => 'redis',
                 'queue' => ['ingestion'],
                 'processes' => 5,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
+            'user-data-stream-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['user-data-stream'],
+                'processes' => 8,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,

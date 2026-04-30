@@ -143,6 +143,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'user-data' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/user-data.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

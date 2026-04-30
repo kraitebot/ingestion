@@ -48,6 +48,18 @@ Schedule::command('kraite:cron-check-stale-data')
     ->everyMinute()
     ->withoutOverlapping();
 
+// Keep every Binance account's listenKey alive past Binance's 60-minute
+// auto-expiry. The user-data WebSocket daemon
+// (`kraite:stream-binance-user-data`) opens the connection but does NOT
+// refresh the key on its own — this cron is the dedicated keepalive
+// surface so a daemon restart never racing with key expiry. Three
+// consecutive failures on one account fire a Pushover alert. Runs
+// regardless of cooldown gate: keepalive is operational maintenance,
+// not new-work creation.
+Schedule::command('kraite:cron-refresh-binance-listen-keys')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 // Scheduled jobs that create NEW steps should NOT run during cooldown
 // This prevents new work from being added while we wait for existing steps to finish
 // When cooling down, these tasks won't appear in schedule:list at all
