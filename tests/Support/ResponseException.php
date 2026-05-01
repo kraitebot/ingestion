@@ -1214,6 +1214,22 @@ final class ResponseException
     }
 
     /**
+     * BitGet: position-side mismatch — payload assumes the wrong position
+     * mode for the account (e.g. tradeSide=open sent on a one-way account,
+     * or holdSide sent on a one-way leverage call). Triggers the same
+     * auto-flip flow as Binance -4061.
+     * HTTP 400 with vendor code "40774".
+     */
+    public static function bitgetPositionSideMismatch(): RequestException
+    {
+        return self::bitget(
+            400,
+            '40774',
+            'The order type for unilateral position must also be the unilateral position type'
+        );
+    }
+
+    /**
      * Create a BitGet-style RequestException.
      * BitGet uses {"code": "40808", "msg": "Parameter verification exception", "requestTime": ...} format.
      *

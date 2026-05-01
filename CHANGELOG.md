@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.13.0 - 2026-05-02
+
+### Features
+
+- [NEW FEATURE] **Pest tests for Bitget hedge / one-way mode contracts.** New `tests/Unit/Support/ApiDataMappers/Bitget/BitgetHedgeOneWayModeTest.php` pins the request-payload contracts that diverge between hedge (`posSide`+`tradeSide`+`holdSide`) and one-way (`reduceOnly=YES` on close intent, `holdSide` omitted, `posSide` omitted) modes across the 7 retrofitted mappers, plus the response-keying contract on `MapsPositionsQuery` (hedge → `symbol:LONG/SHORT`, one-way → `symbol:BOTH`).
+- [NEW FEATURE] **Pest tests for Bitget position-mode auto-flip.** New `tests/Integration/ExceptionHandlers/BitgetPositionModeAutoFlipTest.php` mirrors the existing Binance auto-flip suite for Bitget's `40774` mismatch code: hedge→one-way flip, one-way→hedge flip, audit trail (Log::warning + Account::modelLog), no false-positive on unrelated exceptions.
+- [NEW FEATURE] **`bitgetPositionSideMismatch` factory on `tests/Support/ResponseException.php`.** Emits a Bitget-shaped `400` with vendor code `"40774"` and the canonical "order type for unilateral position must also be the unilateral position type" message — the exact shape Bitget returns when the payload assumes the wrong position mode.
+
+### Improvements
+
+- [IMPROVED] **Horizon supervisor process counts tuned.** Per-queue: `positions=5`, `orders=5`, `cronjobs=5`, `indicators=20`, `priority=8`, `user-data-stream=5`, `<hostname>=1`. Applied to all 4 environments (`local`, `ingestion`, `worker1`, `worker2`).
+- [IMPROVED] **Sandbox-environment safety rule in `CLAUDE.md`.** New top-level section explicitly forbids destructive operations (migrate:fresh, DROP, TRUNCATE, rm -rf, force-push, etc.) without per-action approval, even when the environment is labelled "sandbox" or "dev". Driven by the 2026-05-01 incident where `migrate:fresh --env=testing --force` fell back to `.env`'s `DB_DATABASE=kraite` (no `.env.testing` present) and wiped the production-app DB. Recovery cost a `--override` re-run of the recover-positions command across all accounts.
+- [IMPROVED] Bumps `kraitebot/core` to v1.13.0 (`kraite:recover-positions` disaster-recovery command + Bitget hedge/one-way support across 7 mappers + Bitget code "40774" auto-flip + 7-gap daemon hardening incl. reaper + dead-letter fallback + heartbeat persistence + listen-key rotation detection + memory/reconnect-storm watchdogs).
+
 ## 1.12.0 - 2026-05-01
 
 ### Features

@@ -4,6 +4,68 @@
 
 ---
 
+# SANDBOX ENVIRONMENT — DESTRUCTIVE OPERATIONS REQUIRE EXPLICIT APPROVAL
+
+**This is a sandbox/dev environment.** That does NOT relax the safety bar — it tightens it. "Sandbox" never authorises me to run destructive or hard-to-reverse operations on my own. Bruno's data, even in sandbox, represents real-money state on real exchanges, real Bitget/Binance positions, real subscriptions, real configuration.
+
+**HARD RULE:** Before running ANY destructive operation, I MUST stop and ask Bruno for explicit, in-message approval — even if the environment is "sandbox" / "dev" / "local". A previous agreement in another context does NOT carry over. Each destructive action gets its own confirmation.
+
+## Examples of operations that REQUIRE explicit Bruno approval
+
+**Database — schema / data destruction:**
+- `php artisan migrate:fresh` (with or without `--seed`, `--force`, `--env=...`)
+- `php artisan migrate:rollback`
+- `php artisan db:wipe`
+- `DROP DATABASE`, `DROP TABLE`, `DROP SCHEMA`
+- `TRUNCATE TABLE` on data tables (steps, model_logs, accounts, positions, orders, etc.)
+- `DELETE FROM ... WHERE ...` without a WHERE clause that's clearly safe
+- Mass `UPDATE` statements that touch many rows
+- `RENAME TABLE` on populated tables
+- Editing migration files that have already run on Bruno's DB
+- Running `composer test` / `php artisan test` against ANY DB other than `kraite_tests` — verify the connection FIRST
+- Running `--env=testing` artisan commands when no `.env.testing` file exists (falls back to `.env` and hits prod DB)
+
+**Filesystem — destructive:**
+- `rm -rf` on any directory
+- Deleting log directories (`storage/logs/*`), uploaded files, cache stores
+- Editing or deleting `.env` files
+- Removing files from `vendor/` or `node_modules/` manually (use composer/npm)
+- `find ... -delete` patterns
+
+**Git — history-rewriting / publishing:**
+- `git reset --hard`, `git checkout --` on dirty files, `git clean -fd`
+- `git push --force` (use `--force-with-lease` only when explicitly approved)
+- `git rebase` of pushed commits
+- `git branch -D` on unmerged branches
+- `git stash drop` on stashes I didn't just create
+- Force-pushing to `master` / `main`
+- Skipping hooks (`--no-verify`, `--no-gpg-sign`)
+
+**Process / service — affecting live system:**
+- `supervisorctl stop|restart|reload` on running supervisors
+- `systemctl stop|restart` on services
+- `php artisan horizon:terminate`
+- `kill -9` on long-running processes
+- `composer update` / `composer require` (changes lock file + dependencies)
+- Modifying `crontab`
+
+**Exchange / external — real-money or shared-state:**
+- ANY API call that places, cancels, or modifies orders / positions on Binance / Bitget / KuCoin / Bybit (even in tinker)
+- Sending notifications (Telegram, Pushover, email) from production credentials
+- Mutating shared infrastructure (Redis FLUSH, cache:clear on prod cache, etc.)
+
+## How to ask
+
+When I'm about to do one of the above, I STOP and write something like:
+
+> "I'm about to run `php artisan migrate:fresh --seed` against the `kraite` DB. This will drop every table and reseed. Confirm?"
+
+Then I wait for Bruno's reply. "yes / go / do it / approved" → proceed. Anything else / silence → don't proceed.
+
+**Why this matters (incident, 2026-05-01):** I ran `php artisan migrate:fresh --env=testing --force` thinking it would target `kraite_tests`. There was no `.env.testing` file, so `--env=testing` fell back to `.env` and the command wiped the `kraite` production DB — accounts, positions, orders, model_logs, the lot. Real-money positions on Bitget + 2 Binance accounts continued running on the exchanges with no local mirror to manage them. The "sandbox" label gave me a false sense of safety. Recovery required `migrate:fresh --seed` on a clean DB and a planned re-sync from each exchange. Don't repeat this — never assume sandbox = safe.
+
+---
+
 # Claude Code - Guidelines
 
 ## Who We Are

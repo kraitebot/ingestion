@@ -52,7 +52,7 @@ return [
                 'connection' => 'redis',
                 'queue' => ['positions'],
                 'balance' => 'simple',
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -76,7 +76,7 @@ return [
                 'connection' => 'redis',
                 'queue' => ['cronjobs'],
                 'balance' => 'simple',
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -88,7 +88,7 @@ return [
                 'connection' => 'redis',
                 'queue' => ['indicators'],
                 'balance' => 'simple',
-                'processes' => 30,
+                'processes' => 20,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -100,7 +100,7 @@ return [
                 'connection' => 'redis',
                 'queue' => ['priority'],
                 'balance' => 'simple',
-                'processes' => 5,
+                'processes' => 8,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -112,7 +112,7 @@ return [
                 'connection' => 'redis',
                 'queue' => ['user-data-stream'],
                 'balance' => 'simple',
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -126,7 +126,7 @@ return [
             mb_strtolower(str_replace('-', '', gethostname() ?: 'unknown')).'-supervisor' => [
                 'connection' => 'redis',
                 'queue' => [mb_strtolower(str_replace('-', '', gethostname() ?: 'unknown'))],
-                'processes' => 5,
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -139,7 +139,7 @@ return [
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -161,7 +161,7 @@ return [
             'cronjobs-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['cronjobs'],
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -172,7 +172,7 @@ return [
             'indicators-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['indicators'],
-                'processes' => 30,
+                'processes' => 20,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -183,7 +183,7 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 5,
+                'processes' => 8,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -194,7 +194,7 @@ return [
             'ingestion-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['ingestion'],
-                'processes' => 5,
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -205,7 +205,7 @@ return [
             'user-data-stream-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['user-data-stream'],
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -218,7 +218,7 @@ return [
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -240,7 +240,7 @@ return [
             'cronjobs-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['cronjobs'],
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -251,7 +251,7 @@ return [
             'indicators-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['indicators'],
-                'processes' => 30,
+                'processes' => 20,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -262,7 +262,7 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 5,
+                'processes' => 8,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -273,7 +273,7 @@ return [
             'worker1-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['worker1'],
-                'processes' => 5,
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -286,7 +286,7 @@ return [
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -308,7 +308,7 @@ return [
             'cronjobs-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['cronjobs'],
-                'processes' => 8,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -319,7 +319,7 @@ return [
             'indicators-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['indicators'],
-                'processes' => 30,
+                'processes' => 20,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -330,7 +330,7 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 5,
+                'processes' => 8,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -341,7 +341,7 @@ return [
             'worker2-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['worker2'],
-                'processes' => 5,
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
