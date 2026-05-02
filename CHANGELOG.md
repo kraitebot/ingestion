@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.15.0 - 2026-05-03
+
+### Features
+
+- [NEW FEATURE] **21 unit tests for the new token-scoring helpers** under `tests/Unit/Support/TokenScoring/`. Three Pest test files pin the contracts of `LogElasticityScorer` (zero-input handling, monotonic growth, sign-irrelevance, log compression vs raw multiplication), `CorrelationStabilityWeight` (graceful-degrade defaults, monotonic decrease, clamp behaviour), and `BatchDiversificationPenalty` (empty-batch returns 1.0, threshold-driven trigger, opposite-sign immunity, closest-match wins).
+
+### Improvements
+
+- [IMPROVED] Bumps `kraitebot/core` to v1.15.0 (TokenScoring helpers + selection scoring rewrite + `btc_correlation_stability` column + `nextPendingLimitOrderPrice` rung-selection bugfix).
+
 ## 1.14.0 - 2026-05-03
 
 ### Features
