@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.14.0 - 2026-05-03
+
+### Features
+
+- [NEW FEATURE] **Schedule entries for `kraite:cron-check-binance-listen-keys-stale` and `kraite:cron-check-system-health`.** Both at every-5-minute cadence with `withoutOverlapping`. Listen-key staleness watchdog catches accounts whose daemon never initialised a listen-key row, or whose keepalive cron has stalled, well before Binance's 60-min hard expiry. Unified system-health watchdog runs the consolidated check matrix replacing the prior narrow `kraite:cron-check-stale-data`.
+- [NEW FEATURE] **Pest test `tests/Feature/Concerns/HasTokenDiscoverySymbolOverrideTest.php`.** Pins the contract for the new test-only `symbol_override` god-mode at priority 0 of `HasTokenDiscovery::assignTokensToPositions`. Covers: forces specific symbol when account_id + pair resolve, falls back silently when config is null, when account_id mismatches, when symbol unresolvable on the exchange, when symbol's direction does not match the slot's direction, when symbol is already in an active position on this account.
+
+### Improvements
+
+- [IMPROVED] **`kraite:cron-sync-orders` cadence relaxed from `everyMinute` to `everyFiveMinutes`.** Push-based user-data WS is now production primary for fill detection, in-place-modify drift, cancellations, expiries, and algo lifecycle (full execution-type allowlist live). Polling exists only as a 5-minute safety net for the rare WS-frame-loss / reconnect-race drift case. Cadence history: every minute (pre-2026-04-30) → 15 min during shadow-mode rollout → 5 min on push-primary cutover (2026-05-03).
+- [IMPROVED] **Production `USER_DATA_STREAM_BINANCE_DISPATCHED_EXECUTIONS` env extended to 8 exec types.** Final allowlist: `TRADE, AMENDMENT, CANCELED, EXPIRED, ALGO_NEW, ALGO_CANCELED, ALGO_EXPIRED, ALGO_FILLED`. Covers DCA fills + TP fills (TRADE), in-place modifies (AMENDMENT), cancellations (CANCELED), expiries (EXPIRED), algo placement / cancel / expire (ALGO_NEW / ALGO_CANCELED / ALGO_EXPIRED), and SL trigger fires (ALGO_FILLED). `NEW`, `REJECTED`, and `CALCULATED` deliberately stay off — `NEW` would create defensive drift-detection noise on every placement ack, `REJECTED` is already caught synchronously at `apiPlace`, and `CALCULATED` (liquidations) is explicitly out of scope (operator concern, not bot concern).
+- [IMPROVED] Bumps `kraitebot/core` to v1.14.0 (test-only symbol override at priority 0 of token discovery + manual-close detection branch in `ProcessUserDataEventJob` + per-execution-type dispatch allowlist + `UserDataStreamEvent::reduceOnly` + synthesized `ALGO_<status>` exec types for `ALGO_UPDATE` frames + `kraite:cron-check-binance-listen-keys-stale` + `kraite:cron-check-system-health` + retired `CheckStaleDataCommand`).
+
+### Removals
+
+- [IMPROVED] **`kraite:cron-check-stale-data` schedule entry retired.** Functionality folded into the unified `kraite:cron-check-system-health` watchdog.
+
 ## 1.13.0 - 2026-05-02
 
 ### Features

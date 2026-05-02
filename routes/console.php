@@ -38,15 +38,11 @@ Schedule::command('steps:recover-stale --recover-dispatched --release-locks --wa
     ->everyMinute()
     ->withoutOverlapping();
 
-// Stale-data alert. Pushes a `price_data_stale` Pushover when any enabled
-// exchange_symbol has not received a mark_price update in the last minute.
-// Does NOT auto-restart — the daemon's internal idle watchdog handles
-// transient socket stalls; this surfaces unrecoverable cases (URL
-// deprecation, IP ban, upstream outage) to a human instead of silently
-// looping a futile supervisorctl restart.
-Schedule::command('kraite:cron-check-stale-data')
-    ->everyMinute()
-    ->withoutOverlapping();
+// Mark-price freshness is now a check inside `kraite:cron-check-system-health`
+// (see below) — the standalone `kraite:cron-check-stale-data` was retired
+// 2026-05-02 in favour of the unified watchdog so every staleness signal
+// shares the same `system_health_alert` notification + 5-minute per-signal
+// throttle.
 
 // Keep every Binance account's listenKey alive past Binance's 60-minute
 // auto-expiry. The user-data WebSocket daemon
@@ -60,6 +56,29 @@ Schedule::command('kraite:cron-refresh-binance-listen-keys')
     ->everyMinute()
     ->withoutOverlapping();
 
+// Listen-key staleness watchdog. Detects two failure modes the
+// keepalive cron alone cannot surface: (1) an active Binance account
+// with NO listenKey row (daemon never initialised it), and (2) a row
+// whose last_keep_alive_at is older than 30 minutes (keepalive cron
+// not firing for this account). Threshold is well below Binance's
+// 60-minute hard expiry so the operator has time to respond before
+// the WS dies. Per-account dedupe so a sustained failure alerts on
+// every check window without spamming.
+Schedule::command('kraite:cron-check-binance-listen-keys-stale')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
+
+// Generic system-health watchdog. Nine sequential checks across the
+// bot's critical data paths (indicator freshness, balance freshness,
+// daemon heartbeat, dispatcher tick rate, scheduler liveness,
+// failed_jobs overflow, DB connection, Redis connection, Horizon
+// queue depth). Every alert routes through the shared
+// `system_health_alert` notification with a per-signal cache key
+// (5-minute throttle) so distinct failures dedupe independently.
+Schedule::command('kraite:cron-check-system-health')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
+
 // Scheduled jobs that create NEW steps should NOT run during cooldown
 // This prevents new work from being added while we wait for existing steps to finish
 // When cooling down, these tasks won't appear in schedule:list at all
@@ -70,7 +89,7 @@ if (! $isCoolingDown()) {
     // positions still need active reconciliation; the gate flips back the moment
     // cooldown lifts.
     Schedule::command('kraite:cron-sync-orders')
-        ->everyMinute()
+        ->everyFiveMinutes()
         ->withoutOverlapping();
 
     // Proactive 5-minute drift spotter — safety net on top of the
