@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.20.1 - 2026-05-04
+
+### Improvements
+
+- [IMPROVED] **`kraite:cron-check-system-health` cadence relaxed from every 5 minutes to every 7 minutes (`*/7 * * * *`).** Reduces background load from the orphan reconciliation pass (per-account exchange snapshot fetch + classification) without weakening the safety net — drift watchdog still runs every 5 minutes as the faster alert-only monitor; Health follows up with the auto-cancel on its next tick.
+
 ## 1.20.0 - 2026-05-03
 
 ### Improvements

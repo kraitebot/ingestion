@@ -76,7 +76,7 @@ Schedule::command('kraite:cron-check-binance-listen-keys-stale')
 // `system_health_alert` notification with a per-signal cache key
 // (5-minute throttle) so distinct failures dedupe independently.
 Schedule::command('kraite:cron-check-system-health')
-    ->everyFiveMinutes()
+    ->cron('*/7 * * * *')
     ->withoutOverlapping();
 
 // Scheduled jobs that create NEW steps should NOT run during cooldown

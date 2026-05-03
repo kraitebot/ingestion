@@ -28,7 +28,7 @@ Three shipments tonight:
    dominant false-positive (entry MARKET stuck PARTIALLY_FILLED on
    a cancelled position because `SyncPositionOrdersJob` skips
    MARKET) self-heals quietly. Only orphans that survive the
-   refresh get a Pushover. Health #11 (1-min cadence, auto-cancel
+   refresh get a Pushover. Health #11 (7-min cadence, auto-cancel
    + auto-close) remains the enforcement layer; drift is the
    monitor.
 2. **`ActivatePositionJob` race-tolerant MARKET validation** —
