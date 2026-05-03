@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.16.0 - 2026-05-03
+
+### Features
+
+- [NEW FEATURE] **19 new tests** under `tests/Unit/Models/AccountBalanceForTradingTest.php`, `tests/Unit/Support/Health/OrphanReconcilerTest.php`, and `tests/Feature/Health/CheckOrphanCleanupTest.php` pinning the orphan-cleanup behaviour matrix, the Account balance-for-trading helper, and the watchdog integration.
+
+### Improvements
+
+- [IMPROVED] Bumps `kraitebot/core` to v1.16.0 (per-account orphan-handling flags + `Account::balanceForTrading()` + `OrphanReconciler` pure classifier + orphan check #11 in `kraite:cron-check-system-health` + `indicators_synced_at` semantic correction + `NotificationMessageBuilder` match arm fix).
+
 ## 1.15.0 - 2026-05-03
 
 ### Features

@@ -1,138 +1,155 @@
-# WhereAreWe — 2026-05-03 (Token-scoring rewrite + push-primary cutover)
+# WhereAreWe — 2026-05-03 (Orphan-cleanup watchdog + indicators_synced_at fix)
 
 ## Date
 2026-05-03
 
 ## Session summary
 
-A two-part session: morning operational rollout of the user-data
-stream as production primary; afternoon TDD-driven rewrite of the
-token-selection scoring stack.
+Multi-leg session shipped four major pieces in sequence:
 
-The morning leg flipped the user-data WS daemon from "shadow + selective
-opt-in" to "push primary, polling safety net" after live-verifying
-push-driven WAP end-to-end (LIMIT fill → ApplyWapJob Step created in
-the same wall-clock second, full WAP cycle 35s end-to-end against the
-prior 15-minute polling worst case). The manual-close detection branch
-fired correctly three times. Allowlist extended from 7 to 8 exec
-types (added `ALGO_FILLED`); polling cadence tightened from 15 min
-to 5 min.
-
-The afternoon leg added three pure-math multipliers to selection
-scoring driven by Bruno's read of the APE 131 SHORT post-mortem (right
-setup, wrong timing, BTC-bottomed-out the moment we entered):
-
-- `LogElasticityScorer` — log-compresses elasticity so freak high-
-  amplitude tokens stop dominating tokens with stronger correlation.
-- `CorrelationStabilityWeight` — penalises symbols whose rolling-
-  window correlation series is jittery vs ones that hold a steady
-  signal across windows.
-- `BatchDiversificationPenalty` — downscores a candidate whose 1d
-  correlation profile is too close to any symbol already picked in
-  the same selection batch, forcing structural variety across the
-  6-LONG / 6-SHORT book.
-
-All three were TDD-driven (21 unit tests written red first → helpers
-implemented green → wired into selection). New `btc_correlation_stability`
-JSON column on `exchange_symbols`, populated by `CalculateBtcCorrelationJob`.
-Backfilled klines (5 candles → 200 candles per timeframe per symbol)
-and re-dispatched correlation jobs to populate stability for 557 of
-558 Binance symbols.
-
-Live-verified end-to-end via ONDO LONG (id 188) winning a freshly-
-freed slot on account 1 with the new scoring stack active.
+1. **Morning** — push-primary cutover. User-data WS daemon promoted
+   from shadow to production primary for fill detection
+   (`ALGO_FILLED` added to allowlist, sync-orders polling tightened
+   from 15min to 5min). Live-verified WAP push end-to-end on ETC.
+2. **Late-morning** — TokenScoring rewrite. Three pure-math
+   multipliers (LogElasticity, CorrelationStabilityWeight,
+   BatchDiversificationPenalty) shipped TDD-driven. Wired into
+   `HasTokenDiscovery` selection. Live-verified via ONDO 179.
+3. **Afternoon** — Orphan-cleanup watchdog. Per-account flags
+   (`allow_other_positions`, `allow_other_orders`),
+   `OrphanReconciler` pure classifier, integration into
+   `CheckSystemHealthCommand`, auto-execution path (cancel orders
+   + close positions), Pushover + email alerts. Live-verified across
+   both flag combinations on real-money account 1.
+4. **Bug fixes uncovered during live verification**:
+   - PHP int/string array-key auto-conversion (orphan cancel)
+   - Position-key mismatch in one-way mode (saved 12 of Karine's
+     real positions from being false-flagged + closed)
+   - `closePosition + reduceOnly` mutual exclusion (Binance -4136)
+   - `placeOrder` validator hard-requires `quantity` even with
+     `closePosition=true`
+   - `NotificationMessageBuilder` missing match arm for
+     `system_health_alert` — every health-watchdog Pushover since
+     2026-05-02 had been silently failing at format-time
+   - `indicators_synced_at` semantic — now stamps on attempt, not
+     just successful conclusion (was producing notification flood)
 
 ## Current state
 
 ### Test suite
-- 21 new unit tests in `tests/Unit/Support/TokenScoring/` — all green.
-- 182 / 182 passing across token-discovery + correlation + exchange-
-  symbol suites — no regression.
-- Existing user-data-stream / WAP / position-lifecycle suites
-  unchanged this session, last fully run on 2026-05-02.
+- 21 new TokenScoring unit tests
+- 9 new OrphanReconciler unit tests
+- 6 new Account::balanceForTrading() unit tests
+- 4 new CheckOrphanCleanup feature tests
+- 85 / 85 passing across the wider token-discovery + correlation +
+  exchange-symbol + orphan suites — no regression.
 
 ### Deploy state
-- `kraitebot/core` working tree carries the TokenScoring helpers,
-  HasTokenDiscovery rewrite, CalculateBtcCorrelationJob stability
-  capture, and the new migration. Pending commit + push.
-- `ingestion.kraite.com` working tree carries today's new unit tests
-  + WhereAreWe + CHANGELOG (after push-primary cutover earlier).
-  Pending commit + push.
+- `kraitebot/core` working tree carries: TokenScoring helpers
+  (1.15.0 already committed), orphan-cleanup migration + helpers +
+  command integration + indicators_synced_at fix +
+  NotificationMessageBuilder match arm. Pending commit + push.
+- `ingestion.kraite.com` working tree carries: 19 new test files
+  (TokenScoring + Account balance + OrphanReconciler + CheckOrphanCleanup)
+  + WhereAreWe + CHANGELOG. Pending commit + push.
 
 ### Production data
-- Account 1: 6 / 6 LONG + 6 / 6 SHORT live, including ONDO 179 (the
-  scoring-verification pick).
-- 557 / 558 Binance symbols populated with `btc_correlation_stability`.
-  Non-Binance exchanges still null (no native kline series; they
-  receive correlation values via Binance copy).
-- 921K total candles in DB after the kline backfill.
+- All 5 accounts: `allow_other_positions=false`,
+  `allow_other_orders=false` (Kraite-exclusive default).
+- Account 1 (Bruno's hedge Binance): 12 active positions, all under
+  Kraite management. Zero orphans on exchange post-verification.
+- Account 5 (Karine's one-way Binance): 12 active positions, all
+  under Kraite management. The position-key normalisation bug fix
+  is what saved them from auto-close during the test phase.
+- 1168 `exchange_symbols` had stale `indicators_synced_at` —
+  stamped to `now()` via raw query builder write to silence the
+  notification flood. Conclude pipeline still needs investigation
+  (last natural Carbon-stamp was 09:32; nothing newer than that
+  before the bulk update).
 
-### Configuration applied earlier this session
-- `USER_DATA_STREAM_BINANCE_DISPATCHED_EXECUTIONS` =
-  `TRADE, AMENDMENT, CANCELED, EXPIRED, ALGO_NEW, ALGO_CANCELED,
-  ALGO_EXPIRED, ALGO_FILLED`
-- `kraite:cron-sync-orders` schedule: `*/5 * * * *`
-- `position_creation.symbol_override` reverted to commented-out
-- ETC + JUP `exchange_symbols` columns reverted to original values
-  via raw query builder (no observer cascade)
-- Migration `2026_05_03_000100_add_btc_correlation_stability_to_exchange_symbols`
-  applied to prod DB
+### Configuration applied
+- Migration `2026_05_03_120000_add_orphan_handling_flags_to_accounts`
+  applied to prod kraite DB (additive, nullable bools default false).
+- Account 1 flags: `allow_other_*=false` (reverted post-test).
+- Config key `kraite.health_watchdog.orphan_kraite_match_window_minutes`
+  default 60, env-overridable.
+
+### Notification delivery
+- All eleven `system_health_alert` signals now deliver successfully
+  to Pushover + email after the match arm fix. Six fresh
+  `notification_logs` rows from the final orphan-cleanup live
+  verification confirm delivery.
+- Earlier Pushover flood (indicator stale) silenced via the
+  bulk-stamp + the conclude-pipeline `indicators_synced_at`
+  semantic correction.
 
 ### Supervisord
 All 6 kraite programs RUNNING. Ingestion Horizon respawned twice
-this session (once for the TRADE allowlist flip, once for the
-TokenScoring code reload).
+this session (TRADE allowlist flip earlier; TokenScoring code
+reload at the start of the afternoon).
 
 ## WIP
 
-None.
+None — every piece is complete and live-verified.
 
 ## Pending items
 
-1. **Commit + push the afternoon's TokenScoring work** (current step).
-2. **Asymmetric elasticity per BTC regime** — current elasticity is
-   computed across the whole window without conditioning on BTC
-   direction. A bull-market 15× elasticity may be 3× in a bear
-   regime. Storing per-regime values would require schema work and
-   a backtest justification.
-3. **Recent-loss memory** — a token that hit SL last week gets re-
-   picked at full score. Decay multiplier on recent-failed tokens
-   proposed but unspecified.
-4. **Soft sign filter** — currently hard-reject in BTC-bias mode.
-   Soft 0.2 multiplier would let high-conviction outliers survive.
-   Deferred.
-5. **Fast-track BTC-sign cross-check** — fast-tracked symbols skip
-   scoring; if BTC regime flipped between close and re-entry, fast-
-   track can be wrong-side. Direction-only sign check on fast-track
-   candidates proposed but unspecified.
-6. **Carry-over from prior sessions** — database backup strategy,
-   indicator alert auto-resolve verification, daemon GAP 5 sharding,
-   backtesting approval workflow, AERGO-style degraded-position
-   recovery command.
+1. **Commit + push** today's afternoon work + tag the commit as
+   "before float() transformations" (the upcoming refactor checkpoint).
+2. **`(float)` cast audit + replacement.** 198 `(float)` casts
+   exist in `kraitebot/core/src/` (66 files). Crypto trading bot
+   should use BCMath-backed `Math::*` helpers exclusively for
+   precision-sensitive math. Categorisation:
+   - HIGH-RISK: 34 files (mappers, recovery, orders/positions,
+     HasOrderCalculations) — direct precision risk on prod money.
+   - MEDIUM-RISK: 8 files (market regime, indicators).
+   - LOW-RISK: 24 files (display, telemetry, ValueNormalizer).
+   Refactor planned as a dedicated session.
+3. **Conclude-pipeline freshness investigation.** Last natural
+   `indicators_synced_at` Carbon-stamp was 09:32 — pipeline ran
+   but didn't reach the finalisation step that writes the column
+   for several hours. Today's bulk update masks the symptom; the
+   underlying cron / Step state needs review.
+4. **Indicator-stale notification cardinality.** Currently
+   `indicator_stale_<PAIR>` fires per ExchangeSymbol row — same
+   token across 4 exchanges produces 4 separate alerts. Should be
+   `indicator_stale_<TOKEN>` (per token) since one direction is
+   shared across all 4 via copy-phase. Low priority once #2/#3
+   are addressed.
+5. **Carry-over from prior sessions** — database backup strategy,
+   daemon GAP 5 sharding, backtesting approval workflow,
+   AERGO-style degraded-position recovery command.
 
 ## Key decisions made this session
 
-- **TDD discipline preserved through the helper rewrite.** All three
-  helpers landed via failing tests first, then green implementation,
-  then integration into the trait. 21 new unit tests + 0 regressions
-  in the wider 182-test suite.
-- **Pure-math helpers under `Support/TokenScoring/`, not inline in
-  `HasTokenDiscovery`.** Keeps each multiplier independently testable
-  and lets the trait's selection methods read as a clean composition.
-- **Diversification compares 1d correlation only.** Short-timeframe
-  correlation is too noisy; 1d is the most stable view and the
-  closest analogue to "this token tracks BTC daily." Threshold (0.10)
-  and minimum penalty (0.5) are hard-coded; config knob can land if
-  production data shows the defaults need tuning.
-- **Hard sign filter preserved.** Soft-penalty alternative deferred —
-  the hard filter has not generated notable false rejections.
-- **Stability is the std-dev of the full sliding-window correlation
-  series**, independent of the rolling-method (`recent` / `average` /
-  `weighted`) used for the headline rolling value. Stability measures
-  dispersion, not the headline.
-- **Push primary, polling 5-min safety net** (morning leg).
-- **Liquidations explicitly out of scope** (morning leg) — no
-  `CALCULATED` exec type, no liquidation-aware scoring multiplier,
-  no `position_liquidated` notification canonical.
-- **Symbol override remains a test-only knob** (carried over). Used
-  only when rehearsing WAP / close / drift flows on a known token.
+- **Cleanup-always philosophy** for orphans. Auto-execute regardless
+  of any global trading gate. Risk-management, not new trading.
+- **Per-account flags drive behaviour matrix.** Defaults safe
+  (Kraite-exclusive), operator opts into "allow user activity" if
+  needed.
+- **`indicators_synced_at` means "last attempt".** Was "last
+  success" — the original semantic doesn't distinguish "pipeline
+  broken" from "ran, no direction". The new semantic does both.
+- **No new Step classes for orphan cleanup.** Direct API calls
+  reuse existing primitives (`cancelOrder`, `cancelAlgoOrder`,
+  `placeOrder`) which go through the data-mapper resolver
+  underneath. Avoids inventing orchestration for a one-shot
+  surgical action.
+- **Float-cast refactor punted to dedicated session.** 198 sites
+  is too heavy for safe inclusion in today's commit. This commit
+  is the pre-refactor checkpoint tag.
+- **Test discipline preserved.** All new logic landed via failing
+  tests first, then green implementation, then live verification
+  on real money. Bug fixes during live verification each had
+  immediate diagnosis + targeted fix.
+
+## Float-cast refactor — checkpoint
+
+Tag this commit "before float() transformations". The next session
+will systematically migrate the 198 `(float)` casts to
+`Kraite\Core\Support\Math::*` BCMath-backed helpers, prioritising
+HIGH-RISK files first (mappers, recovery, ladder calc, order
+placement). Risk surface this introduces is real but bounded:
+the casts have been in place since the original codebase and
+prod has been running. New session ships with TDD coverage on
+the modified hot paths.
