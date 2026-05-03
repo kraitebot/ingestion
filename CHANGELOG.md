@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.20.0 - 2026-05-03
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.20.0** — drift watchdog pivoted to alert-only with surgical silent self-heal; `ActivatePositionJob` MARKET race-tolerant poll-with-timeout; reverts of the pre-flight `apiSync` and `PreparePositionReplacementJob` dedupe scan that triggered the 192-second `exchange_symbols` lock-wait.
+- [IMPROVED] **`CheckDriftsCommandTest` rewritten against the alert-only contract.** Nine cases survive (Scope-3 cases removed with the Scope-3 revert). The four cases that asserted dispatch / inline-DB-cancel behaviour now assert no dispatch, no DB writes, single notification per parent — covering ghost-only, real-only, mixed-orphan, and failed-parent variants.
+- [IMPROVED] **New `ActivatePositionJobMarketRetryTest` pins the race-tolerant MARKET validation.** Three TDD cases: happy-path (already FILLED), exhausted retry budget (stays non-FILLED, throws), mid-poll promotion (flips to FILLED between iterations).
+
 ## 1.19.0 - 2026-05-03
 
 ### Improvements

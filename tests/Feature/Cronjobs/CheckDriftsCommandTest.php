@@ -175,9 +175,9 @@ it('dispatches PrepareSyncOrdersJob and notifies on a quiet drifted active posit
 
     expect($exit)->toBe(0);
 
-    $syncSteps = Step::where('class', PrepareSyncOrdersJob::class)->get();
-    expect($syncSteps)->toHaveCount(1);
-    expect($syncSteps->first()->arguments['positionId'])->toBe($position->id);
+    // Alert-only mode (2026-05-03): no dispatch — reactive sync
+    // owns the heal. Spotter just surfaces.
+    expect(Step::where('class', PrepareSyncOrdersJob::class)->count())->toBe(0);
 
     Notification::assertCount(1);
     Notification::assertSentTo(Kraite::admin(), AlertNotification::class);
@@ -232,8 +232,10 @@ it('catches the WAP scenario end-to-end: PROFIT-LIMIT price drift on a quiet pos
 
     $this->artisan('kraite:cron-check-drifts')->assertSuccessful();
 
-    // Heal dispatched
-    expect(Step::where('class', PrepareSyncOrdersJob::class)->count())->toBe(1);
+    // Alert-only mode (2026-05-03): the spotter no longer dispatches
+    // PrepareSyncOrdersJob. The reactive sync-orders cron + WS push
+    // path own the actual healing — drift command just surfaces.
+    expect(Step::where('class', PrepareSyncOrdersJob::class)->count())->toBe(0);
 
     // Pushover (admin only) fired exactly once. We assert via the
     // notifiable-less form because Kraite::admin() returns a virtual
@@ -293,13 +295,15 @@ it('never audits positions in mid-flight statuses (syncing, waping, closing, ope
     Notification::assertNothingSent();
 });
 
-it('dispatches one PrepareCancelOrphanOrders per orphan parent (covers algo + non-algo orders)', function () {
-    // Phase 3A: spotter delegates to the existing close-workflow cancel
-    // machinery. ONE Step per orphan parent, regardless of how many
-    // individual orders that parent carries — the lifecycle behind it
-    // handles bulk-cancel for regular orders + per-order cancel for
-    // algo orders. Reuses the same code path the close workflow already
-    // uses in production.
+it('alerts but does not dispatch the cancel-lifecycle when orphans survive the silent self-heal', function () {
+    // Alert-only mode (2026-05-03): the spotter no longer dispatches
+    // PrepareCancelOrphanOrdersJob. Per orphan with an
+    // `exchange_order_id`, it attempts a silent `apiSync` first.
+    // `Http::preventStrayRequests()` from Pest.php blocks the
+    // outbound REST call so the sync throws + is swallowed; the
+    // local row stays at its original status, the orphan survives,
+    // and ONE summary pushover surfaces the parent position. Manual
+    // review handles the actual cancel.
     $f = makeSpotterFixture(token: 'ORPHAN', status: 'closed');
     $position = $f['position'];
 
@@ -311,8 +315,6 @@ it('dispatches one PrepareCancelOrphanOrders per orphan parent (covers algo + no
         'type' => 'STOP-MARKET', 'side' => 'SELL', 'status' => 'NEW',
         'price' => '0.90000000', 'quantity' => '10.00000000', 'is_algo' => true,
     ]);
-    // A regular LIMIT — Phase 1 dispatched nothing for these; Phase 3A
-    // covers them via the bulk-cancel atomic the lifecycle spawns.
     makeSpotterOrder($position->id, [
         'type' => 'LIMIT', 'side' => 'BUY', 'status' => 'NEW',
         'price' => '0.95000000', 'quantity' => '10.00000000', 'is_algo' => false,
@@ -322,9 +324,8 @@ it('dispatches one PrepareCancelOrphanOrders per orphan parent (covers algo + no
 
     $this->artisan('kraite:cron-check-drifts')->assertSuccessful();
 
-    $cancelSteps = Step::where('class', PrepareCancelOrphanOrdersJob::class)->get();
-    expect($cancelSteps)->toHaveCount(1);
-    expect($cancelSteps->first()->arguments['positionId'])->toBe($position->id);
+    // No lifecycle dispatch.
+    expect(Step::where('class', PrepareCancelOrphanOrdersJob::class)->count())->toBe(0);
 
     // ONE summary pushover for the parent position.
     Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
@@ -353,12 +354,13 @@ it('skips orphan cancellation when one of the orphan orders was touched recently
     Notification::assertNothingSent();
 });
 
-it('marks ghost orphans CANCELLED in DB inline, dispatches no cancel job, still notifies', function () {
-    // Ghost order: never reached the exchange (no exchange_order_id).
-    // apiCancel has nothing to act on. The spotter goes beyond pure
-    // detection: it UPDATEs status='CANCELLED' in DB inline so the
-    // notification stops re-firing forever. One pushover surfaces what
-    // was done.
+it('does not touch ghost orphan rows but still alerts the operator', function () {
+    // Alert-only mode (2026-05-03): the spotter never writes to
+    // local Order rows directly. Ghost orphans (no
+    // `exchange_order_id`, never reached the exchange) are skipped
+    // by the silent-sync loop (nothing to query) and stay at their
+    // original status. One pushover surfaces them so the operator
+    // can decide whether to manually cancel the local row.
     $f = makeSpotterFixture(token: 'GHOST', status: 'failed');
     $position = $f['position'];
 
@@ -373,20 +375,21 @@ it('marks ghost orphans CANCELLED in DB inline, dispatches no cancel job, still 
 
     $this->artisan('kraite:cron-check-drifts')->assertSuccessful();
 
-    // No cancel job dispatched (no api id to act on).
+    // No cancel job dispatched.
     expect(Step::where('class', PrepareCancelOrphanOrdersJob::class)->count())->toBe(0);
-    // DB row reconciled inline.
-    expect(Order::find($ghost->id)->status)->toBe('CANCELLED');
-    // One operator pushover summarising the action.
+    // Ghost row left UNTOUCHED — alert-only mode does not write.
+    expect(Order::find($ghost->id)->status)->toBe('NEW');
+    // One operator pushover surfacing the ghost.
     Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
 });
 
-it('handles a mixed orphan position: ghost gets DB-cancelled, real ones get the lifecycle dispatched, one notification for both', function () {
-    // Real-world shape (BSBUSDT / LABUSDT on prod): same parent carries
-    // a STOP-MARKET ghost (algo, no exchange_order_id) AND real orders
-    // that DID reach the exchange. The spotter handles both tracks on
-    // a single pass: ghost is reconciled inline in DB, real orders are
-    // delegated to the cancel-orphan-orders lifecycle. One pushover.
+it('on a mixed orphan position (ghost + real): no DB writes, no dispatch, one notification', function () {
+    // Alert-only mode (2026-05-03): the spotter never writes Order
+    // rows and never dispatches a cancel lifecycle. Real orphans
+    // (with an `exchange_order_id`) get a silent `apiSync` attempt
+    // that gets blocked by `Http::preventStrayRequests()` and
+    // swallowed; ghosts (no `exchange_order_id`) are skipped by the
+    // sync loop. Both survive at NEW. One summary pushover.
     $f = makeSpotterFixture(token: 'MIXED', status: 'failed');
     $position = $f['position'];
 
@@ -400,25 +403,26 @@ it('handles a mixed orphan position: ghost gets DB-cancelled, real ones get the 
         'type' => 'STOP-MARKET', 'side' => 'SELL', 'status' => 'NEW',
         'price' => '0.91000000', 'quantity' => '10.00000000',
         'is_algo' => true,
-        'exchange_order_id' => '1234567890', // Reached the exchange.
+        'exchange_order_id' => '1234567890',
     ]);
 
     ageAllOrdersOutsideQuietWindow($position->id);
 
     $this->artisan('kraite:cron-check-drifts')->assertSuccessful();
 
-    // Ghost: marked CANCELLED inline.
-    expect(Order::find($ghost->id)->status)->toBe('CANCELLED');
-    // Real algo: dispatched for exchange-side cancel via the lifecycle.
-    $cancelSteps = Step::where('class', PrepareCancelOrphanOrdersJob::class)->get();
-    expect($cancelSteps)->toHaveCount(1);
-    expect($cancelSteps->first()->arguments['positionId'])->toBe($position->id);
-    expect(Order::find($real->id)->status)->toBe('NEW'); // The cancel lifecycle, not the spotter, flips this once the exchange call completes.
-    // One pushover per parent — covers both tracks.
+    // Both rows left untouched.
+    expect(Order::find($ghost->id)->status)->toBe('NEW');
+    expect(Order::find($real->id)->status)->toBe('NEW');
+
+    // No cancel-lifecycle dispatched.
+    expect(Step::where('class', PrepareCancelOrphanOrdersJob::class)->count())->toBe(0);
+
+    // One pushover per parent.
     Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
 });
 
-it('treats failed positions the same as closed for orphan cleanup', function () {
+it('treats failed positions the same as closed for orphan detection', function () {
+    // Alert-only mode (2026-05-03): same alert path, no dispatch.
     $f = makeSpotterFixture(token: 'FAIL', status: 'failed');
     $position = $f['position'];
 
@@ -431,6 +435,6 @@ it('treats failed positions the same as closed for orphan cleanup', function () 
 
     $this->artisan('kraite:cron-check-drifts')->assertSuccessful();
 
-    expect(Step::where('class', PrepareCancelOrphanOrdersJob::class)->count())->toBe(1);
+    expect(Step::where('class', PrepareCancelOrphanOrdersJob::class)->count())->toBe(0);
     Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
 });
