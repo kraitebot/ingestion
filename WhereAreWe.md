@@ -1,139 +1,171 @@
-# WhereAreWe — 2026-05-03 (one-way-mode live verification + dispatcher-tick watchdog disabled)
+# WhereAreWe — 2026-05-03 (backups + notification containment + cascade fix)
 
 ## Date
 2026-05-03
 
 ## Session summary
 
-Capstone day on a long-running session. Today's work shipped in
-three releases (1.17.0 → 1.17.1) and verified end-to-end via a
-live walkthrough on Karine Esnault's one-way-mode Binance account.
+Long capstone day. Built on the morning's float→BCMath migration and
+afternoon's one-way-mode live verification with three more shipments:
 
-1. **Float → BCMath migration packs 11-12 + nano-pack** —
-   `SupportResistanceProximity`, `Position::daily_variation_percentage`,
-   `AssignBestTokensToPositionSlotsJob` direction filter,
-   `DriftCheckService` direction + tolerance helpers,
-   Bybit/Bitget/Kucoin recoverer non-zero filters,
-   `RegimeCalculator::futVolHot` accumulator,
-   `PriceVolatilityIndicator::volatilityPercent`,
-   `MarketShockCircuitBreaker::priorBarPct`. Twelve new tests
-   added inline.
-2. **`indicators_synced_at` skip-stamp fix** — the
-   `same_indicator_data` skip branch now stamps the attempt time
-   alongside the existing concluded / exhausted / path-invalid
-   branches. Resolves the LINKUSDC false-positive stale alert
-   that ran for nearly a full day on long-timeframe (1d) symbols.
-3. **Dispatcher-tick stale watchdog disabled** — signal mismatch.
-   `steps_dispatcher.last_selected_at` updates only on root-step
-   CREATE, not on every dispatch tick. Between minute-level
-   crons MAX naturally exceeds the 60s threshold. Commented out
-   in `CheckSystemHealthCommand` runner array with re-enable
-   condition documented (per-tick stamp column on
-   `steps_dispatcher` in the dispatcher path package).
-4. **One-way-mode live verification** — five live scenarios on
-   Karine's ONDOUSDT LONG #188: LIMIT modify, TP modify, SL
-   modify, LIMIT + SL concurrent delete, TP delete. All five
-   end states matched the canonical reference price + qty.
-   Step dispatcher carried every restore. WAP one-way path
-   confirmed by code inspection + `CalculateWapBuildPositionKeyTest`
-   coverage (no live test needed — Karine's account is the
-   regression case the test was authored from).
+1. **Database backups (go-live blocker #1)** — spatie/laravel-backup
+   + Backblaze B2 with a custom `App\Support\Backup\TieredStrategy`
+   that implements grandfather-father-son retention (3 hourly + 3
+   daily + 3 weekly snapshots, GFS-style). Local + B2 disks.
+   Encrypted zip via `BACKUP_ARCHIVE_PASSWORD`. Hourly at minute 7
+   off the conclude:30 / refresh:15 / bscs:50 / bscs:55 bursts.
+   End-to-end verified — two manual runs landed 945 MB encrypted
+   zips on both disks. 8 unit tests pin the tiered bucketing.
+2. **Notification failure containment** — afternoon Pushover-429
+   burst killed the price daemon: 429 → `CouldNotSendNotification`
+   propagated → daemon's exception handler invoked Collision →
+   ~50 vendor classes loaded for stack rendering → 1024 fd
+   ceiling exceeded → "Too many open files" → process death →
+   supervisor respawn → mark-prices stalled ~30s → health
+   watchdog fired stale-price alerts → Pushover 429 again. Two
+   layers of fix:
+     - Supervisor fd ceiling raised from 1024 → 65536 via
+       `bash -c "ulimit -n 65536; exec php ..."` command
+       wrappers on the three kraite daemons.
+     - `NotificationService::sendToSpecificUser` wraps
+       `$user->notify()` in `try/catch (Throwable)` — channel
+       exceptions log + return false instead of propagating up
+       to the calling daemon.
+3. **Dropped `accounts.margin_ratio_threshold_to_notify`** — dead
+   column, never had a reader, scaffolded for a never-built
+   liquidation watchdog. Bot does not own liquidation handling
+   (out of product scope). Migration + factory + dashboard
+   cleanup. Ran on prod with horizon-terminate-first.
 
 ## Current state
 
 ### Test suite
-- Pest: **1578 passing / 0 failing** (1 risky, 6 incomplete, 4
-  todos — all pre-existing). Suite duration ~225s.
+- Pest: **1586 passing / 0 failing** (1 risky, 6 incomplete, 4
+  todos — all pre-existing). Suite duration ~238s.
+- 8 new tests added this session in
+  `tests/Unit/Support/Backup/TieredStrategyTest.php`.
 
-### Releases
+### Releases (today, since the morning push)
 - `kraitebot/core` 1.17.0 — float→BCMath packs 1-12 + nano-pack
-  + `indicators_synced_at` skip-stamp fix.
+  + `indicators_synced_at` skip-stamp.
 - `kraitebot/core` 1.17.1 — dispatcher-tick stale watchdog
   disabled.
+- `kraitebot/core` 1.18.0 (next push) — `NotificationService`
+  failure-containment + drop margin-ratio column.
 - `ingestion.kraite.com` 1.17.0 — bumps core, adds 13 new
-  tests. composer.lock bumped + pushed for 1.17.1.
-
-### Float-cast inventory
-- Started session at: 107 (after packs 1-10 carried in).
-- Ended session at: **91**.
-- Remaining 91 = legitimate KEEP candidates (display coercion,
-  log-using statistics, return-type contracts, downstream
-  consumer cascades, final API surfaces).
+  tests.
+- `ingestion.kraite.com` 1.18.0 (next push) — bumps core,
+  spatie/laravel-backup + flysystem-aws-s3-v3 installed,
+  `TieredStrategy` shipped, B2 disk wired, backup schedule
+  active.
 
 ### Production state
-- Horizon terminated mid-session twice — once for the conclude
-  job-class change (skip-stamp), once for the dispatcher-tick
-  watchdog change. Supervisor respawn confirmed both times.
-- One-way-mode push path verified live on real money (Karine's
-  Binance account) across LIMIT / PROFIT-LIMIT / STOP-MARKET
-  modify + cancel paths, plus a concurrent dual-cancel.
+- Three kraite supervisors restarted with new fd ceiling
+  (`Max open files = 65536`). Currently 157 fds in use →
+  0.2% headroom.
+- Horizon terminated + respawned with new bytecode after
+  `NotificationService` change.
+- All 1977 exchange_symbols mark-prices reading 1s fresh.
+- B2 bucket holds two `kraite/<timestamp>.zip` test snapshots.
 
 ## WIP / mid-task
 
-None. Session is at a clean checkpoint. Migration paused at 91
-casts, all live verification passed, all three releases pushed.
+None. All shipped work compiles + tests green. Push pending.
 
 ## Pending items
 
-1. **Dispatcher-tick stale watchdog re-enable** — needs a
+### Spawned by today's session
+1. **Pushover bridge for spatie backup events** — spatie's
+   built-in Mail/Slack/Discord channels are disabled in
+   `config/backup.php`. `UnhealthyBackupWasFound` and friends
+   currently only log. Need an `EventServiceProvider` listener
+   that routes to the existing `system_health_alert` Pushover
+   canonical via `NotificationService::send`.
+2. **`kraite:backup-restore-drill` command** — restore the
+   newest daily backup into a `kraite_dr` DB connection, assert
+   row counts on critical tables (accounts, positions, orders,
+   users, model_logs) within ±5% of live. Monthly schedule.
+   Closes the "backup never restored = theatre" gap.
+3. **`AlertNotification` `ShouldQueue` migration** — currently
+   sync. Caller still pays the Pushover round-trip latency on
+   every send. Push to Horizon `default` queue so failures
+   retry with backoff and the caller is fully decoupled.
+   Smaller cascade-prevention upgrade on top of the already-
+   shipped try/catch.
+4. **`BINANCE_NO_CHANGE` / `BYBIT_NO_CHANGE` Token Delisting
+   notifications** — exhaustive search confirmed these tokens
+   exist NOWHERE in production code, prod DB, test DB, redis
+   queues, or filesystem. Strongest hypothesis: stale Pushover
+   phone history from BEFORE the 2026-05-01 prod-DB-wipe (the
+   Pushover app retains delivered messages indefinitely, with
+   their original timestamps). Need Bruno to share the exact
+   timestamp on the next received message — if pre-2026-05-02,
+   close as "ghost from old DB".
+
+### Carried from prior sessions
+5. **Dispatcher-tick stale watchdog re-enable** — needs a
    per-tick stamp column on `steps_dispatcher` in the
-   `brunocfalcao/step-dispatcher` path package, written by every
-   dispatch attempt regardless of work. Migration + writer +
-   watchdog read swap. Standalone PR scope.
-2. **Daily `BINANCE_NO_CHANGE` / `BYBIT_NO_CHANGE` Token
-   Delisting notifications** — source still unknown. Test-leak
-   hypothesis disproved. Need Bruno to forward the next received
-   message (title + body + sent_at + channel) so the origin can
-   be traced.
-3. **`indicator_stale_<PAIR>` cardinality** (carry-over) —
-   currently fires per ExchangeSymbol row, so one token across 4
-   exchanges produces 4 alerts. Direction is shared via
-   copy-phase; should reduce to per-token. Low priority.
-4. **Carry-over from prior sessions** — database backup
-   strategy, daemon GAP 5 sharding, backtesting approval
-   workflow, AERGO-style degraded-position recovery command.
+   `brunocfalcao/step-dispatcher` path package (the existing
+   `last_selected_at` only updates on root-step CREATE).
+6. **`indicator_stale_<PAIR>` cardinality** — fires per
+   ExchangeSymbol row → 4 alerts per token across 4 exchanges.
+   Direction is shared via copy-phase; should reduce to
+   per-token. Low priority.
+7. **Bitget orphan + Bybit/KuCoin recoverer live verification**
+   — code-tested only, no live drill yet on those exchanges.
+8. **Multi-account concurrency stress** — zero tests, no live
+   drill.
+9. **Boot-time position reconciliation auto-hook** —
+   `kraite:recover-positions` command exists but is operator-
+   triggered. Wire into a deploy hook.
+10. **Per-account remote kill switch** — `accounts.can_trade`
+    flag exists but is only DB-mutable. Telegram /halt-account
+    or admin-web action.
+11. **Secrets / `.env`** — DB API keys are encrypted at rest,
+    but `APP_KEY` lives next to ciphertext in `.env`. Sealed-
+    secret store decision pending.
+12. **Carry-overs** — daemon GAP 5 sharding, backtesting
+    approval workflow, AERGO-style degraded-position recovery
+    primitive.
 
 ## Key decisions made this session
 
-- **Stop the float→BCMath migration at 91, not 0.** Remaining
-  casts encode design contracts (display coercion, log-using
-  statistics, return-type surfaces, cascading consumer
-  contracts). Forcing more either changes message format,
-  introduces float→BCMath→float roundtrip noise, or pulls in a
-  multi-file cascade refactor that's out of pack-of-ten scope.
-- **Dispatcher-tick fix is its own change.** Disabling the
-  false-positive check today, the proper fix (per-tick stamp
-  column) lands as a standalone PR against the step-dispatcher
-  path package, not mixed with the float migration packs.
-- **`indicators_synced_at` is a liveness signal, stamped on
-  every successful end-to-end run.** All four success branches
-  (concluded, exhausted, path-invalid, skip) stamp it.
-- **Skip live WAP test on one-way mode.** Code path
-  (`CalculateWapAndModifyProfitOrderJob::buildPositionKey()`)
-  and test coverage (`CalculateWapBuildPositionKeyTest` +
-  `CalculateWapSnapshotLookupTest`) already cover Karine's
-  account explicitly — the test was authored from the
-  `:BOTH`-key bug Karine's account surfaced.
-- **Test-fix for `_NO_CHANGE` notifications was wrong premise.**
-  CI uses stub Pushover creds, no daily test cron, zero
-  `token_delisting` rows in `notification_logs`. Test changes
-  reverted.
-- **Float coerces trailing zeros, string preserves them.**
-  Pinned by writing a baseline test for `NotificationMessageBuilder`
-  display blocks and watching `-2.10` vs `-2.1` diverge under
-  string coercion. Display-block casts stay as `(float)`.
+- **Backblaze B2 over S3 / Hetzner / rsync-to-peer.** Cheapest
+  off-host target for ~10 GB encrypted backups, S3-compatible
+  API (so `flysystem-aws-s3-v3` works unchanged), EU-resident,
+  free-tier sufficient.
+- **Custom `TieredStrategy` over spatie defaults.** Default
+  strategy is days-based; doesn't fit the corruption-resilience
+  requirement ("don't replace the latest snapshot — keep at
+  least N at progressively older ages"). 120 lines + 8 unit
+  tests, fully exact. Tier counts configurable via
+  `kraite.backup_tiers.{hourly,daily,weekly}`.
+- **Notifications must never crash the caller.** `NotificationService`
+  is observability infrastructure. The fd-ceiling fix raised the
+  wall, but the right control is the contract — channel
+  exceptions never propagate up. Try/catch is the minimum
+  viable break of the cascade. Deferred enhancements
+  (`ShouldQueue`, circuit breaker, digest mode) sit on top.
+- **Drop the dead column rather than wire a feature for it.**
+  The bot's product scope explicitly excludes liquidation
+  management. Building a watchdog around a never-read column
+  would be feature-creep into out-of-scope territory.
+- **`bash -c "ulimit -n 65536; exec php ..."` wrap, not
+  systemd `LimitNOFILE` override.** Lower blast radius — only
+  the three kraite daemons restart on `supervisorctl update`,
+  not every supervisor program on the host.
 
-## Float→BCMath migration — running ledger
+## Float→BCMath migration — running ledger (unchanged)
 
 | Pack | Sites | Net removed | Suite | Notes |
 |---|---|---|---|---|
 | 1-10 (carried) | ~91 | ~91 | green | order mappers, recovery, billing, exchange info |
-| 11 | 10 | 8 | green | SR, daily-variation, AssignBest BOTH, drift normalizeDirection, Bybit recoverer |
+| 11 | 10 | 8 | green | SR, daily-variation, AssignBest BOTH, drift, Bybit recoverer |
 | 12 | 9 | 7 | green | Drift tolerance, Bitget/Kucoin recoverers, futVolHot, volatility |
 | nano | 2 | 1 | green | MarketShockCircuitBreaker priorBarPct |
-| **Total** | **~112** | **~107** | **1578 ✓** | 198 → 91 |
+| **Total** | **~112** | **~107** | **1586 ✓** | 198 → 91 |
 
-## One-way-mode live verification — running ledger
+## One-way-mode live verification — running ledger (unchanged)
 
 | # | scenario | path | restore time |
 |---|---|---|---|

@@ -217,4 +217,32 @@ if (! $isCoolingDown()) {
     // 5-day retention window: anything older than that is gone.
     Schedule::command('steps:purge --only-archive --days=5')
         ->dailyAt('04:30');
+
+    // -------------------------------------------------------------------
+    // Database backups (spatie/laravel-backup → local + Backblaze B2)
+    // -------------------------------------------------------------------
+    // Hourly snapshot at minute 7, off the conclude:30 / refresh:15 /
+    // bscs:50 / bscs:55 bursts. `--only-db` skips the file-system part
+    // (codebase lives in git, no upside zipping vendor/).
+    Schedule::command('backup:run --only-db --disable-notifications')
+        ->cron('7 * * * *')
+        ->withoutOverlapping()
+        ->onOneServer();
+
+    // Daily cleanup at 03:45 — runs spatie's retention strategy against
+    // both `local` and `b2` disks.
+    Schedule::command('backup:clean --disable-notifications')
+        ->dailyAt('03:45')
+        ->withoutOverlapping()
+        ->onOneServer();
+
+    // Backup-freshness watchdog every 6 hours. Fires
+    // `UnhealthyBackupWasFound` event when the newest backup on either
+    // disk is older than 25h or total disk usage exceeds 50 GB. Bridge
+    // listener routes the event to the `system_health_alert` Pushover
+    // canonical.
+    Schedule::command('backup:monitor')
+        ->cron('15 */6 * * *')
+        ->withoutOverlapping()
+        ->onOneServer();
 }

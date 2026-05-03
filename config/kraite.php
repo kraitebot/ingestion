@@ -6,6 +6,25 @@ return [
 
     'can_dispatch_steps' => env('CAN_DISPATCH_STEPS', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Backup Tier Counts (TieredStrategy)
+    |--------------------------------------------------------------------------
+    |
+    | Corruption-resilient retention for `spatie/laravel-backup`. Each
+    | tier holds the newest N distinct snapshots within its time
+    | granularity. Total kept = hourly + daily + weekly. With the
+    | defaults (3 / 3 / 3) the recovery surface spans roughly the
+    | last few hours, last few days, and last few weeks — so an
+    | undetected corruption window has to span multiple weeks before
+    | it wipes the safety net.
+    */
+    'backup_tiers' => [
+        'hourly' => (int) env('BACKUP_TIER_HOURLY', 3),
+        'daily' => (int) env('BACKUP_TIER_DAILY', 3),
+        'weekly' => (int) env('BACKUP_TIER_WEEKLY', 3),
+    ],
+
     /**
      * Small safety tolerance to lower the leverage bracket in case is
      * falls inside that percentage gap, to avoid last limit order rejections.

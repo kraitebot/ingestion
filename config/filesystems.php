@@ -62,6 +62,23 @@ return [
             'report' => false,
         ],
 
+        // Backblaze B2 — DB backup destination. Spatie/laravel-backup
+        // uploads dumps here via the S3-compatible API. The bucket
+        // (`kraite-backups`) is private, server-side encrypted, has
+        // Object Lock disabled, and "Keep only the last version"
+        // lifecycle so spatie's retention pruning is permanent.
+        'b2' => [
+            'driver' => 's3',
+            'key' => env('B2_KEY_ID'),
+            'secret' => env('B2_APPLICATION_KEY'),
+            'region' => env('B2_REGION'),
+            'bucket' => env('B2_BUCKET'),
+            'endpoint' => env('B2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+            'report' => false,
+        ],
+
     ],
 
     /*

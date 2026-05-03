@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.18.0 - 2026-05-03
+
+### Features
+
+- [NEW FEATURE] **Database backups via `spatie/laravel-backup` + Backblaze B2.** Hourly snapshots (off the conclude:30 / refresh:15 / bscs bursts at minute 7) of the `kraite` MySQL database, gzipped + AES-256 zip-encrypted via `BACKUP_ARCHIVE_PASSWORD`, written to two destinations: `local` (storage/app/private/kraite/) for fast restore + `b2` (private Backblaze B2 bucket `kraite-backups` in `eu-central-003`) for off-host durability. `backup:clean` runs daily at 03:45, `backup:monitor` every 6h.
+- [NEW FEATURE] **`App\Support\Backup\TieredStrategy` — corruption-resilient retention.** Custom spatie cleanup strategy implementing grandfather-father-son tiering: keep the newest N hourly + N daily + N weekly snapshots (configurable via `kraite.backup_tiers.*`, defaults 3/3/3). Each tier skips weeks/days already represented in the lower tier so the retained set covers progressively older time windows. An undetected corruption window has to span multiple weeks before the grandfather tier rolls forward past it. 8 unit tests pin the bucketing rules.
+
+### Improvements
+
+- [IMPROVED] **Supervisor file-descriptor ceiling raised to 65536.** The three kraite supervisor configs (`kraite-ingestion-binance-prices`, `...binance-user-data`, `...horizon`) now wrap the program command with `bash -c "ulimit -n 65536; exec php ..."`. Prevents "Too many open files" cascades during burst exception rendering. Other supervisor programs on the host (eduka, friday, juty, hyperframes, jarvis, codiant) untouched.
+- [IMPROVED] **Bumps `kraitebot/core` to 1.18.0** — `NotificationService` failure containment + drop dead `accounts.margin_ratio_threshold_to_notify` column.
+
+### Dependencies
+
+- [DEPENDENCIES] Adds `spatie/laravel-backup ^10.2` + `league/flysystem-aws-s3-v3 ^3.32`.
+
 ## 1.17.0 - 2026-05-03
 
 ### Improvements
