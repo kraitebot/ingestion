@@ -159,3 +159,49 @@ test('orders attached to currently-open Kraite positions are never flagged as or
 
     expect($report->ordersToCancel)->toBe([]);
 });
+
+test('hasInflightPositions=true suppresses order-orphan detection but keeps position-orphan detection active', function () {
+    // Reproduces the 2026-05-03 false-positive on ETCUSDT/LONG: a
+    // position was being opened, its limit ladder was being placed
+    // on the exchange, but the local Order rows had not yet received
+    // their `exchange_order_id` writes. The orphan classifier saw
+    // exchange orders A/B/C with no local match → flagged as orphans
+    // → cancelled legitimate working orders. The in-flight guard
+    // skips the order-cancel decision entirely while any position
+    // on the account is mid-creation.
+    $report = OrphanReconciler::reconcile(
+        exchangeOpenOrderIds: ['111', '222', '333'],
+        exchangePositionKeys: ['ETCUSDT:LONG', 'BTCUSDT:LONG'],
+        kraiteOpenOrderIds: [], // empty — local Order rows still being written
+        kraitePositionKeys: ['ETCUSDT:LONG'], // ETC matched, BTC not
+        kraiteRecentlyClosedOrderIds: [],
+        allowOtherOrders: false,
+        allowOtherPositions: false,
+        hasInflightPositions: true,
+    );
+
+    // Order-orphan check skipped → empty.
+    expect($report->ordersToCancel)->toBe([]);
+    // Position-orphan check still runs — BTCUSDT:LONG has no local
+    // counterpart, gets flagged.
+    expect($report->positionsToClose)->toBe(['BTCUSDT:LONG']);
+});
+
+test('hasInflightPositions=false (default) preserves prior behaviour', function () {
+    // Same input as the test above but with the flag off — order
+    // classification fires normally. Pinned to confirm the new
+    // parameter defaults to off and does not regress the existing
+    // contract.
+    $report = OrphanReconciler::reconcile(
+        exchangeOpenOrderIds: ['111', '222', '333'],
+        exchangePositionKeys: ['ETCUSDT:LONG', 'BTCUSDT:LONG'],
+        kraiteOpenOrderIds: [],
+        kraitePositionKeys: ['ETCUSDT:LONG'],
+        kraiteRecentlyClosedOrderIds: [],
+        allowOtherOrders: false,
+        allowOtherPositions: false,
+    );
+
+    expect($report->ordersToCancel)->toEqualCanonicalizing(['111', '222', '333']);
+    expect($report->positionsToClose)->toBe(['BTCUSDT:LONG']);
+});

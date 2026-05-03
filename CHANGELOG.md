@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.19.0 - 2026-05-03
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.19.0** — WebSocket idle-watchdog data-frame discipline + drift-spotter pre-flight sync + richer `position_orphan_orders_detected` body (exchange + client ids).
+- [IMPROVED] **`OrphanReconciler::reconcile` in-flight guard regression test (carry-over from 1.18.1).** Two new unit cases pin the new `hasInflightPositions` parameter — when set, order-orphan classification is skipped while position-orphan classification still runs. Prevents the false-positive on ETCUSDT/LONG that fired during a position's mid-creation order placement.
+
 ## 1.18.0 - 2026-05-03
 
 ### Features
