@@ -142,15 +142,24 @@ describe('Binance delisting detection', function () {
     it('does NOT trigger notification when delivery_ts_ms is unchanged', function () {
         setupNotificationPrerequisites();
 
-        // Seed with a real date so the "create-time" notification fires
-        // OUTSIDE the assertion window. We're testing that a no-op save()
-        // doesn't re-fire — not the discovery notification on first sync.
+        // Fake BEFORE the row is created so the discovery-time
+        // notification can't escape to real Pushover via the shared
+        // production `.env` (no `.env.testing` exists). The earlier
+        // shape of this test placed `Notification::fake()` after
+        // creation and leaked one alert per pest run with token
+        // "BINANCE_NO_CHANGE" landing on Bruno's phone. We rely on
+        // Notification::fake() catching every send() in the test
+        // process — discovery + the no-op save we're asserting on.
+        Notification::fake();
+
         $exchangeSymbol = createExchangeSymbolForExchange(
             'binance',
             'BINANCE_NO_CHANGE',
             1735689600000
         );
 
+        // Reset the fake so the discovery notification (already
+        // captured above) doesn't pollute the no-op assertion.
         Notification::fake();
 
         $exchangeSymbol->delivery_ts_ms = 1735689600000;
@@ -225,15 +234,22 @@ describe('Bybit delisting detection', function () {
     it('does NOT trigger notification when delivery_ts_ms is unchanged', function () {
         setupNotificationPrerequisites();
 
-        // Seed with a real date so the "create-time" notification fires
-        // OUTSIDE the assertion window — we're testing the no-op save(),
-        // not the initial discovery.
+        // Fake BEFORE the row is created so the discovery-time
+        // notification can't escape to real Pushover via the shared
+        // production `.env` (no `.env.testing` exists). The earlier
+        // shape of this test placed `Notification::fake()` after
+        // creation and leaked one alert per pest run with token
+        // "BYBIT_NO_CHANGE" landing on Bruno's phone.
+        Notification::fake();
+
         $exchangeSymbol = createExchangeSymbolForExchange(
             'bybit',
             'BYBIT_NO_CHANGE',
             1735689600000
         );
 
+        // Reset the fake so the discovery notification (already
+        // captured above) doesn't pollute the no-op assertion.
         Notification::fake();
 
         $exchangeSymbol->delivery_ts_ms = 1735689600000;

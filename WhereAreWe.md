@@ -1,92 +1,111 @@
-# WhereAreWe — 2026-05-03 (drift alert-only + MARKET race fix + reverts)
+# WhereAreWe — 2026-05-04 (per-order cancel + test env isolation)
 
 ## Date
-2026-05-03
+2026-05-04
 
 ## Session summary
 
-Evening session opened with two production incidents in flight: a
-mark-price daemon stall (~3 minutes of frozen WS-watched prices) and
-position-create lifecycle aborts on positions #208 + #209 even
-though the entry MARKETs had filled correctly on the exchange.
-
-Earlier-session "improvements" were the proximate cause. A pre-flight
-`apiSync` in the drift command's orphan pass, a step-arguments
-dedupe scan in `PreparePositionReplacementJob` over the 700K-row
-`steps` table, and a Scope-3 completeness audit on the drift
-command — together they pushed enough heavyweight queries onto
-`steps` and `exchange_symbols` to wedge the mark-price daemon's
-ReactPHP loop on a 192s row-lock wait.
+Late-night session that opened with another collateral-damage
+incident on position 211 ETCUSDT. Drift watchdog dispatched a
+cancel-lifecycle for position 209 (already cancelled 11 min
+earlier with stuck NEW orders); the lifecycle issued a
+symbol-wide `DELETE /fapi/v1/allOpenOrders?symbol=ETCUSDT`
+which Binance interprets literally — every working order on
+ETCUSDT got killed, including position 211's TP and 4 LIMIT
+ladder. WS pushes for the four cancellations then beat the
+OrderObserver's SELECT-then-INSERT dedupe and inserted two
+`PreparePositionReplacementJob` steps in the same second,
+both spawning `SmartReplaceOrdersJob`.
 
 Three shipments tonight:
 
-1. **Drift watchdog pivot to alert-only + surgical silent self-heal**
-   — `CheckDriftsCommand` no longer dispatches anything. Scope 1
-   (active-position drift) just notifies. Scope 2 (orphan orders
-   in DB) runs a silent per-orphan `apiSync` to refresh local
-   state from the exchange before deciding whether to alert; the
-   dominant false-positive (entry MARKET stuck PARTIALLY_FILLED on
-   a cancelled position because `SyncPositionOrdersJob` skips
-   MARKET) self-heals quietly. Only orphans that survive the
-   refresh get a Pushover. Health #11 (7-min cadence, auto-cancel
-   + auto-close) remains the enforcement layer; drift is the
-   monitor.
-2. **`ActivatePositionJob` race-tolerant MARKET validation** —
-   replaced the strict-FILLED guard with a poll-with-timeout: up
-   to three attempts at 500ms apart, each calling `apiSync()` to
-   refresh the local row from exchange truth. If the exchange
-   confirms FILLED, the lifecycle proceeds. Only if the exchange
-   itself still reports non-terminal after the budget do we surface
-   the legitimate error. Pinned with three TDD tests.
-3. **Reverts** — pre-flight `apiSync`, `PreparePositionReplacementJob`
-   dedupe scan, and Scope 3 audit all rolled back to their
-   pre-session shapes. The DB lock contention on `exchange_symbols`
-   is tracked in memory under `db_lock_contention_mark_price_daemon.md`
-   for a separate structural fix (split hot mark-price column out
-   into its own narrow table).
-
-Smoke verification on prod: triggered drift command — clean (no
-quiet active positions, no orphan orders). Manually placed an
-APEUSDT short on Bruno's Main Binance Account → triggered system
-health command → orphan order detected on account 1, cancelled,
-Pushover delivered. End-to-end loop verified.
+1. **`CancelPositionOpenOrdersJob` is per-order on every exchange.**
+   Replaced the dual-path job (Bitget already iterated, but
+   Binance / Kucoin / Bybit relied on symbol-wide cancel) with
+   a single per-order code path. Selects the position's own
+   non-algo `NEW` / `PARTIALLY_FILLED` orders with a real
+   `exchange_order_id`, bumps `reference_status='CANCELLED'`
+   pre-call (intent gate for the OrderObserver), iterates
+   `Order::apiCancel()` per row, classifies "already gone"
+   responses as idempotent. Symbol-wide collateral damage
+   eliminated by construction. Smoke-tested live with manual
+   close on LTCUSDT (position 227) — four targeted DELETEs,
+   zero `/fapi/v1/allOpenOrders`, position closed cleanly.
+2. **`SendsNotificationsTest` fixture leak fix.** The two "no-op
+   save doesn't re-fire delisting" cases created an
+   `ExchangeSymbol` with token `BINANCE_NO_CHANGE` /
+   `BYBIT_NO_CHANGE` AND a real `delivery_ts_ms` BEFORE calling
+   `Notification::fake()`. The discovery save fired
+   `token_delisting` through the real Notification facade.
+   With no `.env.testing` existing, tests fell back to `.env`'s
+   production Pushover credentials; every full-suite run
+   leaked one BINANCE + one BYBIT alert to Bruno's phone.
+   Fix: fake() before the row is created; reset fake immediately
+   after creation so the no-op assertion isn't polluted.
+3. **`.env.testing` defense-in-depth.** Full copy of `.env`
+   with leak-prone keys overridden:
+   `DB_DATABASE=kraite_tests` (defends against the 2026-05-01
+   `migrate:fresh --env=testing` wipe pattern when no
+   `.env.testing` existed), `MAIL_MAILER=array`, ZeptoMail key
+   stubbed, `NOTIFICATIONS_ENABLED=false`, every Pushover key
+   stubbed, `CACHE_STORE=array`, `SESSION_DRIVER=array`,
+   `QUEUE_CONNECTION=sync`. `phpunit.xml` already had most of
+   these as `<env>` overrides for the test runner; `.env.testing`
+   covers the gap when artisan commands run with `--env=testing`
+   outside pest.
 
 ## Current state
 
-- Tests: 1591 passing (1 risky, 6 incomplete, 4 todos). Up by
-  three from start-of-session baseline.
-- Drift command suite trimmed to 9 cases — Scope-3 cases removed
-  with the revert; the four cases that asserted dispatch /
-  inline-DB-cancel behaviour rewritten against the alert-only
-  contract.
-- Horizon respawned cleanly after job-class edits.
+- Tests: 1595 passing (up by 4 from start-of-session baseline).
+- New unit suite: `CancelPositionOpenOrdersPerOrderTest` —
+  4 cases pinning per-order behaviour, cross-position isolation
+  (the smoking-gun reproduction with two cohabiting ETCUSDT
+  positions), `reference_status` intent-flag bump, and
+  ghost / terminal / algo skip.
+- Horizon respawned with new bytecode.
+- LTCUSDT close validated end-to-end: 4 per-order DELETEs,
+  zero symbol-wide calls, clean close.
 
 ## WIP
 
-None. All session shipments are clean and tested.
+None — all session shipments are clean and tested.
 
 ## Pending items
 
-- DB lock contention on `exchange_symbols` blocking the mark-price
-  daemon ReactPHP loop. Tonight's WS-layer fixes are orthogonal —
-  the structural fix is to split the hot mark-price column out
-  into its own narrow table so contention with other writers
-  (e.g. `ConcludeSymbolsDirectionCommand` burst at :30) stops
-  freezing publication for symbols with open positions.
-- Re-introducing Scope 3 on the drift command requires a dedicated
-  index strategy or a derived state table updated on the open-
-  lifecycle terminal step before it's safe under live load.
+- **OrderObserver dedupe race** (the second bug from the 211
+  incident). Per-order cancel shipped tonight removed the
+  collateral-damage trigger; but if a legitimate cancellation
+  cohort ever produces simultaneous WS pushes for the same
+  position, the SELECT-then-INSERT race in
+  `OrderObserver::dispatchPositionReplacement` resurfaces.
+  Real fix is DB-native: `SELECT FOR UPDATE` on the position
+  row inside `DB::transaction(...)` around the dedupe block.
+  Same pattern fits `dispatchClosePosition` and `dispatchApplyWap`.
+- **DB lock contention on `exchange_symbols`** — recurred at
+  00:10 tonight (197s on `api_request_logs.completed_at`
+  UPDATE, 99s + 40s on `steps_dispatcher.can_dispatch` UPDATE,
+  WS daemon force-reconnected after 198s frame silence).
+  Structural fix (split hot mark-price column into narrow
+  table) still pending — tracked in memory under
+  `db_lock_contention_mark_price_daemon.md`.
 
 ## Key decisions made this session
 
-- **Drift command is alert-only** — enforcement lives one layer up
-  in the system-health watchdog (Health #11). Drift is a slower-
-  cadence monitor that backstops Health-11 outages. Belt + braces,
-  not redundancy.
-- **Race-tolerant MARKET validation is a primitive, not a workaround**
-  — the WS-vs-REST ordering race on entry MARKETs is genuine and
-  needs the bounded retry even when DB lock contention is fully
-  resolved.
-- **Sandbox safety rule reaffirmed** — production DB writes during
-  the revert path went through `Edit` only, no destructive shell
-  commands, no migrations.
+- **Per-order cancel chosen over symbol-wide-with-pre-flight-check.**
+  Bruno's open-close-reopen pattern means a sibling on the
+  same symbol can enter mid-close, racing the pre-flight
+  "any other open?" check. Per-order has no race window.
+  Bulk DELETE is one weight, per-order is one weight per call —
+  same rate-limit cost, no API saving. 6 sequential calls is
+  ~150ms vs ~25ms for one — invisible on the close path
+  which is already job-graph async.
+- **DB-native locking, not cache locking.** Bruno pushed back
+  that data lives in DB and locks should too. Stops me reaching
+  for Redis/Cache::lock when `SELECT FOR UPDATE` on the
+  position row is the right primitive. Will apply when the
+  observer dedupe race fix ships.
+- **Defense-in-depth env isolation, not cleanup of phpunit.xml.**
+  `phpunit.xml` already had `<env>` overrides for the test
+  runner; the gap was artisan commands run with `--env=testing`
+  outside pest. `.env.testing` plugs that and reaffirms the
+  CLAUDE.md hard rule from the 2026-05-01 wipe incident.

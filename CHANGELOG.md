@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.21.0 - 2026-05-04
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.21.0** — `CancelPositionOpenOrdersJob` reshaped to per-order on every exchange; symbol-wide collateral damage class eliminated by construction.
+- [IMPROVED] **New `CancelPositionOpenOrdersPerOrderTest` (4 cases).** Pins per-order behaviour, cross-position isolation (the smoking-gun reproduction with two cohabiting ETCUSDT positions on the same account), `reference_status='CANCELLED'` intent-flag bump, and ghost / terminal / algo skip.
+- [IMPROVED] **`SendsNotificationsTest` fixture leak fix.** The two "no-op save doesn't re-fire delisting" cases moved `Notification::fake()` BEFORE the test creates the `BINANCE_NO_CHANGE` / `BYBIT_NO_CHANGE` `ExchangeSymbol` row. Previously the discovery save fired `token_delisting` through the real Notification facade BEFORE `fake()` was called, and (because no `.env.testing` existed) tests fell back to `.env`'s production Pushover credentials — every full-suite run leaked one BINANCE + one BYBIT alert to Bruno's phone.
+- [IMPROVED] **`.env.testing` defense-in-depth created.** Full copy of `.env` with the leak-prone keys overridden: `APP_ENV=testing`, `DB_DATABASE=kraite_tests` (defends against the 2026-05-01 `migrate:fresh --env=testing` wipe pattern), `MAIL_MAILER=array`, ZeptoMail key stubbed, `NOTIFICATIONS_ENABLED=false`, every `*_PUSHOVER_*` key stubbed (admin + every trader + delivery groups), `CACHE_STORE=array`, `SESSION_DRIVER=array`, `QUEUE_CONNECTION=sync`. Belt + braces with the existing `phpunit.xml` `<env>` overrides — `.env.testing` covers the gap when artisan commands run with `--env=testing` outside the pest runner.
+
 ## 1.20.1 - 2026-05-04
 
 ### Improvements
