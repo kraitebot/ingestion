@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.17.0 - 2026-05-03
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.17.0** — `(float)` → BCMath migration packs 1-12 + nano-pack (107 net casts removed) + `indicators_synced_at` skip-stamp fix.
+
+### Features
+
+- [NEW FEATURE] **13 new tests** added inline alongside the migration:
+  - `tests/Feature/Concerns/Position/PositionDailyVariationAccessorTest.php` — 7 tests pinning `Position::daily_variation_percentage` across positive / negative / zero-open / no-row / fractional-precision / null-symbol / no-indicator cases.
+  - `tests/Unit/Indicators/PriceVolatilityIndicatorTest.php` — 5 tests pinning the `((high - low) / close) × 100` formula including high-precision crypto values + missing-field guards.
+  - `tests/Feature/Jobs/ConcludeSymbolDirectionAtTimeframeJobTest.php` — 1 regression test confirming the `same_indicator_data` skip branch stamps `indicators_synced_at`.
+
 ## 1.16.0 - 2026-05-03
 
 ### Features

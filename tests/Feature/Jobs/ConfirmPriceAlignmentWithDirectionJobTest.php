@@ -454,7 +454,8 @@ test('clears all indicator fields when price alignment fails', function () {
     expect($exchangeSymbol->direction)->toBeNull();
     expect($exchangeSymbol->indicators_values)->toBeNull();
     expect($exchangeSymbol->indicators_timeframe)->toBeNull();
-    expect($exchangeSymbol->indicators_synced_at)->toBeNull();
+    // Stamped on every conclude pass — "last attempt", not "last success".
+    expect($exchangeSymbol->indicators_synced_at)->not->toBeNull();
     expect($exchangeSymbol->has_price_trend_misalignment)->toBeTrue();
 });
 

@@ -1,155 +1,156 @@
-# WhereAreWe — 2026-05-03 (Orphan-cleanup watchdog + indicators_synced_at fix)
+# WhereAreWe — 2026-05-03 (Float→BCMath migration packs 11-12 + nano-pack + indicator skip-stamp fix)
 
 ## Date
 2026-05-03
 
 ## Session summary
 
-Multi-leg session shipped four major pieces in sequence:
+Continuation of the multi-pack `(float)` → BCMath migration that
+started after the orphan-cleanup commit (which laid down the
+`before-float-transformations` checkpoint tag). Today's session
+shipped:
 
-1. **Morning** — push-primary cutover. User-data WS daemon promoted
-   from shadow to production primary for fill detection
-   (`ALGO_FILLED` added to allowlist, sync-orders polling tightened
-   from 15min to 5min). Live-verified WAP push end-to-end on ETC.
-2. **Late-morning** — TokenScoring rewrite. Three pure-math
-   multipliers (LogElasticity, CorrelationStabilityWeight,
-   BatchDiversificationPenalty) shipped TDD-driven. Wired into
-   `HasTokenDiscovery` selection. Live-verified via ONDO 179.
-3. **Afternoon** — Orphan-cleanup watchdog. Per-account flags
-   (`allow_other_positions`, `allow_other_orders`),
-   `OrphanReconciler` pure classifier, integration into
-   `CheckSystemHealthCommand`, auto-execution path (cancel orders
-   + close positions), Pushover + email alerts. Live-verified across
-   both flag combinations on real-money account 1.
-4. **Bug fixes uncovered during live verification**:
-   - PHP int/string array-key auto-conversion (orphan cancel)
-   - Position-key mismatch in one-way mode (saved 12 of Karine's
-     real positions from being false-flagged + closed)
-   - `closePosition + reduceOnly` mutual exclusion (Binance -4136)
-   - `placeOrder` validator hard-requires `quantity` even with
-     `closePosition=true`
-   - `NotificationMessageBuilder` missing match arm for
-     `system_health_alert` — every health-watchdog Pushover since
-     2026-05-02 had been silently failing at format-time
-   - `indicators_synced_at` semantic — now stamps on attempt, not
-     just successful conclusion (was producing notification flood)
+1. **Packs 11-12 of the float→BCMath migration** —
+   `SupportResistanceProximity`, `Position::daily_variation_percentage`,
+   `AssignBestTokensToPositionSlotsJob` direction filter,
+   `DriftCheckService` direction + tolerance helpers,
+   Bybit/Bitget/Kucoin recoverer non-zero filters,
+   `RegimeCalculator::futVolHot` accumulator,
+   `PriceVolatilityIndicator::volatilityPercent`. Twelve new tests
+   added inline (seven for daily-variation accessor, five for
+   volatility indicator).
+2. **MarketShockCircuitBreaker nano-pack** — single low-hanging
+   fruit found during the post-pack-12 analysis: the
+   `priorBarPct` percent-move helper. Two casts removed, one net
+   off after the boundary float at the `?float` return.
+3. **Indicator-staleness watchdog skip-stamp fix.** Identified
+   while debugging a stale-indicator alert on LINKUSDC: the
+   `same_indicator_data` skip branch in
+   `ConcludeSymbolDirectionAtTimeframeJob` was the only successful
+   end-to-end path that did not stamp `indicators_synced_at`.
+   Long-timeframe symbols (1d) sat past the 90-minute watchdog
+   threshold for nearly the full day even though the pipeline ran
+   every cron tick and correctly decided "nothing new". Fixed by
+   stamping the attempt time alongside the existing exhaustion +
+   path-invalidation branches. Regression test added.
+4. **Notification troubleshoot — three issues investigated.** Stale
+   indicators (root cause: skip-branch missing stamp — fixed,
+   above). Stale dispatcher tick (root cause: signal mismatch —
+   `last_selected_at` only updates on root-step CREATE, not on
+   every dispatch tick; punted to its own change because it needs
+   a new tick-stamp column on `steps_dispatcher`). Daily "Token
+   Delisting Detected" for `BINANCE_NO_CHANGE` /
+   `BYBIT_NO_CHANGE` — initial test-leak hypothesis disproved
+   (CI uses stub Pushover creds, no daily test cron, zero
+   `token_delisting` rows in `notification_logs`); origin still
+   unknown, source-trace blocked on Bruno forwarding the next
+   message body. Test changes from the disproved hypothesis were
+   reverted.
 
 ## Current state
 
 ### Test suite
-- 21 new TokenScoring unit tests
-- 9 new OrphanReconciler unit tests
-- 6 new Account::balanceForTrading() unit tests
-- 4 new CheckOrphanCleanup feature tests
-- 85 / 85 passing across the wider token-discovery + correlation +
-  exchange-symbol + orphan suites — no regression.
+- Pest: **1578 passing / 0 failing** (1 risky, 6 incomplete, 4
+  todos — all pre-existing). Suite duration ~225s.
+- Twelve new tests added this session:
+  - 7 × `tests/Feature/Concerns/Position/PositionDailyVariationAccessorTest.php`
+  - 5 × `tests/Unit/Indicators/PriceVolatilityIndicatorTest.php`
+  - 1 × `tests/Feature/Jobs/ConcludeSymbolDirectionAtTimeframeJobTest.php`
+    (`stamps indicators_synced_at on skip when indicator data is unchanged`)
 
-### Deploy state
-- `kraitebot/core` working tree carries: TokenScoring helpers
-  (1.15.0 already committed), orphan-cleanup migration + helpers +
-  command integration + indicators_synced_at fix +
-  NotificationMessageBuilder match arm. Pending commit + push.
-- `ingestion.kraite.com` working tree carries: 19 new test files
-  (TokenScoring + Account balance + OrphanReconciler + CheckOrphanCleanup)
-  + WhereAreWe + CHANGELOG. Pending commit + push.
+### Float-cast inventory
+- Started session at: 107 `(float)` casts (after packs 1-10).
+- Ended session at: **91** `(float)` casts.
+- This session removed: 16 net (21 sites converted, 5 net new
+  boundary casts at return-float surfaces).
+- Cumulative since the migration started: 198 → 91 (107 net
+  removed across all packs).
 
-### Production data
-- All 5 accounts: `allow_other_positions=false`,
-  `allow_other_orders=false` (Kraite-exclusive default).
-- Account 1 (Bruno's hedge Binance): 12 active positions, all under
-  Kraite management. Zero orphans on exchange post-verification.
-- Account 5 (Karine's one-way Binance): 12 active positions, all
-  under Kraite management. The position-key normalisation bug fix
-  is what saved them from auto-close during the test phase.
-- 1168 `exchange_symbols` had stale `indicators_synced_at` —
-  stamped to `now()` via raw query builder write to silence the
-  notification flood. Conclude pipeline still needs investigation
-  (last natural Carbon-stamp was 09:32; nothing newer than that
-  before the bulk update).
+### Production state
+- Horizon terminated mid-session after the conclude-job-class
+  change so workers reload with new bytecode; supervisor respawn
+  confirmed.
+- Pre-refactor `before-float-transformations` git tag still in
+  place on both `kraitebot/core` and `ingestion.kraite.com` as a
+  rollback point for the migration as a whole.
 
-### Configuration applied
-- Migration `2026_05_03_120000_add_orphan_handling_flags_to_accounts`
-  applied to prod kraite DB (additive, nullable bools default false).
-- Account 1 flags: `allow_other_*=false` (reverted post-test).
-- Config key `kraite.health_watchdog.orphan_kraite_match_window_minutes`
-  default 60, env-overridable.
+## WIP / mid-task
 
-### Notification delivery
-- All eleven `system_health_alert` signals now deliver successfully
-  to Pushover + email after the match arm fix. Six fresh
-  `notification_logs` rows from the final orphan-cleanup live
-  verification confirm delivery.
-- Earlier Pushover flood (indicator stale) silenced via the
-  bulk-stamp + the conclude-pipeline `indicators_synced_at`
-  semantic correction.
-
-### Supervisord
-All 6 kraite programs RUNNING. Ingestion Horizon respawned twice
-this session (TRADE allowlist flip earlier; TokenScoring code
-reload at the start of the afternoon).
-
-## WIP
-
-None — every piece is complete and live-verified.
+None. Migration paused at pack 12 + nano-pack on Bruno's call
+("don't kill the cow in one go"). Remaining 91 casts classified
+in detail and held as KEEP — see
+`~/docs/kraite/03-logs/2026-05-03_float_to_bcmath_migration.md`
+for the full categorisation.
 
 ## Pending items
 
-1. **Commit + push** today's afternoon work + tag the commit as
-   "before float() transformations" (the upcoming refactor checkpoint).
-2. **`(float)` cast audit + replacement.** 198 `(float)` casts
-   exist in `kraitebot/core/src/` (66 files). Crypto trading bot
-   should use BCMath-backed `Math::*` helpers exclusively for
-   precision-sensitive math. Categorisation:
-   - HIGH-RISK: 34 files (mappers, recovery, orders/positions,
-     HasOrderCalculations) — direct precision risk on prod money.
-   - MEDIUM-RISK: 8 files (market regime, indicators).
-   - LOW-RISK: 24 files (display, telemetry, ValueNormalizer).
-   Refactor planned as a dedicated session.
-3. **Conclude-pipeline freshness investigation.** Last natural
-   `indicators_synced_at` Carbon-stamp was 09:32 — pipeline ran
-   but didn't reach the finalisation step that writes the column
-   for several hours. Today's bulk update masks the symptom; the
-   underlying cron / Step state needs review.
-4. **Indicator-stale notification cardinality.** Currently
-   `indicator_stale_<PAIR>` fires per ExchangeSymbol row — same
-   token across 4 exchanges produces 4 separate alerts. Should be
-   `indicator_stale_<TOKEN>` (per token) since one direction is
-   shared across all 4 via copy-phase. Low priority once #2/#3
-   are addressed.
-5. **Carry-over from prior sessions** — database backup strategy,
+1. **Dispatcher-tick stale watchdog signal mismatch** (queued).
+   The `dispatcher_tick_stale` health check reads
+   `steps_dispatcher.last_selected_at` and assumes it updates on
+   every tick, but it only updates when `getNextGroup()` is
+   called (root-step creation). Between hourly conclude bursts
+   the MAX naturally exceeds the 60s threshold and fires
+   false-positive alerts. Fix needs a new tick-stamp column on
+   `steps_dispatcher` written by every dispatch attempt
+   regardless of work — touches the `brunocfalcao/step-dispatcher`
+   path package, so it's a separate change.
+2. **Daily `BINANCE_NO_CHANGE` / `BYBIT_NO_CHANGE` Token Delisting
+   notifications** — source still unknown. Need Bruno to forward
+   the next received message (title + body + sent_at + channel)
+   so the origin can be traced. Production code path for
+   `token_delisting` confirmed inactive: zero matching rows in
+   `notification_logs` since 2026-05-02; all `delivery_ts_ms`
+   writes are perpetual-default which the mapper rejects.
+3. **`indicator_stale_<PAIR>` cardinality** (carry-over from
+   prior session) — currently fires per ExchangeSymbol row, so
+   one token across 4 exchanges produces 4 alerts. Direction is
+   shared via copy-phase; should reduce to per-token. Low
+   priority.
+4. **Carry-over from prior sessions** — database backup strategy,
    daemon GAP 5 sharding, backtesting approval workflow,
    AERGO-style degraded-position recovery command.
 
 ## Key decisions made this session
 
-- **Cleanup-always philosophy** for orphans. Auto-execute regardless
-  of any global trading gate. Risk-management, not new trading.
-- **Per-account flags drive behaviour matrix.** Defaults safe
-  (Kraite-exclusive), operator opts into "allow user activity" if
-  needed.
-- **`indicators_synced_at` means "last attempt".** Was "last
-  success" — the original semantic doesn't distinguish "pipeline
-  broken" from "ran, no direction". The new semantic does both.
-- **No new Step classes for orphan cleanup.** Direct API calls
-  reuse existing primitives (`cancelOrder`, `cancelAlgoOrder`,
-  `placeOrder`) which go through the data-mapper resolver
-  underneath. Avoids inventing orchestration for a one-shot
-  surgical action.
-- **Float-cast refactor punted to dedicated session.** 198 sites
-  is too heavy for safe inclusion in today's commit. This commit
-  is the pre-refactor checkpoint tag.
-- **Test discipline preserved.** All new logic landed via failing
-  tests first, then green implementation, then live verification
-  on real money. Bug fixes during live verification each had
-  immediate diagnosis + targeted fix.
+- **Stop the float→BCMath migration at 91, not 0.** The
+  remaining casts encode design contracts (display coercion,
+  log-using statistics, return-type surfaces, cascading consumer
+  contracts). Forcing more either changes message format,
+  introduces float→BCMath→float roundtrip noise, or pulls in a
+  multi-file cascade refactor that's out of pack-of-ten scope.
+- **Float coerces trailing zeros, string preserves them.**
+  Pinned by writing a baseline test for the
+  `NotificationMessageBuilder` display blocks and watching
+  `-2.10` vs `-2.1` diverge under string coercion. Conclusion:
+  display-block casts stay as `(float)`. Test was deleted after
+  the assertion since the conclusion was "leave as-is".
+- **`indicators_synced_at` is a liveness signal, stamped on
+  every successful end-to-end run.** Adds the skip branch to
+  the existing concluded / exhausted / path-invalid branches.
+  Without this, every long-timeframe symbol mid-day looks like
+  a pipeline outage to the watchdog.
+- **Dispatcher-tick fix is its own change.** New column on
+  `steps_dispatcher` + writer in the dispatcher path package +
+  watchdog read swap. Cleaner as a standalone PR than mixed in
+  with the float migration packs.
+- **Test fix for `_NO_CHANGE` notifications was wrong premise.**
+  The leak hypothesis (test creates fixture before
+  `Notification::fake()`) was disproved by the CI workflow
+  inspection (stub Pushover creds) and the production
+  `notification_logs` evidence (zero `token_delisting` rows).
+  The test changes were reverted.
 
-## Float-cast refactor — checkpoint
+## Float→BCMath migration — running ledger
 
-Tag this commit "before float() transformations". The next session
-will systematically migrate the 198 `(float)` casts to
-`Kraite\Core\Support\Math::*` BCMath-backed helpers, prioritising
-HIGH-RISK files first (mappers, recovery, ladder calc, order
-placement). Risk surface this introduces is real but bounded:
-the casts have been in place since the original codebase and
-prod has been running. New session ships with TDD coverage on
-the modified hot paths.
+| Pack | Sites | Net removed | Suite | Notes |
+|---|---|---|---|---|
+| 1-10 (carried) | ~91 | ~91 | green | order mappers, recovery, billing, exchange info |
+| 11 | 10 | 8 | green | SR, daily-variation, AssignBest BOTH, drift normalizeDirection, Bybit recoverer |
+| 12 | 9 | 7 | green | Drift tolerance, Bitget/Kucoin recoverers, futVolHot, volatility |
+| nano | 2 | 1 | green | MarketShockCircuitBreaker priorBarPct |
+| **Total** | **~112** | **~107** | **1578 ✓** | 198 → 91 |
+
+Ledger numbers are approximate for packs 1-10 (carried context).
+The hard count from
+`grep -rh "(float)" .../core/src | wc -l` is authoritative and
+currently reads 91.

@@ -931,6 +931,53 @@ test('handles symbol with null direction when concluding same direction', functi
     expect($result['is_change'])->toBe('first_time');
 });
 
+test('stamps indicators_synced_at on skip when indicator data is unchanged', function () {
+    seedIndicatorsForConcludeTest();
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONSKIPSTAMP');
+
+    // First conclude — populates indicators_values + stamps initial sync.
+    $firstStep = createStepForConcludeJob($exchangeSymbol, '1h');
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    $firstJob = new ConcludeSymbolDirectionAtTimeframeJob(
+        $exchangeSymbol->id,
+        '1h',
+        [],
+        true
+    );
+    $firstJob->step = $firstStep;
+    $firstJob->compute();
+
+    $exchangeSymbol->refresh();
+    $firstStamp = $exchangeSymbol->indicators_synced_at;
+    expect($firstStamp)->not->toBeNull();
+
+    // Advance time so any new stamp is observable.
+    $this->travel(5)->minutes();
+
+    // Second conclude — same indicator histories, no fresh data.
+    $secondStep = createStepForConcludeJob($exchangeSymbol, '1h');
+    $secondJob = new ConcludeSymbolDirectionAtTimeframeJob(
+        $exchangeSymbol->id,
+        '1h',
+        [],
+        true
+    );
+    $secondJob->step = $secondStep;
+
+    $result = $secondJob->compute();
+
+    expect($result['result'])->toBe('skipped');
+    expect($result['reason'])->toBe('same_indicator_data');
+
+    // Critical assertion: the freshness stamp must advance even on the
+    // skip branch, so the system-health watchdog doesn't mistake a
+    // healthy "nothing new this cycle" run for a stale-pipeline outage.
+    $exchangeSymbol->refresh();
+    expect($exchangeSymbol->indicators_synced_at)->not->toBeNull();
+    expect($exchangeSymbol->indicators_synced_at->greaterThan($firstStamp))->toBeTrue();
+});
+
 test('handles missing indicator data for some but not all indicators', function () {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONPARTIAL');
