@@ -200,11 +200,15 @@ if (! $isCoolingDown()) {
         ->withoutOverlapping()
         ->onOneServer();
 
-    // Purge old model_logs daily at 03:30 — keeps a 30-day rolling window of
-    // attribute-change history (position lifecycle, fills, WAP transitions,
-    // close chains). Beyond that, the log volume outweighs the forensics
-    // value and the table growth starts to hurt.
-    Schedule::command('kraite:purge-model-logs --duration=30')
+    // Purge old operational logs daily at 03:30:
+    //   - api_request_logs: 5-day rolling window (high-volume HTTP audit trail
+    //     for every Binance/Bitget/Bybit/KuCoin/TAAPI call; 200 OK rows are
+    //     forensic noise after a few days and the table size dominates the
+    //     buffer pool when left unbounded).
+    //   - model_logs:        30-day rolling window of attribute-change history
+    //     (position lifecycle, fills, WAP transitions, close chains). Beyond
+    //     that, log volume outweighs the forensics value.
+    Schedule::command('kraite:purge-old-data --api-request-logs-days=5 --model-logs-days=30')
         ->dailyAt('03:30');
 
     // Archive fully-resolved step trees daily at 04:00 (keeps last 1 day)

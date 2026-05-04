@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.25.0 - 2026-05-04
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.25.0** — `exchange_symbol_prices` sidecar table cutover, `mark_price_synced_at` index dropped, `kraite:purge-old-data` command, `api_request_logs.payload` nulled on 200, lifecycle scenario tables.
+- [IMPROVED] **Schedule consolidation.** `routes/console.php` swaps the standalone `kraite:purge-model-logs --duration=30` daily entry for the new combined `kraite:purge-old-data --api-request-logs-days=5 --model-logs-days=30` at 03:30 — one schedule entry now keeps both high-volume operational log tables bounded.
+
+### Operations
+
+- [IMPROVED] **MySQL `innodb_buffer_pool_size` 2G → 10G.** Production `/etc/mysql/mysql.conf.d/mysqld.cnf` bumped to give the post-purge `api_request_logs` working set + the rest of the hot tables enough room to fit. Server has 30 GB RAM with 18 GB free pre-bump, so headroom remains.
+- [IMPROVED] **`api_request_logs` reclaim.** One-shot backfill (475k rows nulled `payload` for 200-class historical rows) + `OPTIMIZE TABLE` reclaimed 12.2 GB on disk (14.3 GB → 2.1 GB).
+
 ## 1.24.0 - 2026-05-04
 
 ### Improvements
