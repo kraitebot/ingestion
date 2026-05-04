@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.22.0 - 2026-05-04
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.22.0** — `ProcessUserDataEventJob::applyToOrderModel` no longer overwrites `orders.quantity` from WS pushes (fixes the ONDO #271 quantity-drift cancel-cascade pattern).
+- [IMPROVED] **New `ProcessUserDataEventJobQuantityFreezeTest` (4 cases).** Pins the fix: PARTIALLY_FILLED cumulative-filled corruption, FILLED no-op, late out-of-order PARTIALLY_FILLED regression (the ONDO #271 reproduction), and normal NEW→FILLED happy path.
+
 ## 1.21.0 - 2026-05-04
 
 ### Improvements
