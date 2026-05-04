@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.24.0 - 2026-05-04
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.24.0** — disaster-recovery true-up (4 new phases on `kraite:recover-positions`), OrderObserver dispatch dedupe race fix at 4 sites via `Position::lockForUpdate()`, `position_opened` canonical state-drift resolved.
+
+### Tests
+
+- [NEW FEATURE] **`OrderObserverDispatchDedupeRaceTest`** (5 cases) — source-level pins that all 4 dispatch sites (close, replacement, WAP, user-data manual-close detection) wrap their SELECT-then-INSERT in a DB::transaction with Position lockForUpdate; serial dedupe regression pin (4 cancelled-order observer fires collapse to 1 step).
+- [NEW FEATURE] **`RecoverPositionsCommandHardeningTest`** (11 cases) — source-level pins for the 5 new phase helpers; functional pins for Phase 2 (phantom close-detection with safety guard for empty exchange snapshot); functional pins for Phase 4 (stuck opening-status reset to active when exchange shows it / closed when not); operational guard pin that allow_opening_positions is restored after the run via try/finally.
+
 ## 1.23.0 - 2026-05-04
 
 ### Features
