@@ -41,6 +41,10 @@ return [
         'token' => env('ADMIN_USER_PUSHOVER_APPLICATION_KEY'),
     ],
 
+    'telegram-bot-api' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+    ],
+
     'zeptomail' => [
         'mail_key' => env('ZEPTOMAIL_MAIL_KEY'),
         'endpoint' => env('ZEPTO_MAIL_ENDPOINT', 'https://api.zeptomail.com'),

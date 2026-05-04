@@ -13,6 +13,7 @@
         "brunocfalcao/blade-feather-icons": "dev-master",
         "brunocfalcao/laravel-zepto-mail-api-driver": "dev-master",
         "kraitebot/core": "dev-master",
+        "laravel-notification-channels/telegram": "^7.0",
         "laravel/boost": "^2.2",
         "laravel/framework": "^12.40.2",
         "laravel/tinker": "^2.10.2",

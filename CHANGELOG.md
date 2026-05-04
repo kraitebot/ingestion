@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.23.0 - 2026-05-04
+
+### Features
+
+- [NEW FEATURE] **Telegram channel wired into ingestion.** `composer require laravel-notification-channels/telegram`; `services.telegram-bot-api.token` reads `TELEGRAM_BOT_TOKEN`. Two new env keys (`TELEGRAM_BOT_TOKEN`, `ADMIN_USER_TELEGRAM_CHAT_ID`). Per-user opt-in via `notification_channels` array including `'telegram'` + a populated `telegram_chat_id`.
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.23.0** — Telegram channel + UserObserver/KraiteObserver auto-welcome + disk-pressure health check (#12).
+
+### Tests
+
+- [NEW FEATURE] **`AlertNotificationTelegramChannelTest`** (8 cases) — channel string resolution, `via()` inclusion, `toTelegram()` HTML payload + chat_id, fallback chain (telegram→pushover→message), HTML escape safety, `routeNotificationForTelegram` null/value paths.
+- [NEW FEATURE] **`UserObserverTelegramWelcomeTest`** (6 cases) — welcome fires on creation with chat_id, fires on null→set transition, no-fire on unrelated update, no-fire on chat_id cleared, silent skip when token missing, error containment swallows Telegram API 401.
+- [NEW FEATURE] **`KraiteObserverTelegramWelcomeTest`** (5 cases) — engine-side mirror of the user observer test suite, watches `kraite.admin_telegram_chat_id`.
+- [NEW FEATURE] **`CheckSystemHealthDiskPressureTest`** (2 cases) — pin disk_pressure_low signal not firing under 15% threshold (skipped if test host itself is tight on disk) + source-level pin that the check is wired into the runner array.
+
 ## 1.22.0 - 2026-05-04
 
 ### Improvements
