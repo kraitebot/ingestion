@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Spatie\Backup\Notifications\Notifiable;
 use Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification;
 use Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification;
@@ -7,7 +9,6 @@ use Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification;
 use Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification;
 use Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification;
 use Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification;
-use Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy;
 use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays;
 use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes;
 
@@ -162,14 +163,11 @@ return [
              */
             'filename_prefix' => '',
 
-            // Two destinations:
-            //   - local: fast restore path (last copy on disk).
-            //   - b2:    off-host durable copy on Backblaze B2
-            //            (`kraite-backups` bucket, EU region).
-            // Spatie writes to BOTH on every run; cleanup retention
-            // is applied per-disk independently.
+            // Single destination: Backblaze B2 (`kraite-backups` bucket,
+            // EU region). Local copies were dropped — B2 is the source
+            // of truth. Rolling window of 3 backups managed by
+            // TieredStrategy with hourly=3, daily=0, weekly=0.
             'disks' => [
-                'local',
                 'b2',
             ],
 
@@ -308,14 +306,15 @@ return [
     'monitor_backups' => [
         [
             'name' => 'kraite',
-            'disks' => ['local', 'b2'],
+            'disks' => ['b2'],
             'health_checks' => [
-                // Newest backup must be < 25h old. Hourly cron + 1h
-                // grace covers a missed run without flapping.
+                // Newest backup must be < 1 day old. 3h cadence + grace
+                // covers a missed run without flapping.
                 MaximumAgeInDays::class => 1,
-                // Disk-usage cap — alert if total backups for this
-                // app on the disk exceed 50 GB. Generous but bounded.
-                MaximumStorageInMegabytes::class => 50000,
+                // Bucket-usage cap — alert if B2 footprint exceeds
+                // 5 GB. Rolling-3 with ~700 MB dumps stays ~2 GB,
+                // so 5 GB is a comfortable ceiling.
+                MaximumStorageInMegabytes::class => 5000,
             ],
         ],
     ],

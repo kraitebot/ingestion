@@ -19,6 +19,15 @@ final class AppServiceProvider extends ServiceProvider
 
         // Only persist ticks that took longer than 5 seconds
         StepsDispatcher::recordTickWhen(fn (StepsDispatcherTicks $tick) => $tick->duration > 5000);
+
+        // Backup event listeners (BackupHasFailed, CleanupHasFailed,
+        // UnhealthyBackupWasFound) are auto-discovered by Laravel 12's
+        // default event-discovery scan of `app/Listeners/`. See
+        // `App\Listeners\RouteBackupEventToSystemHealthAlert` — its
+        // `handle*` methods type-hint the spatie events and get wired
+        // up by `Illuminate\Foundation\Support\Providers\EventServiceProvider`.
+        // No manual `Event::listen` needed; explicit registration
+        // would duplicate every handler.
     }
 
     private function bootModelsDefaults(): void

@@ -21,8 +21,8 @@ return [
     */
     'backup_tiers' => [
         'hourly' => (int) env('BACKUP_TIER_HOURLY', 3),
-        'daily' => (int) env('BACKUP_TIER_DAILY', 3),
-        'weekly' => (int) env('BACKUP_TIER_WEEKLY', 3),
+        'daily' => (int) env('BACKUP_TIER_DAILY', 0),
+        'weekly' => (int) env('BACKUP_TIER_WEEKLY', 0),
     ],
 
     /**

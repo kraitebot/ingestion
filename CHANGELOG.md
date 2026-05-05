@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.26.0 - 2026-05-05
+
+### Features
+
+- [NEW FEATURE] **Backup-failure notification bridge.** New `App\Listeners\RouteBackupEventToSystemHealthAlert` (auto-discovered by Laravel 12's default event-discovery scan of `app/Listeners/`) routes `BackupHasFailed` (Critical), `CleanupHasFailed` / `UnhealthyBackupWasFound` (High) into the existing `system_health_alert` Pushover canonical with 1h per-signal throttle. Signal key now includes the exception's short class name so a transient auth blip cannot mask a quota / connectivity alert inside the throttle window. Closes the silent-failure gap that hid a B2 storage-cap exhaustion in `laravel.log` for hours with no operator alert.
+
+### Fixes
+
+- [BUG FIX] **B2 storage-cap exhaustion + silent failure root cause.** The hourly `backup:run --only-db --disable-notifications` schedule had been pushing 750 MB → ~1 GB SQL dumps to Backblaze B2 every hour with daily-only cleanup, which let 24 hours of dumps stack on B2 between prunes. Account-side storage cap on `kraite-backups` eventually rejected `UploadPart` with `AccessDenied: storage cap exceeded` and the `--disable-notifications` flag suppressed Spatie's built-in mail/slack notification dispatch — the failure landed in `laravel.log` only, with no operator paging. Manual B2 prune trimmed 13 → 3 backups (1.94 GB used).
+
+### Improvements
+
+- [IMPROVED] **Backup architecture: B2-only with rolling-3 retention.** `config/backup.php` `disks` reduced from `['local', 'b2']` to `['b2']` (B2 is the source of truth; ~12 GB of local dumps in `storage/app/private/kraite/` deleted). `config/kraite.php` `backup_tiers` collapsed to `hourly=3, daily=0, weekly=0` so `TieredStrategy` keeps a rolling window of the latest 3 snapshots — the 4th run evicts the oldest. `monitor_backups` watchdog cap dropped 50 GB → 5 GB to match the new working set.
+- [IMPROVED] **Backup cadence: hourly → 3h, with chained immediate cleanup.** `routes/console.php` swaps `cron('7 * * * *')` for `cron('7 */3 * * *')` and chains `Artisan::call('backup:clean')` via `->then()` so retention is enforced on every successful run instead of waiting for the daily 03:45 prune. Standalone `backup:clean` daily entry removed.
+
+### Operations
+
+- [IMPROVED] **B2 storage cap headroom.** Bucket now sits at 1.94 GB / 3 backups under the new rolling-3 model. Operator action still required to bump the Backblaze account-side storage cap (set in B2 console → Caps & Alerts) for additional buffer above the rolling working set.
+
 ## 1.25.0 - 2026-05-04
 
 ### Improvements

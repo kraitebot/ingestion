@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use Kraite\Core\Models\Kraite;
 
@@ -223,28 +224,27 @@ if (! $isCoolingDown()) {
         ->dailyAt('04:30');
 
     // -------------------------------------------------------------------
-    // Database backups (spatie/laravel-backup → local + Backblaze B2)
+    // Database backups (spatie/laravel-backup → Backblaze B2 only)
     // -------------------------------------------------------------------
-    // Hourly snapshot at minute 7, off the conclude:30 / refresh:15 /
-    // bscs:50 / bscs:55 bursts. `--only-db` skips the file-system part
-    // (codebase lives in git, no upside zipping vendor/).
+    // Snapshot every 3 hours at minute 7, off the conclude:30 /
+    // refresh:15 / bscs:50 / bscs:55 bursts. `--only-db` skips the
+    // file-system part (codebase lives in git, no upside zipping
+    // vendor/). Cleanup chained immediately after — TieredStrategy
+    // (hourly=3, daily=0, weekly=0) keeps a rolling window of the
+    // latest 3 backups; the 4th run evicts the oldest.
     Schedule::command('backup:run --only-db --disable-notifications')
-        ->cron('7 * * * *')
+        ->cron('7 */3 * * *')
         ->withoutOverlapping()
-        ->onOneServer();
-
-    // Daily cleanup at 03:45 — runs spatie's retention strategy against
-    // both `local` and `b2` disks.
-    Schedule::command('backup:clean --disable-notifications')
-        ->dailyAt('03:45')
-        ->withoutOverlapping()
-        ->onOneServer();
+        ->onOneServer()
+        ->then(function (): void {
+            Artisan::call('backup:clean', ['--disable-notifications' => true]);
+        });
 
     // Backup-freshness watchdog every 6 hours. Fires
-    // `UnhealthyBackupWasFound` event when the newest backup on either
-    // disk is older than 25h or total disk usage exceeds 50 GB. Bridge
-    // listener routes the event to the `system_health_alert` Pushover
-    // canonical.
+    // `UnhealthyBackupWasFound` event when the newest B2 backup is
+    // older than the configured threshold or bucket usage exceeds
+    // configured cap. Bridge listener routes the event to the
+    // `system_health_alert` Pushover canonical.
     Schedule::command('backup:monitor')
         ->cron('15 */6 * * *')
         ->withoutOverlapping()
