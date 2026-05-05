@@ -41,7 +41,7 @@ return [
     | can_open_positions:          If false, existing positions can be managed/closed, but no new ones open.
     | notifications_enabled:       If false, no notifications will be sent (useful for testing).
     */
-    'slow_query_threshold_ms' => env('SLOW_QUERY_THRESHOLD_MS', 5000),
+    'slow_query_threshold_ms' => env('SLOW_QUERY_THRESHOLD_MS', 45000),
     'can_trade' => env('CAN_TRADE', false),
     'can_open_positions' => env('CAN_OPEN_POSITIONS', false),
     'notifications_enabled' => env('NOTIFICATIONS_ENABLED', true),

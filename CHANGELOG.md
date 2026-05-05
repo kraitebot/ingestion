@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.27.0 - 2026-05-05
+
+### Fixes
+
+- [BUG FIX] **Bumps `kraitebot/core` to 1.26.0** — `MarketRegimeNotificationsSeeder` activates `market_regime_critical` / `market_regime_recovered` / `market_regime_compute_stale` (closes silent-fail path where BSCS cooldown arming dropped the operator alert) + `StreamBinancePricesCommand` coalesces `exchange_symbol_prices` writes to once per 5s (~2500/sec → ~500/sec).
+- [BUG FIX] **mysqldump `useSingleTransaction => true`.** `config/database.php` mysql connection now passes `'dump' => ['useSingleTransaction' => true]` through `spatie/db-dumper` so the backup runs in a REPEATABLE READ snapshot instead of `LOCK TABLES READ`. Eliminates the metadata-lock storm that froze every writer for the ~110s dump window each :07 hour-mark — the HH:08 slow-query bursts observed across 2026-05-05 traced 100% to backup-induced metadata locks (`Innodb_buffer_pool_wait_free` stayed at 0 throughout).
+
+### Improvements
+
+- [IMPROVED] **Slow-query notification threshold 10s → 45s.** `SLOW_QUERY_THRESHOLD_MS` raised in `.env` (10000 → 45000) and `config/kraite.php` default (5000 → 45000). Reduces notification noise on the long-tail of legitimately heavy reports / one-shot batch queries while still catching pathological waits.
+- [DEPENDENCIES] **`aws/aws-sdk-php` 3.379.11 → 3.380.0.** Routine point-release bump.
+
 ## 1.26.0 - 2026-05-05
 
 ### Features

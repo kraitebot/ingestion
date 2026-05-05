@@ -62,6 +62,24 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+
+            // spatie/laravel-backup → spatie/db-dumper hands this through
+            // to mysqldump. `useSingleTransaction => true` flips the dumper
+            // to `--single-transaction` mode: a single REPEATABLE READ
+            // snapshot, NO `LOCK TABLES READ`. On an InnoDB-only schema,
+            // that gives a consistent point-in-time backup without blocking
+            // any writers for the duration of the dump.
+            //
+            // Why this matters: prior default (useSingleTransaction = false)
+            // caused mysqldump to hold table-level shared locks for the
+            // ~110s dump window, freezing every writer touching those tables
+            // (mark-price daemon, steps_dispatcher, api_request_logs, etc.).
+            // The HH:08 slow-query storms observed across 2026-05-05 were
+            // 100% backup-induced; metadata-lock waits, not InnoDB internal
+            // contention (Innodb_buffer_pool_wait_free stayed at 0).
+            'dump' => [
+                'useSingleTransaction' => true,
+            ],
         ],
 
         'mariadb' => [
