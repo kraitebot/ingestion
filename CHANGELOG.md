@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.28.0 - 2026-05-06
+
+### Features
+
+- [NEW FEATURE] **Bumps `kraitebot/core` to 1.27.0** — adds the six Binance user-data daemon notification canonicals (`binance_user_data_account_connected`, `binance_user_data_account_init_failed`, `binance_user_data_listen_key_expired`, `binance_user_data_account_reaped`, `binance_user_data_memory_restart`, `binance_listen_key_keepalive_failed`) so the per-account user-data WebSocket daemon has live wiring for connect / init-fail / listenKey-expired / reap / memory-restart / keepalive-fail signals.
+
 ## 1.27.0 - 2026-05-05
 
 ### Fixes
