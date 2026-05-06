@@ -22,8 +22,11 @@ use Kraite\Core\Support\MarketRegime\BlackSwanIndex;
  *      the regime resolve, so we keep opens off.)
  *
  *   3. Score < threshold AND cooldown was active but just expired
- *      → release: leave bscs_cooldown_until in the past, fire the
- *      `market_regime_recovered` notification, opens resume.
+ *      → release: clear bscs_cooldown_until to null, fire the
+ *      `market_regime_recovered` notification, opens resume. The clear
+ *      is critical — leaving a past timestamp causes every subsequent
+ *      tick to re-enter this branch and re-fire the notification
+ *      (Pos #577 sibling incident, 2026-05-06).
  *
  *   4. Cooldown still in the future
  *      → no-op (already armed, nothing to do).
@@ -71,7 +74,7 @@ it('does not re-arm while a cooldown is already active', function (): void {
     // Cooldown timestamp untouched — already armed, nothing to do.
     expect($result['action'])->toBe('cooldown_already_active')
         ->and($kraite->bscs_cooldown_until?->toIso8601String())
-            ->toBe($futureCooldown->toIso8601String());
+        ->toBe($futureCooldown->toIso8601String());
 });
 
 it('re-arms a fresh cooldown when previous expired and score still high', function (): void {
@@ -100,7 +103,29 @@ it('releases the cooldown when score drops below threshold after expiry', functi
 
     expect($result['action'])->toBe('cooldown_released')
         ->and(BlackSwanIndex::current()->shouldBlockOpens())->toBeFalse()
-        ->and($kraite->bscs_cooldown_until?->isFuture())->toBeFalse();
+        ->and($kraite->bscs_cooldown_until)->toBeNull();
+});
+
+it('only fires market_regime_recovered ONCE — second tick after recovery is a no-op', function (): void {
+    // Production incident 2026-05-06 — `bscs_cooldown_until` left in the
+    // past indefinitely after the recovery branch (line 109-111 of
+    // AnalyseBscsJob) wrote `bscs_block_active=false` but never cleared
+    // the timestamp. Every subsequent tick still saw `hadCooldown=true`
+    // (because the column held a past timestamp), score below threshold,
+    // and re-fired the recovered notification. Channel-level cache
+    // throttling clamped it to one push per hour; without the throttle
+    // it would fire every cron tick.
+    $expired = CarbonImmutable::now()->subHour();
+    setBscsState(score: 40, cooldownUntil: $expired);
+
+    $first = (new AnalyseBscsJob)->compute();
+    expect($first['action'])->toBe('cooldown_released');
+
+    // After recovery the cooldown timestamp must be cleared so the next
+    // tick recognises the state as "no cooldown was ever active" and
+    // does NOT re-enter the recovery branch.
+    $second = (new AnalyseBscsJob)->compute();
+    expect($second['action'])->toBe('noop_below_threshold');
 });
 
 it('no-ops when score is below threshold and no cooldown was active', function (): void {

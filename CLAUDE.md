@@ -4,11 +4,21 @@
 
 ---
 
-# SANDBOX ENVIRONMENT — DESTRUCTIVE OPERATIONS REQUIRE EXPLICIT APPROVAL
+# PRODUCTION ENVIRONMENT — THIS WORKING DIRECTORY IS LIVE
 
-**This is a sandbox/dev environment.** That does NOT relax the safety bar — it tightens it. "Sandbox" never authorises me to run destructive or hard-to-reverse operations on my own. Bruno's data, even in sandbox, represents real-money state on real exchanges, real Bitget/Binance positions, real subscriptions, real configuration.
+**`/home/waygou/ingestion.kraite.com` IS the production ingestion server.** It is NOT a dev clone, NOT a sandbox, NOT a staging mirror. Every file I edit on this filesystem is the running production code. The DB I query is the production `kraite` DB. The Binance / Bitget / Kucoin / Bybit accounts wired in `.env` are real-money accounts holding real positions.
 
-**HARD RULE:** Before running ANY destructive operation, I MUST stop and ask Bruno for explicit, in-message approval — even if the environment is "sandbox" / "dev" / "local". A previous agreement in another context does NOT carry over. Each destructive action gets its own confirmation.
+## How deployment actually works here
+
+- **Editing a file = live change.** The next time the relevant code path runs (cron tick, Horizon worker pickup, HTTP request) it executes the new code.
+- **Job classes need a Horizon reload to pick up edits.** When I change a job class (anything under `Jobs/`, `Listeners/`, queued classes), I MUST tell Bruno to run `php artisan horizon:terminate` — supervisor respawns workers with fresh opcode. Without that, edits sit on disk while old workers serve stale opcode.
+- **`git push` is BACKUP, not deploy.** Pushing the local commit to `kraitebot/core` / `kraitebot/ingestion` on GitHub is a remote snapshot for rollback / history / audit. It does NOT propagate code anywhere. The code on this filesystem is already live the moment the file is saved.
+- **Therefore: don't push on every change.** Bruno controls when to push (`/push` skill). Don't volunteer pushes after every edit, don't treat "uncommitted local changes" as "not deployed yet". They ARE deployed. The push is housekeeping.
+- **Production-grade caution applies to every edit.** Test changes ALWAYS run against `kraite_tests` (a separate DB) — never the prod `kraite` DB. Verify the connection BEFORE running `php artisan test`. Pest is configured to use `kraite_tests`; running with `--env=testing` when no `.env.testing` file exists falls back to `.env` and HITS PROD — never do that.
+
+## Destructive ops — explicit approval required, every time
+
+Editing source files is normal day-to-day work. The list below is for actions that go BEYOND a code edit — actions that mutate live state or are hard to reverse. For these, I MUST stop and ask Bruno for explicit, in-message approval. A previous "yes" does NOT carry over to a new operation. Each destructive action gets its own confirmation.
 
 ## Examples of operations that REQUIRE explicit Bruno approval
 
@@ -62,7 +72,7 @@ When I'm about to do one of the above, I STOP and write something like:
 
 Then I wait for Bruno's reply. "yes / go / do it / approved" → proceed. Anything else / silence → don't proceed.
 
-**Why this matters (incident, 2026-05-01):** I ran `php artisan migrate:fresh --env=testing --force` thinking it would target `kraite_tests`. There was no `.env.testing` file, so `--env=testing` fell back to `.env` and the command wiped the `kraite` production DB — accounts, positions, orders, model_logs, the lot. Real-money positions on Bitget + 2 Binance accounts continued running on the exchanges with no local mirror to manage them. The "sandbox" label gave me a false sense of safety. Recovery required `migrate:fresh --seed` on a clean DB and a planned re-sync from each exchange. Don't repeat this — never assume sandbox = safe.
+**Why this matters (incident, 2026-05-01):** I ran `php artisan migrate:fresh --env=testing --force` thinking it would target `kraite_tests`. There was no `.env.testing` file, so `--env=testing` fell back to `.env` and the command wiped the `kraite` production DB — accounts, positions, orders, model_logs, the lot. Real-money positions on Bitget + 2 Binance accounts continued running on the exchanges with no local mirror to manage them. The framing "this is just a working folder" gave me a false sense of safety. Recovery required `migrate:fresh --seed` on a clean DB and a planned re-sync from each exchange. **This folder IS production. Edits are live. Treat every command as if it touches money — because it does.**
 
 ---
 

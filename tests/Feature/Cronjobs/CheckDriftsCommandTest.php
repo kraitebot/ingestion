@@ -171,7 +171,7 @@ it('dispatches PrepareSyncOrdersJob and notifies on a quiet drifted active posit
     );
     bindDriftReport($report);
 
-    $exit = $this->artisan('kraite:cron-check-drifts')->run();
+    $exit = $this->artisan('kraite:cron-check-drifts', ['--skip-structure-audit' => true])->run();
 
     expect($exit)->toBe(0);
 
@@ -230,7 +230,7 @@ it('catches the WAP scenario end-to-end: PROFIT-LIMIT price drift on a quiet pos
     );
     bindDriftReport($report);
 
-    $this->artisan('kraite:cron-check-drifts')->assertSuccessful();
+    $this->artisan('kraite:cron-check-drifts', ['--skip-structure-audit' => true])->assertSuccessful();
 
     // Alert-only mode (2026-05-03): the spotter no longer dispatches
     // PrepareSyncOrdersJob. The reactive sync-orders cron + WS push
@@ -269,7 +269,7 @@ it('skips an active position when one of its orders was touched within the quiet
     $mock->shouldNotReceive('analyseAccount');
     app()->instance(DriftChecker::class, $mock);
 
-    $this->artisan('kraite:cron-check-drifts')->assertSuccessful();
+    $this->artisan('kraite:cron-check-drifts', ['--skip-structure-audit' => true])->assertSuccessful();
 
     expect(Step::where('class', PrepareSyncOrdersJob::class)->count())->toBe(0);
     Notification::assertNothingSent();

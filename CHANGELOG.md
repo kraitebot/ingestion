@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.30.0 - 2026-05-06
+
+### Features
+
+- [NEW FEATURE] **Bumps `kraitebot/core` to 1.30.0** — adds the position-structure-integrity audit (Scope 3 in `kraite:cron-check-drifts`), the new `SyncPositionQuantityFromExchangeJob` atomic, and the cross-exchange "already closed" handling in `ClosePositionAtomicallyJob`. See core 1.30.0 changelog for the full surface.
+- [NEW FEATURE] **`tests/Feature/Cronjobs/CheckPositionStructureIntegrityTest.php`** — 7 cases pinning the new structure audit: happy path (zero notifications, flag stays true), missing TP, missing SL via CANCELLED status, incomplete limit count, non-active skip, throttle-once-per-position, multi-position fan-out (one notification per broken position).
+- [NEW FEATURE] **Regression tests for the partial-fill safety net** — `tests/Feature/Cronjobs/SyncOrdersPartialFillSafetyNetTest.php`, `tests/Feature/Observers/OrderObserverPartialFillSyncTest.php`, and `tests/Feature/Jobs/Atomic/Position/` cover the LIMIT-PARTIALLY_FILLED → `SyncPositionQuantityFromExchangeJob` dispatch path on both the observer side and the `PrepareSyncOrdersJob` belt-and-suspenders side.
+- [NEW FEATURE] **`tests/Feature/Concerns/Position/PositionBuildCloseOrderAttributesTest.php`** — pins the `Position::buildCloseOrderAttributes()` helper that backs `apiClose()` (sums every FILLED MARKET + LIMIT to derive close quantity from local DB truth, returns null when nothing is filled).
+
+### Fixes
+
+- [BUG FIX] **Existing `CheckDriftsCommandTest` cases now pass `--skip-structure-audit`** — three drift-scope tests intentionally fixture incomplete order sets to exercise Scope 1 / Scope 2 logic; without the flag those fixtures would also trip the new Scope 3. Functional behaviour of the drift / orphan tests is unchanged.
+- [BUG FIX] **`AnalyseBscsJobTest` regression** — pins the BSCS recovery branch nulling `bscs_cooldown_until` so the next tick correctly reads "no cooldown" and silently no-ops instead of re-firing `market_regime_recovered` every minute.
+
+### Improvements
+
+- [IMPROVED] **`CLAUDE.md` rewritten as a production-environment briefing.** Replaces the stale "sandbox / dev environment" framing with the real model: this filesystem IS the live ingestion server, file edits are live changes, `git push` is backup-not-deploy, job-class edits require `horizon:terminate` to take effect. Adds a comprehensive destructive-operations checklist (DB, filesystem, git, process, exchange) so future sessions stop and ask before any non-reversible action — anchored on the 2026-05-01 `migrate:fresh --env=testing` incident that wiped the prod `kraite` DB because no `.env.testing` file existed.
+- [IMPROVED] **`claude.sh` drops the `claude-chill` wrapper** — direct `claude` invocation; the wrapper added no value here and produced an extra layer of stdio buffering that interfered with the Telegram channel plugin's stdio MCP.
+
 ## 1.29.0 - 2026-05-06
 
 ### Fixes
