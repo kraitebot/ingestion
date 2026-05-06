@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.29.0 - 2026-05-06
+
+### Fixes
+
+- [BUG FIX] **Bumps `kraitebot/core` to 1.28.0** — drops the spurious MARKET reference_price drift check in `ActivatePositionJob::validateMarketOrders()` that kicked the cancel-cascade on legitimate sub-cent VWAP slippage and left Position #577 (TONUSDT) residual on Binance.
+- [NEW FEATURE] **Regression test pinning the new behaviour** — `tests/Unit/Jobs/Atomic/Position/ActivatePositionJobMarketRetryTest.php::"absorbs MARKET fill-vs-reference price drift"` reproduces the 0.00012345 drift scenario, fails before the fix, passes after.
+
 ## 1.28.0 - 2026-05-06
 
 ### Features

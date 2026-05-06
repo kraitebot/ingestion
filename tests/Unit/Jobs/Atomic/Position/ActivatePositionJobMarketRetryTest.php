@@ -180,6 +180,33 @@ it('throws after the bounded retry budget if the MARKET stays non-FILLED', funct
         );
 })->skipOnWindows();
 
+it('absorbs MARKET fill-vs-reference price drift (slippage is expected, not an error)', function (): void {
+    // Production incident 2026-05-06 — Position 577 (TONUSDT). Binance
+    // multi-trade fill returned a VWAP that didn't snap to the tick the
+    // mark-price snapshot was rounded to. `PlaceMarketOrderJob::complete()`
+    // had already stamped `reference_price` from the first sync (pre-VWAP),
+    // then `SyncPositionOrdersJob` overwrote `price` with the true VWAP.
+    // The legacy validation path called `validateReferenceFields` on MARKET
+    // and threw on the resulting sub-cent drift, kicking the lifecycle into
+    // the cancel-cascade. The cascade then raced Binance's ledger and left
+    // a residual position naked on the exchange. MARKET = exchange truth
+    // by definition — the local `reference_price` is informational and
+    // must not be a gate on activation.
+    $position = buildPositionForActivate(marketStatus: 'FILLED');
+
+    Order::query()
+        ->where('position_id', $position->id)
+        ->where('type', 'MARKET')
+        ->update(['price' => '1.00012345']);
+
+    $job = new ActivatePositionJob($position->id);
+    $result = $job->compute();
+
+    expect($result)->toBeArray();
+    expect($result['status'])->toBe('validated');
+    expect($result['market_orders'])->toBe(1);
+});
+
 it('promotes a non-FILLED MARKET that flips to FILLED between retries', function (): void {
     // Self-heal smoke test: install a one-shot Order::saved listener
     // that flips the MARKET row to FILLED the first time it's saved.
