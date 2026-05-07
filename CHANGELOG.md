@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.31.0 - 2026-05-07
+
+### Features
+
+- [NEW FEATURE] **Bumps `kraitebot/core` to 1.31.0** — adds `PurgePositionTrailJob` (clean-close breadcrumb janitor), `OptimizeBreadcrumbTablesCommand` (per-table maintenance-window OPTIMIZE TABLE), and `Kraite\Core\Support\MaintenanceMode` (cache-backed `steps:dispatch` pause/resume). See core 1.31.0 changelog for the full surface.
+- [NEW FEATURE] **Per-table OPTIMIZE schedule (03:00 → 04:36, 24-min spacing).** Each schedule entry rebuilds one breadcrumb table inside its own maintenance window so the dispatcher catches up between slots instead of staying gated for the whole pass. Slot ordering is interleaved with the existing purge chain so each OPTIMIZE runs AFTER its corresponding purge: 03:00 model_logs, 03:24 api_snapshots, 03:48 api_request_logs (after 03:30 purge-old-data), 04:12 steps (after 04:00 steps:archive), 04:36 steps_archive (after 04:30 steps:purge).
+- [NEW FEATURE] **`tests/Feature/Jobs/Atomic/Position/PurgePositionTrailJobTest.php`** — 6 cases pinning the janitor: dispatches on `closed` transition only (skips on `cancelled` / `failed` / unrelated attribute change), wipes every polymorphic breadcrumb tied to the position chain, preserves the position row + orders + the janitor's own running step row.
+- [NEW FEATURE] **`tests/Feature/Support/MaintenanceModeTest.php`** — pins the pause/resume helper contract: default-not-paused, engages with reason+timestamp, clears on resume, honours custom TTL.
+
+### Improvements
+
+- [IMPROVED] **`steps:dispatch` schedule entry now honours `MaintenanceMode::isStepsDispatchPaused()`** via a `->skip()` callback. The pause is engaged automatically by `OptimizeBreadcrumbTablesCommand` for the duration of each per-table rebuild; cache-TTL safety net auto-resumes dispatch within minutes if anything crashes mid-pause.
+
 ## 1.30.0 - 2026-05-06
 
 ### Features

@@ -24,6 +24,13 @@ if (config('kraite.can_dispatch_steps')) {
         ->everySecond()
         ->when(function () {
             return config('kraite.can_dispatch_steps');
+        })
+        // Honour the maintenance flag set by OptimizeBreadcrumbTablesCommand
+        // (and any future short-window operation that needs the dispatcher
+        // quiesced). The cache-backed flag has a TTL safety net so an
+        // operator-side crash auto-resumes dispatch within minutes.
+        ->skip(function () {
+            return \Kraite\Core\Support\MaintenanceMode::isStepsDispatchPaused();
         });
 }
 
@@ -222,6 +229,59 @@ if (! $isCoolingDown()) {
     // 5-day retention window: anything older than that is gone.
     Schedule::command('steps:purge --only-archive --days=5')
         ->dailyAt('04:30');
+
+    // ---------------------------------------------------------------
+    // OPTIMIZE TABLE on the breadcrumb tables — staggered window
+    // 03:00 → 04:36, 24-min spacing, one table per slot.
+    //
+    // Each entry runs the same OPTIMIZE command targeting a single
+    // table, which engages MaintenanceMode (pauses steps:dispatch),
+    // waits for the in-flight pipeline to drain, runs the rebuild,
+    // then resumes dispatch — all in a tight per-table window so the
+    // dispatcher catches up between slots instead of staying gated
+    // for the whole rebuild pass. Sequential per-table avoids the
+    // disk-bandwidth contention parallel mode produced (per-table
+    // duration tripled when 5 rebuilds shared the disk).
+    //
+    // Slot ordering is interleaved with the existing purge chain so
+    // the OPTIMIZE on each table runs AFTER that table's purge
+    // finishes:
+    //   03:00  model_logs       (own slot — purge-old-data hits this
+    //                            at 03:30 but we only want to compact
+    //                            yesterday's accumulated deletes here)
+    //   03:00  purge-candles    (existing — different table)
+    //   03:24  api_snapshots    (instant; harmless filler slot)
+    //   03:30  purge-old-data   (existing)
+    //   03:48  api_request_logs (after purge-old-data finishes)
+    //   04:00  steps:archive    (existing)
+    //   04:12  steps            (after archive run finishes)
+    //   04:30  steps:purge      (existing)
+    //   04:36  steps_archive    (after archive purge finishes)
+    // ---------------------------------------------------------------
+    Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=model_logs')
+        ->dailyAt('03:00')
+        ->withoutOverlapping()
+        ->onOneServer();
+
+    Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=api_snapshots')
+        ->dailyAt('03:24')
+        ->withoutOverlapping()
+        ->onOneServer();
+
+    Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=api_request_logs')
+        ->dailyAt('03:48')
+        ->withoutOverlapping()
+        ->onOneServer();
+
+    Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=steps')
+        ->dailyAt('04:12')
+        ->withoutOverlapping()
+        ->onOneServer();
+
+    Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=steps_archive')
+        ->dailyAt('04:36')
+        ->withoutOverlapping()
+        ->onOneServer();
 
     // -------------------------------------------------------------------
     // Database backups (spatie/laravel-backup → Backblaze B2 only)
