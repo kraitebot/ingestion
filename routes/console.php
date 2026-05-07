@@ -233,6 +233,12 @@ if (! $isCoolingDown()) {
     // ---------------------------------------------------------------
     // OPTIMIZE TABLE on the breadcrumb tables — staggered window
     // 03:00 → 04:36, 24-min spacing, one table per slot.
+    // **Weekly on Sundays only** — the per-position janitor + the
+    // daily purge chain keep the .ibd files compact enough that a
+    // daily OPTIMIZE was finding zero fragmentation to reclaim
+    // (verified 2026-05-07 mid-day run: delta=0MB across all five
+    // tables). One nightly rebuild per week reclaims the slow-drift
+    // residue without paying the daily cost.
     //
     // Each entry runs the same OPTIMIZE command targeting a single
     // table, which engages MaintenanceMode (pauses steps:dispatch),
@@ -248,7 +254,7 @@ if (! $isCoolingDown()) {
     // finishes:
     //   03:00  model_logs       (own slot — purge-old-data hits this
     //                            at 03:30 but we only want to compact
-    //                            yesterday's accumulated deletes here)
+    //                            the week's accumulated deletes here)
     //   03:00  purge-candles    (existing — different table)
     //   03:24  api_snapshots    (instant; harmless filler slot)
     //   03:30  purge-old-data   (existing)
@@ -259,27 +265,27 @@ if (! $isCoolingDown()) {
     //   04:36  steps_archive    (after archive purge finishes)
     // ---------------------------------------------------------------
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=model_logs')
-        ->dailyAt('03:00')
+        ->weeklyOn(0, '03:00')
         ->withoutOverlapping()
         ->onOneServer();
 
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=api_snapshots')
-        ->dailyAt('03:24')
+        ->weeklyOn(0, '03:24')
         ->withoutOverlapping()
         ->onOneServer();
 
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=api_request_logs')
-        ->dailyAt('03:48')
+        ->weeklyOn(0, '03:48')
         ->withoutOverlapping()
         ->onOneServer();
 
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=steps')
-        ->dailyAt('04:12')
+        ->weeklyOn(0, '04:12')
         ->withoutOverlapping()
         ->onOneServer();
 
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=steps_archive')
-        ->dailyAt('04:36')
+        ->weeklyOn(0, '04:36')
         ->withoutOverlapping()
         ->onOneServer();
 

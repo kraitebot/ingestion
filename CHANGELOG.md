@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.31.1 - 2026-05-07
+
+### Fixes
+
+- [BUG FIX] **Bumps `brunocfalcao/step-dispatcher` to 1.11.13** — pass-1 fall-through fix. When `priority='high'` Pending rows existed but none were dispatchable that tick (orphan with missing previous index, etc.), the dispatcher used to skip pass 2 entirely and the entire group's non-priority backlog starved. Production trigger today: group `eta` wedged for 11+ minutes behind one poison-pill `UpdatePositionStatusJob` (`index=9` in a block with no `index=8`). The group-stall watchdog notification fired; root cause traced and patched at the package layer. See step-dispatcher 1.11.13 changelog for the full surface.
+
+### Improvements
+
+- [IMPROVED] OPTIMIZE schedule narrowed from daily to Sundays-only (`weeklyOn(0, '03:00')` etc.). The first end-to-end daily run found `delta=0MB` across all five tables — the existing janitor + per-tick step-dispatcher pruning already keeps `.ibd` files compact, so a daily rebuild was wasted I/O. Sunday cadence preserves the safety net for any rare drift without the 4 a.m. churn.
+
+### Tests
+
+- [IMPROVED] `tests/Feature/Commands/CreatePositionsCommandOrphanRecoveryTest.php` adds a regression case pinning the indexed `(relatable_type, relatable_id, state)` tuple lookup (covered by `idx_p_steps_rel_state_idx`).
+
 ## 1.31.0 - 2026-05-07
 
 ### Features

@@ -564,7 +564,7 @@
             "dist": {
                 "type": "path",
                 "url": "./packages/brunocfalcao/step-dispatcher",
-                "reference": "2520a112a0afb41d944efb89b658f97cbb74b238"
+                "reference": "7bbdb33468ff77cfa004b955b457091dc67cbc33"
             },
             "require": {
                 "illuminate/console": "^11.0|^12.0|^13.0",

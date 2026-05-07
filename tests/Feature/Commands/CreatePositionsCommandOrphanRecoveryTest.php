@@ -95,6 +95,59 @@ it('re-dispatches DispatchPositionJob for an orphan position in new status with 
         Pending::class,
         'Recovered step must land in Pending so the next dispatcher tick promotes it.'
     );
+
+    // Recovery dispatch must populate relatable_type / relatable_id at
+    // create time so the next tick's orphan lookup can resolve via the
+    // indexed `idx_p_steps_rel_state_idx` covering tuple instead of the
+    // unindexed JSON-path scan. Drives the scaling fix from
+    // 2026-05-07: at 200+ accounts the JSON predicate's wall-clock
+    // grew linearly with steps-table size; the indexed predicate is
+    // O(log n).
+    expect($recoveredSteps->first()->relatable_type)->toBe(
+        Position::class,
+        'Recovered step must carry relatable_type=Position so the orphan lookup hits the index.'
+    );
+    expect((int) $recoveredSteps->first()->relatable_id)->toBe(
+        $orphan->id,
+        'Recovered step must carry relatable_id matching the orphaned position.'
+    );
+});
+
+it('detects an existing live step via the indexed relatable_type / relatable_id columns', function (): void {
+    // Pin the new indexed code path: a live DispatchPositionJob step
+    // with relatable_type+relatable_id set must be recognised as
+    // "already dispatched" — the recovery loop must NOT create a
+    // duplicate even if the JSON-path predicate doesn't match. This
+    // is the steady-state shape after every step picks up its
+    // relatable via the framework's HandlesStepLifecycle hook.
+    $position = Position::factory()->create([
+        'account_id' => $this->account->id,
+        'exchange_symbol_id' => $this->exchangeSymbol->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    Step::create([
+        'class' => BinanceDispatchPositionJob::class,
+        'queue' => 'positions',
+        'relatable_type' => Position::class,
+        'relatable_id' => $position->id,
+        'arguments' => ['positionId' => $position->id],
+    ]);
+
+    $this->artisan('kraite:cron-create-positions')->assertSuccessful();
+
+    $stepCount = Step::query()
+        ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
+        ->where('relatable_type', Position::class)
+        ->where('relatable_id', $position->id)
+        ->count();
+
+    expect($stepCount)->toBe(
+        1,
+        'Recovery must dedupe via the indexed relatable lookup; no duplicate dispatch when a live '
+        .'step already exists with relatable_type=Position + relatable_id matching.'
+    );
 });
 
 it('does not re-dispatch when the orphan position already has a live DispatchPositionJob step', function (): void {
