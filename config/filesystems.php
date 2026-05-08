@@ -67,6 +67,16 @@ return [
         // (`kraite-backups`) is private, server-side encrypted, has
         // Object Lock disabled, and "Keep only the last version"
         // lifecycle so spatie's retention pruning is permanent.
+        //
+        // Adaptive retries (max_attempts=10) harden the multipart
+        // upload path against B2's sporadic per-part `InternalError
+        // (server): internal incident` 500s. The legacy default
+        // (3 attempts) was insufficient — a single failed part on
+        // a 1.1 GB / 200-part dump aborted the whole transfer, and
+        // backups failed once or twice every few days for purely
+        // transient reasons. Adaptive mode adds client-side rate
+        // limiting on top of standard exponential backoff so a
+        // throttled B2 endpoint does not feed itself.
         'b2' => [
             'driver' => 's3',
             'key' => env('B2_KEY_ID'),
@@ -77,6 +87,10 @@ return [
             'use_path_style_endpoint' => true,
             'throw' => true,
             'report' => false,
+            'retries' => [
+                'mode' => 'adaptive',
+                'max_attempts' => 10,
+            ],
         ],
 
     ],

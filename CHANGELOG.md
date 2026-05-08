@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.31.2 - 2026-05-08
+
+### Fixes
+
+- [BUG FIX] **B2 backup multipart upload retries.** Backblaze B2 returns a sporadic per-part `InternalError (server): internal incident` 500 during multipart uploads of the nightly ~1.1 GB DB dump. The AWS SDK's default retry policy (`legacy` mode, 3 attempts) wasn't enough — a single failed part aborts the entire upload and Spatie/laravel-backup reports the whole backup as failed. `config/filesystems.php` `b2` disk now declares `retries => ['mode' => 'adaptive', 'max_attempts' => 10]`. Adaptive mode adds client-side rate limiting on top of standard exponential backoff so a throttled B2 endpoint does not feed itself with a retry storm. Recorded failures: 2026-05-05 (×3), 2026-05-08 (×1).
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/Backup/B2DiskRetryConfigTest.php` pins the explicit `retries.mode='adaptive'` and `retries.max_attempts > 3` contract on the `b2` disk so a future config edit cannot silently re-expose production backups to the same transient failure shape. Includes a smoke pin that the disk still boots into a real `Aws\S3\S3Client` after the SDK consumes the retry config.
+
 ## 1.31.1 - 2026-05-07
 
 ### Fixes
