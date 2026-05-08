@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.33.0 - 2026-05-08
+
+### Features
+
+- [NEW FEATURE] **Per-group `steps:dispatch` parallelism in `routes/console.php`.** Replaced the single `Schedule::command('steps:dispatch')->everySecond()` entry (which looped all 10 groups serially in one PHP process, ~5s per group cycle) with 10 dedicated `--group=<name>` entries, each `everySecond()->runInBackground()`. The scheduler now forks each group's dispatcher into its own subprocess so all 10 ticks fire in parallel. Per-group cadence drops from ~5s to ~1s — about a 5× lift on dispatchable promotion rate before the per-group `max_per_tick` cap kicks in. Verified empirically: in-process serial execution drove tick age to 11–17s; backgrounded forks restore sub-second cadence. Auditor's note: every dispatcher query carries an explicit `where('group', X)` filter covered by `idx_steps_state_group_dispatch_type`, block-uuid lookups are globally unique by construction, and `hasActiveSteps()` is index-covered EXISTS — no global table scans across the full tick lifecycle.
+- [NEW FEATURE] **Dispatcher saturation persistence + flush cron.** Bumps `kraitebot/core` to 1.33.0 (new `steps_dispatcher_saturation` table + `kraite:cron-flush-dispatcher-saturation` command + `Kraite\Core\Models\StepsDispatcherSaturation`) and `brunocfalcao/step-dispatcher` to 1.11.14 (per-tick Redis counter writes inside `StepDispatcher::dispatch()`). New `Schedule::command('kraite:cron-flush-dispatcher-saturation')->everyMinute()->withoutOverlapping()->onOneServer()` entry pulls the previous minute's Redis counters for all 10 groups into the persistent table. Saturation % per minute = `ticks_capped_with_leftover / ticks_observed × 100`. Sustained near-100% across all groups = unambiguous signal to scale to more groups; sub-100% = the cap is not the bottleneck and adding groups will not help. Dashboard surface to be wired in admin.
+
 ## 1.32.0 - 2026-05-08
 
 ### Features

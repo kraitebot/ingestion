@@ -18,21 +18,63 @@ $isCoolingDown = function (): bool {
     }
 };
 
-// Step dispatcher always runs - it processes existing steps
+// Step dispatcher — one entry per dispatcher group so each group gets its
+// own every-second tick instead of all 10 groups serialised behind one
+// global iterator. Throughput per group goes from "global tick every ~5s"
+// to "per-group tick every 1s" — about a 5× lift on dispatchable promotion
+// rate before the per-group max_per_tick cap kicks in.
+//
+// Safety:
+//  • Each tick acquires a per-group lock via steps_dispatcher.can_dispatch
+//    CAS (single row per group). 10 dispatchers → 10 disjoint locks; no
+//    cross-group contention.
+//  • Every tick query carries an explicit `where('group', X)` filter
+//    covered by idx_steps_state_group_dispatch_type, so the rows each
+//    dispatcher touches are partitioned by the group column. Block-uuid
+//    cache lookups are globally unique by construction. Audited 2026-05-08
+//    against the package's full tick lifecycle — no global table scans.
+//  • The maintenance pause flag (MaintenanceMode::isStepsDispatchPaused)
+//    is checked once per tick per group; if any short-window operation
+//    needs the dispatcher quiesced, every group ticks-out cleanly until
+//    the flag clears.
+//  • The `kraite.can_dispatch_steps` env-level kill-switch still gates
+//    every entry so a global emergency stop is one config flip away.
 if (config('kraite.can_dispatch_steps')) {
-    Schedule::command('steps:dispatch')
-        ->everySecond()
-        ->when(function () {
-            return config('kraite.can_dispatch_steps');
-        })
-        // Honour the maintenance flag set by OptimizeBreadcrumbTablesCommand
-        // (and any future short-window operation that needs the dispatcher
-        // quiesced). The cache-backed flag has a TTL safety net so an
-        // operator-side crash auto-resumes dispatch within minutes.
-        ->skip(function () {
-            return \Kraite\Core\Support\MaintenanceMode::isStepsDispatchPaused();
-        });
+    $stepDispatcherGroups = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
+
+    foreach ($stepDispatcherGroups as $stepDispatcherGroup) {
+        Schedule::command('steps:dispatch --group='.$stepDispatcherGroup)
+            ->everySecond()
+            // runInBackground forks each per-group invocation into its
+            // own subprocess so the 10 dispatchers run in parallel
+            // rather than serialised behind one scheduler tick. Without
+            // it, the scheduler runs the commands in-process — total
+            // tick time = sum of all 10, defeating the per-group lift.
+            // Verified empirically 2026-05-08: in-process serial
+            // execution drove tick age to 11-17s; backgrounded forks
+            // restore sub-second cadence per group.
+            ->runInBackground()
+            ->when(function () {
+                return config('kraite.can_dispatch_steps');
+            })
+            // Honour the maintenance flag set by OptimizeBreadcrumbTablesCommand
+            // (and any future short-window operation that needs the dispatcher
+            // quiesced). The cache-backed flag has a TTL safety net so an
+            // operator-side crash auto-resumes dispatch within minutes.
+            ->skip(function () {
+                return \Kraite\Core\Support\MaintenanceMode::isStepsDispatchPaused();
+            });
+    }
 }
+
+// Per-minute flush of the dispatcher saturation counters from Redis
+// into `steps_dispatcher_saturation`. Reads the previous completed
+// minute so we never race with in-flight ticks. Dashboard reads from
+// MySQL only; the dispatcher hot path stays Redis-only.
+Schedule::command('kraite:cron-flush-dispatcher-saturation')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // Reclaim stalled steps (Running zombies, Dispatched stalls) and release wedged
 // dispatcher locks. Not gated by cooldown — cleanup, not new work. The
