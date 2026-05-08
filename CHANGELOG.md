@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.32.0 - 2026-05-08
+
+### Features
+
+- [NEW FEATURE] **Bumps `kraitebot/core` to 1.32.0** — adds the stale-mark-price freshness gate inside token discovery (refuses to evaluate opens when the candidate's sidecar `mark_price_synced_at` is older than 30s), bundles the May-7 per-account / per-position / per-rung fan-out blast-radius hardening across six cron and orchestrator points, and the indexed `(relatable_type, relatable_id, state)` orphan / live-step lookup that replaces the unindexed JSON predicate. See core 1.32.0 changelog for the full surface.
+
+### Tests
+
+- [NEW FEATURE] `tests/Feature/Concerns/HasTokenDiscoveryStaleMarkPriceGateTest.php` — three pinned cases: stale sidecar drops a high-score candidate in favour of a fresh lower-score one, all-stale-candidates produces zero assignments (general daemon-stall shape), and null sidecar (legacy / brand-new / test fixture) is allowed through unchanged.
+
 ## 1.31.2 - 2026-05-08
 
 ### Fixes
