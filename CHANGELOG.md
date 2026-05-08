@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.34.0 - 2026-05-08
+
+### Features
+
+- [NEW FEATURE] **Parallel `trading_*` dispatcher fleet wired into the scheduler.** 13 new schedule entries in `routes/console.php`: 10× `steps:dispatch --prefix=trading --group=<group>` per-second per-group with `runInBackground()` (mirrors the default fleet wiring shipped earlier today); 1× `steps:recover-stale --prefix=trading --recover-dispatched --release-locks --watchdog-progress` every minute; 1× `steps:archive --prefix=trading --duration=1` daily at 04:05 (5-min offset from default's 04:00 to avoid disk-bandwidth contention); 1× `steps:purge --prefix=trading --only-archive --days=5` daily at 04:35 (5-min offset from default's 04:30). Each dispatcher entry's `->skip()` callback now passes its own prefix to `MaintenanceMode::isStepsDispatchPaused()` so per-prefix cooldowns gate the right fleet. Default-fleet entries gate on `''`, trading-fleet entries gate on `'trading'`. Bumps `kraitebot/core` to 1.34.0 (trading-prefix wraps + per-prefix MaintenanceMode + notification gates) and `brunocfalcao/step-dispatcher` to 1.12.0 (RuntimeContext + Steps facade + `steps:install --prefix=` + universal `--prefix=` CLI option + worker-side `__unserialize()` prefix gate).
+
 ## 1.33.0 - 2026-05-08
 
 ### Features

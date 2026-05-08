@@ -57,12 +57,38 @@ if (config('kraite.can_dispatch_steps')) {
             ->when(function () {
                 return config('kraite.can_dispatch_steps');
             })
-            // Honour the maintenance flag set by OptimizeBreadcrumbTablesCommand
-            // (and any future short-window operation that needs the dispatcher
-            // quiesced). The cache-backed flag has a TTL safety net so an
-            // operator-side crash auto-resumes dispatch within minutes.
+            // Per-prefix maintenance gate. `pauseStepsDispatch('')`
+            // pauses ONLY the default dispatcher; the all-scope
+            // pause (`pauseStepsDispatch(null)`) still freezes both.
+            // OptimizeBreadcrumbTablesCommand uses the all-scope
+            // path so the existing OPTIMIZE wiring keeps working
+            // unchanged.
             ->skip(function () {
-                return \Kraite\Core\Support\MaintenanceMode::isStepsDispatchPaused();
+                return \Kraite\Core\Support\MaintenanceMode::isStepsDispatchPaused('');
+            });
+
+        // Parallel `trading_*` dispatcher — same per-group fan-out, same
+        // cadence, but reads / writes against `trading_steps`,
+        // `trading_steps_dispatcher`, `trading_steps_dispatcher_ticks`,
+        // `trading_steps_archive`. Wired in 2026-05-08 to isolate
+        // trade-critical workflows (sync-orders today; opens / closes /
+        // drift heals next) from calculation churn on the default tables.
+        // The package's `BaseCommand::__construct()` injects the
+        // `--prefix=` option universally; `RuntimeContext` pushes
+        // `trading_` for the duration of the tick so every Step query
+        // resolves to the prefixed set.
+        Schedule::command('steps:dispatch --prefix=trading --group='.$stepDispatcherGroup)
+            ->everySecond()
+            ->runInBackground()
+            ->when(function () {
+                return config('kraite.can_dispatch_steps');
+            })
+            // Per-prefix gate scoped to `trading`. The trading dispatcher
+            // freezes only when `pauseStepsDispatch('trading')` (or the
+            // all-scope null form) is armed; pausing the default
+            // dispatcher leaves trading alone, and vice versa.
+            ->skip(function () {
+                return \Kraite\Core\Support\MaintenanceMode::isStepsDispatchPaused('trading');
             });
     }
 }
@@ -85,6 +111,13 @@ Schedule::command('kraite:cron-flush-dispatcher-saturation')
 // Flags owned by brunocfalcao/step-dispatcher >= 1.11; notifications wired via
 // the StaleStepsDetected event (SendStaleStepsNotification listener in kraitebot/core).
 Schedule::command('steps:recover-stale --recover-dispatched --release-locks --watchdog-progress')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+// Same recover-stale watchdog scoped to the `trading_*` table set.
+// Independent withoutOverlapping lock from the default cron so the
+// two never block each other — they read / write disjoint tables.
+Schedule::command('steps:recover-stale --prefix=trading --recover-dispatched --release-locks --watchdog-progress')
     ->everyMinute()
     ->withoutOverlapping();
 
@@ -265,12 +298,23 @@ if (! $isCoolingDown()) {
     Schedule::command('steps:archive --duration=1')
         ->dailyAt('04:00');
 
+    // Same archive pass, scoped to the `trading_*` table set. Offset by
+    // 5 minutes so the two passes never compete for I/O on the same
+    // physical disk. Same 1-day retention as the default set.
+    Schedule::command('steps:archive --prefix=trading --duration=1')
+        ->dailyAt('04:05');
+
     // Trim the archive itself daily at 04:30, 30 min after the archive
     // run finishes. --only-archive keeps the live `steps` table and the
     // ticks table off-limits — date-based delete on steps_archive only.
     // 5-day retention window: anything older than that is gone.
     Schedule::command('steps:purge --only-archive --days=5')
         ->dailyAt('04:30');
+
+    // Same archive trim, scoped to `trading_steps_archive`. Offset by
+    // 5 minutes from the default purge for the same I/O reason.
+    Schedule::command('steps:purge --prefix=trading --only-archive --days=5')
+        ->dailyAt('04:35');
 
     // ---------------------------------------------------------------
     // OPTIMIZE TABLE on the breadcrumb tables — staggered window
