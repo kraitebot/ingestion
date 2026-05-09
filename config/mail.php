@@ -81,10 +81,6 @@ return [
             'transport' => 'array',
         ],
 
-        'zeptomail' => [
-            'transport' => 'zeptomail',
-        ],
-
         'failover' => [
             'transport' => 'failover',
             'mailers' => [

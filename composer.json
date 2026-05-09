@@ -11,7 +11,6 @@
     "require": {
         "php": "^8.4.0",
         "brunocfalcao/blade-feather-icons": "dev-master",
-        "brunocfalcao/laravel-zepto-mail-api-driver": "dev-master",
         "kraitebot/core": "dev-master",
         "laravel-notification-channels/telegram": "^7.0",
         "laravel/boost": "^2.2",
@@ -130,10 +129,33 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": [
-        {"type": "path", "url": "../packages/kraitebot/core", "options": {"symlink": true}},
-        {"type": "path", "url": "../packages/brunocfalcao/step-dispatcher", "options": {"symlink": true}},
-        {"type": "path", "url": "../packages/brunocfalcao/blade-feather-icons", "options": {"symlink": true}},
-        {"type": "path", "url": "../packages/brunocfalcao/laravel-helpers", "options": {"symlink": true}},
-        {"type": "path", "url": "../packages/brunocfalcao/laravel-zepto-mail-api-driver", "options": {"symlink": true}}
+        {
+            "type": "path",
+            "url": "../packages/kraitebot/core",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../packages/brunocfalcao/step-dispatcher",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../packages/brunocfalcao/blade-feather-icons",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../packages/brunocfalcao/laravel-helpers",
+            "options": {
+                "symlink": true
+            }
+        }
     ]
 }
