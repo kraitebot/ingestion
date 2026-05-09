@@ -39,6 +39,12 @@ $isCoolingDown = function (): bool {
 //    the flag clears.
 //  • The `kraite.can_dispatch_steps` env-level kill-switch still gates
 //    every entry so a global emergency stop is one config flip away.
+// All scheduled commands only run on the ingestion server.
+// Workers only process queued jobs via Horizon — they never dispatch.
+if (config('kraite.server_role') !== 'ingestion') {
+    return;
+}
+
 if (config('kraite.can_dispatch_steps')) {
     $stepDispatcherGroups = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
 
