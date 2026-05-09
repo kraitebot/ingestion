@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [master]
+    tags: ['v*']
   pull_request:
     branches: [master]
 
@@ -34,7 +35,6 @@ jobs:
         with:
           repository: kraitebot/core
           path: packages/kraitebot/core
-          token: ${{ secrets.CORE_PAT }}
 
       - name: Checkout brunocfalcao/step-dispatcher package
         uses: actions/checkout@v4
