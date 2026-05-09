@@ -12,6 +12,7 @@ use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Observers\OrderObserver;
 use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
 
 /**
  * 2026-05-04 — Pin the cross-process dedupe race fix on the four
@@ -203,10 +204,13 @@ it('inserts exactly one PreparePositionReplacementJob when dispatchPositionRepla
         $observer->updated($order);
     }
 
-    $count = Step::query()
+    // PreparePositionReplacementJob is dispatched by OrderObserver inside
+    // a `Steps::usingPrefix('trading')` scope, so the row lands in
+    // `trading_steps`. Reads scope through the same prefix.
+    $count = Steps::usingPrefix('trading', fn (): int => Step::query()
         ->where('class', PreparePositionReplacementJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
-        ->count();
+        ->count());
 
     expect($count)->toBe(
         1,

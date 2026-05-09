@@ -14,6 +14,14 @@ use StepDispatcher\Models\Step;
 use StepDispatcher\States\Cancelled;
 use StepDispatcher\States\Completed;
 use StepDispatcher\States\Pending;
+use StepDispatcher\Support\Steps;
+
+/*
+ * CreatePositionsCommand wraps every dispatch site (orphan recovery + new
+ * opens) in `Steps::usingPrefix('trading')`, so the rows live in
+ * `trading_steps`. Reads + writes in this test must scope through the
+ * same prefix so they target the same table.
+ */
 
 beforeEach(function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
@@ -78,10 +86,10 @@ it('re-dispatches DispatchPositionJob for an orphan position in new status with 
 
     $this->artisan('kraite:cron-create-positions')->assertSuccessful();
 
-    $recoveredSteps = Step::query()
+    $recoveredSteps = Steps::usingPrefix('trading', fn () => Step::query()
         ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
         ->whereJsonContains('arguments->positionId', $orphan->id)
-        ->get();
+        ->get());
 
     expect($recoveredSteps)->toHaveCount(
         1,
@@ -127,21 +135,21 @@ it('detects an existing live step via the indexed relatable_type / relatable_id 
         'direction' => 'LONG',
     ]);
 
-    Step::create([
+    Steps::usingPrefix('trading', fn () => Step::create([
         'class' => BinanceDispatchPositionJob::class,
         'queue' => 'positions',
         'relatable_type' => Position::class,
         'relatable_id' => $position->id,
         'arguments' => ['positionId' => $position->id],
-    ]);
+    ]));
 
     $this->artisan('kraite:cron-create-positions')->assertSuccessful();
 
-    $stepCount = Step::query()
+    $stepCount = Steps::usingPrefix('trading', fn (): int => Step::query()
         ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
         ->where('relatable_type', Position::class)
         ->where('relatable_id', $position->id)
-        ->count();
+        ->count());
 
     expect($stepCount)->toBe(
         1,
@@ -159,18 +167,18 @@ it('does not re-dispatch when the orphan position already has a live DispatchPos
     ]);
 
     // Existing live step — recovery must NOT duplicate it.
-    Step::create([
+    Steps::usingPrefix('trading', fn () => Step::create([
         'class' => BinanceDispatchPositionJob::class,
         'queue' => 'positions',
         'arguments' => ['positionId' => $position->id],
-    ]);
+    ]));
 
     $this->artisan('kraite:cron-create-positions')->assertSuccessful();
 
-    $count = Step::query()
+    $count = Steps::usingPrefix('trading', fn (): int => Step::query()
         ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
         ->whereJsonContains('arguments->positionId', $position->id)
-        ->count();
+        ->count());
 
     expect($count)->toBe(
         1,
@@ -191,23 +199,25 @@ it('treats terminal-state DispatchPositionJob steps as "no live step" for recove
     // state (Completed / Cancelled / Failed). The position is still
     // 'new' which means the previous workflow must have been cancelled
     // mid-flight. Recovery must treat this as orphan and re-dispatch.
-    $oldStep = Step::create([
+    $oldStep = Steps::usingPrefix('trading', fn () => Step::create([
         'class' => BinanceDispatchPositionJob::class,
         'queue' => 'positions',
         'arguments' => ['positionId' => $position->id],
-    ]);
-    Step::withoutEvents(function () use ($oldStep) {
-        Step::where('id', $oldStep->id)->update(['state' => Cancelled::class]);
+    ]));
+    Steps::usingPrefix('trading', function () use ($oldStep): void {
+        Step::withoutEvents(function () use ($oldStep): void {
+            Step::where('id', $oldStep->id)->update(['state' => Cancelled::class]);
+        });
     });
 
     $this->artisan('kraite:cron-create-positions')->assertSuccessful();
 
-    $liveSteps = Step::query()
+    $liveSteps = Steps::usingPrefix('trading', fn () => Step::query()
         ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
         ->whereJsonContains('arguments->positionId', $position->id)
         ->where('state', '!=', Cancelled::class)
         ->where('state', '!=', Completed::class)
-        ->get();
+        ->get());
 
     expect($liveSteps)->toHaveCount(
         1,
@@ -218,8 +228,8 @@ it('treats terminal-state DispatchPositionJob steps as "no live step" for recove
 
 function stepsForPosition(Position $position): Illuminate\Database\Eloquent\Collection
 {
-    return Step::query()
+    return Steps::usingPrefix('trading', fn () => Step::query()
         ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
         ->whereJsonContains('arguments->positionId', $position->id)
-        ->get();
+        ->get());
 }

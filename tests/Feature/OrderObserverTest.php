@@ -9,6 +9,16 @@ use Kraite\Core\Jobs\Lifecycles\Position\PreparePositionReplacementJob;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
+
+/*
+ * OrderObserver dispatches every trade-critical follow-up workflow
+ * (ClosePositionJob, PreparePositionReplacementJob, PrepareOrderCorrectionJob,
+ * ApplyWapJob) inside a `Steps::usingPrefix('trading')` scope, so the dispatch
+ * rows land in `trading_steps`. Reads must scope through the same prefix or
+ * the rows aren't visible (Step::getTable() resolves the table from the
+ * runtime prefix context at query-build time, not at call time).
+ */
 
 /**
  * Helper to create a position with a set number of limit order slots.
@@ -179,7 +189,7 @@ it('dispatches ClosePositionJob when a PROFIT-LIMIT order is filled', function (
 
     $order->update(['status' => 'FILLED']);
 
-    $step = Step::where('class', ClosePositionJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', ClosePositionJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($order->fresh()->reference_status)->toBe('FILLED');
@@ -191,7 +201,7 @@ it('dispatches ClosePositionJob when a STOP-MARKET order is filled', function ()
 
     $order->update(['status' => 'FILLED']);
 
-    $step = Step::where('class', ClosePositionJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', ClosePositionJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($order->fresh()->reference_status)->toBe('FILLED');
@@ -203,7 +213,7 @@ it('does not dispatch ClosePositionJob when a LIMIT order is filled', function (
 
     $order->update(['status' => 'FILLED']);
 
-    expect(Step::where('class', ClosePositionJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', ClosePositionJob::class)->exists()))->toBeFalse();
 });
 
 it('does not dispatch ClosePositionJob when position is already closed', function () {
@@ -213,7 +223,7 @@ it('does not dispatch ClosePositionJob when position is already closed', functio
     $order = createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT', 'status' => 'NEW']);
     $order->update(['status' => 'FILLED']);
 
-    expect(Step::where('class', ClosePositionJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', ClosePositionJob::class)->exists()))->toBeFalse();
 });
 
 it('does not dispatch ClosePositionJob when reference_status is already FILLED', function () {
@@ -227,7 +237,7 @@ it('does not dispatch ClosePositionJob when reference_status is already FILLED',
     // Simulate a second sync updating the same order
     $order->update(['status' => 'FILLED']);
 
-    expect(Step::where('class', ClosePositionJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', ClosePositionJob::class)->exists()))->toBeFalse();
 });
 
 // --- Position replacement dispatch on expired/cancelled ---
@@ -238,7 +248,7 @@ it('dispatches PreparePositionReplacementJob when a PROFIT-LIMIT order expires',
 
     $order->update(['status' => 'EXPIRED']);
 
-    $step = Step::where('class', PreparePositionReplacementJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', PreparePositionReplacementJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($step->arguments['triggerStatus'])->toBe('EXPIRED');
@@ -253,7 +263,7 @@ it('dispatches PreparePositionReplacementJob when a STOP-MARKET order expires', 
 
     $order->update(['status' => 'EXPIRED']);
 
-    $step = Step::where('class', PreparePositionReplacementJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', PreparePositionReplacementJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($step->arguments['triggerStatus'])->toBe('EXPIRED');
@@ -266,7 +276,7 @@ it('dispatches PreparePositionReplacementJob when a PROFIT-LIMIT order is cancel
 
     $order->update(['status' => 'CANCELLED']);
 
-    $step = Step::where('class', PreparePositionReplacementJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', PreparePositionReplacementJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($step->arguments['triggerStatus'])->toBe('CANCELLED');
@@ -279,7 +289,7 @@ it('dispatches PreparePositionReplacementJob when a STOP-MARKET order is cancell
 
     $order->update(['status' => 'CANCELLED']);
 
-    $step = Step::where('class', PreparePositionReplacementJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', PreparePositionReplacementJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($step->arguments['triggerStatus'])->toBe('CANCELLED');
@@ -296,7 +306,7 @@ it('does not dispatch PreparePositionReplacementJob when reference_status is alr
 
     $order->update(['status' => 'EXPIRED']);
 
-    expect(Step::where('class', PreparePositionReplacementJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PreparePositionReplacementJob::class)->exists()))->toBeFalse();
 });
 
 it('does not dispatch PreparePositionReplacementJob when reference_status is already CANCELLED', function () {
@@ -309,7 +319,7 @@ it('does not dispatch PreparePositionReplacementJob when reference_status is alr
 
     $order->update(['status' => 'CANCELLED']);
 
-    expect(Step::where('class', PreparePositionReplacementJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PreparePositionReplacementJob::class)->exists()))->toBeFalse();
 });
 
 // --- Order modification detection ---
@@ -326,7 +336,7 @@ it('dispatches PrepareOrderCorrectionJob when a LIMIT order price is modified', 
     // Simulate price modification detected during sync
     $order->update(['price' => '39500.00']);
 
-    $step = Step::where('class', PrepareOrderCorrectionJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', PrepareOrderCorrectionJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($step->arguments['orderId'])->toBe($order->id);
@@ -344,7 +354,7 @@ it('dispatches PrepareOrderCorrectionJob when a LIMIT order quantity is modified
     // Simulate quantity modification detected during sync
     $order->update(['quantity' => '0.0005']);
 
-    $step = Step::where('class', PrepareOrderCorrectionJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', PrepareOrderCorrectionJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($step->arguments['orderId'])->toBe($order->id);
@@ -364,7 +374,7 @@ it('dispatches PrepareOrderCorrectionJob when price and quantity are both modifi
     // Simulate both price and quantity modification
     $order->update(['price' => '39500.00', 'quantity' => '0.0005']);
 
-    $step = Step::where('class', PrepareOrderCorrectionJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', PrepareOrderCorrectionJob::class)->first());
     expect($step)->not->toBeNull();
 });
 
@@ -379,7 +389,7 @@ it('does not dispatch correction job when order has no reference values', functi
 
     $order->update(['price' => '39500.00']);
 
-    expect(Step::where('class', PrepareOrderCorrectionJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
 it('does not dispatch correction job when values match reference', function () {
@@ -394,7 +404,7 @@ it('does not dispatch correction job when values match reference', function () {
     // Update with same price - no drift
     $order->update(['price' => '40000.00']);
 
-    expect(Step::where('class', PrepareOrderCorrectionJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
 it('does not false-positive on decimal precision differences', function () {
@@ -414,7 +424,7 @@ it('does not false-positive on decimal precision differences', function () {
     $order->update(['status' => 'NEW']);
 
     // No drift should be detected - values are numerically equal
-    expect(Step::where('class', PrepareOrderCorrectionJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
 it('does not dispatch correction job when order is not active', function () {
@@ -429,7 +439,7 @@ it('does not dispatch correction job when order is not active', function () {
     // Update price on filled order - should not trigger correction
     $order->update(['price' => '39500.00']);
 
-    expect(Step::where('class', PrepareOrderCorrectionJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
 it('does not dispatch correction job when position is not active', function () {
@@ -445,7 +455,7 @@ it('does not dispatch correction job when position is not active', function () {
 
     $order->update(['price' => '39500.00']);
 
-    expect(Step::where('class', PrepareOrderCorrectionJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
 it('dispatches correction job for PARTIALLY_FILLED orders', function () {
@@ -459,7 +469,7 @@ it('dispatches correction job for PARTIALLY_FILLED orders', function () {
 
     $order->update(['price' => '39500.00']);
 
-    expect(Step::where('class', PrepareOrderCorrectionJob::class)->exists())->toBeTrue();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeTrue();
 });
 
 it('deduplicates correction job dispatch', function () {
@@ -477,7 +487,7 @@ it('deduplicates correction job dispatch', function () {
     // Second modification with same order (should not create another step)
     $order->update(['price' => '39000.00']);
 
-    $steps = Step::where('class', PrepareOrderCorrectionJob::class)->get();
+    $steps = Steps::usingPrefix('trading', fn () => Step::where('class', PrepareOrderCorrectionJob::class)->get());
     expect($steps)->toHaveCount(1);
 });
 
@@ -498,7 +508,7 @@ it('dispatches ApplyWapJob when a LIMIT order is filled', function () {
 
     $order->update(['status' => 'FILLED']);
 
-    $step = Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->first();
+    $step = Steps::usingPrefix('trading', fn () => Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->first());
     expect($step)->not->toBeNull();
     expect($step->arguments['positionId'])->toBe($position->id);
     expect($order->fresh()->reference_status)->toBe('FILLED');
@@ -519,7 +529,7 @@ it('does not dispatch ApplyWapJob when position is not active', function () {
     $order = createOrderOnPosition($position, ['type' => 'LIMIT', 'status' => 'NEW']);
     $order->update(['status' => 'FILLED']);
 
-    expect(Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->exists()))->toBeFalse();
 });
 
 it('does not dispatch ApplyWapJob when reference_status is already FILLED', function () {
@@ -540,7 +550,7 @@ it('does not dispatch ApplyWapJob when reference_status is already FILLED', func
     // Simulate a second sync updating the same order
     $order->update(['status' => 'FILLED']);
 
-    expect(Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->exists())->toBeFalse();
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->exists()))->toBeFalse();
 });
 
 it('deduplicates ApplyWapJob dispatch for same position', function () {
@@ -559,6 +569,6 @@ it('deduplicates ApplyWapJob dispatch for same position', function () {
     $order1->update(['status' => 'FILLED']);
     $order2->update(['status' => 'FILLED']);
 
-    $steps = Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->get();
+    $steps = Steps::usingPrefix('trading', fn () => Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->get());
     expect($steps)->toHaveCount(1);
 });

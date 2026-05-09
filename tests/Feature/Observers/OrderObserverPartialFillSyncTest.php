@@ -15,6 +15,7 @@ use Kraite\Core\Observers\OrderObserver;
 use StepDispatcher\Models\Step;
 use StepDispatcher\States\Dispatched;
 use StepDispatcher\States\Pending;
+use StepDispatcher\Support\Steps;
 
 /**
  * 2026-05-06 — Pin the partial-fill quantity-sync dispatch on the
@@ -112,10 +113,13 @@ it('dispatches SyncPositionQuantityFromExchangeJob when a LIMIT transitions to P
     $observer = new OrderObserver;
     $observer->updated($limit);
 
-    $count = Step::query()
+    // OrderObserver dispatches the partial-fill sync job inside a
+    // `Steps::usingPrefix('trading')` scope so the row lands in
+    // `trading_steps`. Reads scope through the same prefix.
+    $count = Steps::usingPrefix('trading', fn (): int => Step::query()
         ->where('class', SyncPositionQuantityFromExchangeJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
-        ->count();
+        ->count());
 
     expect($count)->toBe(1);
 });
@@ -127,11 +131,11 @@ it('deduplicates: a second PARTIALLY_FILLED observer fire does NOT add a duplica
     $observer->updated($limit);
     $observer->updated($limit);
 
-    $count = Step::query()
+    $count = Steps::usingPrefix('trading', fn (): int => Step::query()
         ->where('class', SyncPositionQuantityFromExchangeJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
         ->whereIn('state', [Pending::class, Dispatched::class])
-        ->count();
+        ->count());
 
     expect($count)->toBe(1);
 });
@@ -144,15 +148,16 @@ it('routes LIMIT FILLED to ApplyWapJob, NOT SyncPositionQuantityFromExchangeJob'
     $observer = new OrderObserver;
     $observer->updated($limit->fresh());
 
-    $wapCount = Step::query()
-        ->where('class', ApplyWapJob::class)
-        ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
-        ->count();
-
-    $syncCount = Step::query()
-        ->where('class', SyncPositionQuantityFromExchangeJob::class)
-        ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
-        ->count();
+    [$wapCount, $syncCount] = Steps::usingPrefix('trading', fn (): array => [
+        Step::query()
+            ->where('class', ApplyWapJob::class)
+            ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
+            ->count(),
+        Step::query()
+            ->where('class', SyncPositionQuantityFromExchangeJob::class)
+            ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
+            ->count(),
+    ]);
 
     expect($wapCount)->toBe(1, 'FILLED LIMIT must route to ApplyWap path');
     expect($syncCount)->toBe(0, 'FILLED LIMIT must NOT trigger the partial-fill sync — WAP already covers it');
@@ -181,10 +186,10 @@ it('does not dispatch when a non-LIMIT order is PARTIALLY_FILLED', function (): 
     $observer = new OrderObserver;
     $observer->updated($tp);
 
-    $count = Step::query()
+    $count = Steps::usingPrefix('trading', fn (): int => Step::query()
         ->where('class', SyncPositionQuantityFromExchangeJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
-        ->count();
+        ->count());
 
     expect($count)->toBe(0);
 });
@@ -197,10 +202,10 @@ it('does not dispatch when the position is not in an active state', function ():
     $observer = new OrderObserver;
     $observer->updated($limit);
 
-    $count = Step::query()
+    $count = Steps::usingPrefix('trading', fn (): int => Step::query()
         ->where('class', SyncPositionQuantityFromExchangeJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
-        ->count();
+        ->count());
 
     expect($count)->toBe(0);
 });

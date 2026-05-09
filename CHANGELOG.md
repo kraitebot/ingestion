@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.34.1 - 2026-05-09
+
+### Improvements
+
+- [IMPROVED] **Bumps `kraitebot/core` to 1.34.5** — TRIGGERED algo-status faithfulness (mapper + observer pin + `dispatchClosePosition` `reference_status` race fix), simple-trade-mode (`N=0`) SL anchor falls back to `opening_price`, four latent-defect fixes (`Math::multiply` typo on residual check, drift-detector strict `!==` vs accessor-stripped price, `delistedAt` return-type vs `CarbonImmutable`, dead `Concerns/Order/HasStatuses` methods writing to non-existent `error_message` column). See core 1.34.5 changelog for the full surface.
+- [IMPROVED] **Test fixtures wrapped under `Steps::usingPrefix('trading', …)` for trading-prefix step queries.** Seven test files (`OrderObserverTest`, `OrderObserverDriftSkipTest`, `OrderObserverDispatchDedupeRaceTest`, `OrderObserverPartialFillSyncTest`, `OrderObserverDriftDetectionDuringSyncTest`, `PurgePositionTrailJobTest`, `CreatePositionsCommandOrphanRecoveryTest`) now match the production prefix-context wrapper added in 1.34.0. Without it, the in-test `Step::where(…)` queries hit the default `steps_*` tables and miss the rows the production code wrote into `trading_steps_*`.
+- [IMPROVED] **`tests/Unit/Support/Backtest/BacktestSimulatorDividerTest.php` sentinel updated** to reflect the new `get_market_order_amount_divider(0) => 1` contract (was previously asserting the old `2^(N+1)` curve).
+
+### Tests
+
+- [NEW FEATURE] **~220 new tests across position/order lifecycles, observers, mappers, math primitives, accessors, and scopes.** New files cover: position status writers + side effects; position scope groupings (active/opened/nonActive/ongoing); position accessors (pnl, current_price, parsed_trading_pair_extended, daily_variation_percentage); position trading actions (opened_since); position getters (lastLimitOrder, profitOrder, stopLossOrder, isActive); order status flips + scope filters (syncable/cancellable/activeOnExchange/cancelled); order isLastLimitOrder anchor; ladder calculator N=0 contract + LONG/SHORT geometry + monotonicity; PnL calculations (calculatePnL, calculateWAPData, calculatePnLAnalysis with LONG/SHORT TP-vs-WAP sign-flip pinned); dispatch / placement / activation gates (PlaceMarketOrder, PlaceLimitOrder, PlaceProfitOrder, DispatchLimitOrders, ActivatePosition, CalculateWap, SyncPositionOrders, CorrectModifiedOrder, RecreateCancelledOrder); preparation gates (PrepareData / DetermineLeverage / SetLeverage / VerifyOrderNotional); WAP gate (Failed-vs-Skipped buckets); ClosePosition openedStatuses gate; CancelOrphanAlgoOrders base no-op; OrderObserver creation slot guard (1 MARKET / 1 STOP-MARKET / 1 PROFIT / N LIMITs); PositionObserver purge-trail (closed-only, prefix-aware); ApiSnapshot store/getFrom + canonical scope; NotificationLog scopes + enum bounce-string compat; ExchangeSymbol delisting (isDelisted, delistedAt, notDelisted scope); Account scopes + slot helpers + hedge/one-way mode; Math primitives (equal/gt/lt/gte/lte/cmp/add/sub/mul/div/pow/isPositive); Binance + Bitget mapper canonicals (identifyBaseAndQuote, canonicalOrderType); MapsOrderModify computeOrderModifyPrice; AlgoStatus TRIGGERED faithfulness; truncate_decimal_string + remove_trailing_zeros (TAKE #151 integer-survival pin); ComputationHelpers (returnLadderedValue clamp, pctToDecimal). Total suite: ~1926 → ~2153 passing, 0 code-failures.
+
 ## 1.34.0 - 2026-05-08
 
 ### Features

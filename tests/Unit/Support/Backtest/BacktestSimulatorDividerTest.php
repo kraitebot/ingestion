@@ -41,11 +41,15 @@ it('BacktestSimulator applies the production divider when sizing the market leg'
     expect($source)->toContain('Kraite::calculateMarketOrderData($dividedMargin');
 });
 
-it('the divider helper returns 2^(N+1) so N=4 → 32', function (): void {
+it('the divider helper returns 2^(N+1) for N>=1 and 1 for N=0 (simple-trade mode)', function (): void {
     // Sanity check on the production helper itself. If this formula
     // ever changes (e.g. unbounded model turned back on), the backtest
     // and the live trader need to move together.
+    //
+    // N=0 is the simple-trade mode: no martingale ladder forms, so the
+    // MARKET commits the full notional (divider = 1) instead of reserving
+    // half of the budget for rungs that never get placed.
     expect(get_market_order_amount_divider(4))->toBe(32);
-    expect(get_market_order_amount_divider(0))->toBe(2);
+    expect(get_market_order_amount_divider(0))->toBe(1);
     expect(get_market_order_amount_divider(3))->toBe(16);
 });

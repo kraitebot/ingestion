@@ -6,6 +6,7 @@ use Kraite\Core\Jobs\Lifecycles\Order\PrepareOrderCorrectionJob;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
 
 /**
  * OrderObserver's drift detector used to false-fire PrepareOrderCorrectionJob
@@ -40,10 +41,16 @@ function createOrderForDrift(Position $position, array $overrides = []): Order
 
 function pendingCorrectionsFor(Order $order): int
 {
-    return Step::query()
+    // PrepareOrderCorrectionJob is a trade-critical workflow — the
+    // OrderObserver dispatches it inside a `Steps::usingPrefix('trading')`
+    // scope so the row lands in `trading_steps`, not the default `steps`
+    // table. Reads must scope through the same prefix or the row won't
+    // be visible (the Step model's `getTable()` reads the runtime prefix
+    // context to resolve which table to query).
+    return Steps::usingPrefix('trading', fn (): int => Step::query()
         ->where('class', PrepareOrderCorrectionJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.orderId') = ?", [$order->id])
-        ->count();
+        ->count());
 }
 
 it('dispatches a correction when drift is seen on an active position', function () {

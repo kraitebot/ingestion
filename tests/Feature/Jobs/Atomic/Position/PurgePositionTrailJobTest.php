@@ -12,6 +12,7 @@ use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
 
 /**
  * Pin the breadcrumb janitor.
@@ -162,9 +163,13 @@ it('dispatches the trail purge step when a position transitions to closed', func
 
     $position->update(['status' => 'closed']);
 
-    $steps = Step::where('class', PurgePositionTrailJob::class)
+    // PurgePositionTrailJob is dispatched by PositionObserver inside a
+    // `Steps::usingPrefix('trading')` scope so the breadcrumb janitor's
+    // own row lands in `trading_steps`. Reads must scope through the
+    // same prefix.
+    $steps = Steps::usingPrefix('trading', fn () => Step::where('class', PurgePositionTrailJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
-        ->get();
+        ->get());
 
     expect($steps)->toHaveCount(1)
         ->and($steps->first()->queue)->toBe('cronjobs');
@@ -175,7 +180,7 @@ it('does not dispatch the trail purge step when a position is cancelled', functi
 
     $position->update(['status' => 'cancelled']);
 
-    $count = Step::where('class', PurgePositionTrailJob::class)->count();
+    $count = Steps::usingPrefix('trading', fn (): int => Step::where('class', PurgePositionTrailJob::class)->count());
     expect($count)->toBe(0);
 });
 
@@ -184,20 +189,20 @@ it('does not dispatch the trail purge step when a position fails', function () {
 
     $position->update(['status' => 'failed']);
 
-    $count = Step::where('class', PurgePositionTrailJob::class)->count();
+    $count = Steps::usingPrefix('trading', fn (): int => Step::where('class', PurgePositionTrailJob::class)->count());
     expect($count)->toBe(0);
 });
 
 it('does not dispatch the trail purge step when an unrelated attribute changes on a closed position', function () {
     $position = buildClosablePosition();
     $position->update(['status' => 'closed']);
-    Step::where('class', PurgePositionTrailJob::class)->delete();
+    Steps::usingPrefix('trading', fn () => Step::where('class', PurgePositionTrailJob::class)->delete());
 
     // Subsequent non-status update on the already-closed row must NOT
     // re-dispatch — wasChanged('status') is false on this save.
     $position->update(['quantity' => '11.00000000']);
 
-    $count = Step::where('class', PurgePositionTrailJob::class)->count();
+    $count = Steps::usingPrefix('trading', fn (): int => Step::where('class', PurgePositionTrailJob::class)->count());
     expect($count)->toBe(0);
 });
 

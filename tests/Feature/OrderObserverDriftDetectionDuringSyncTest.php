@@ -10,6 +10,13 @@ use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
+
+/*
+ * PrepareOrderCorrectionJob is dispatched by OrderObserver inside a
+ * `Steps::usingPrefix('trading')` scope, so reads must scope through the
+ * same prefix or `trading_steps` rows aren't visible.
+ */
 
 /**
  * Pins the detection side of the order-modification workflow.
@@ -79,10 +86,10 @@ it('dispatches PrepareOrderCorrectionJob when a price drift is detected mid-sync
     $position->updateSaving(['status' => 'syncing']);
 
     // Make sure no correction step exists before the modification.
-    expect(Step::query()
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::query()
         ->where('class', PrepareOrderCorrectionJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.orderId') = ?", [$order->id])
-        ->exists())->toBeFalse();
+        ->exists()))->toBeFalse();
 
     // Simulate what apiSyncDefault() does after fetching a user-modified
     // value from Binance: write the new price (reference_price stays at
@@ -92,11 +99,11 @@ it('dispatches PrepareOrderCorrectionJob when a price drift is detected mid-sync
     // The observer's checkForOrderModification must see
     // price (0.33500000) != reference_price (0.33000000) and dispatch
     // the correction job — even though the position is currently `syncing`.
-    $dispatched = Step::query()
+    $dispatched = Steps::usingPrefix('trading', fn (): bool => Step::query()
         ->where('class', PrepareOrderCorrectionJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.orderId') = ?", [$order->id])
         ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
-        ->exists();
+        ->exists());
 
     expect($dispatched)->toBeTrue();
 });
@@ -112,10 +119,10 @@ it('dispatches PrepareOrderCorrectionJob when quantity drifts mid-sync', functio
 
     $order->updateSaving(['quantity' => '200.00000000']);
 
-    $dispatched = Step::query()
+    $dispatched = Steps::usingPrefix('trading', fn (): bool => Step::query()
         ->where('class', PrepareOrderCorrectionJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.orderId') = ?", [$order->id])
-        ->exists();
+        ->exists());
 
     expect($dispatched)->toBeTrue();
 });
@@ -131,10 +138,10 @@ it('does not dispatch when opening/waping (those windows are legitimately mutati
 
     $order->updateSaving(['price' => '0.40000000']);
 
-    $dispatched = Step::query()
+    $dispatched = Steps::usingPrefix('trading', fn (): bool => Step::query()
         ->where('class', PrepareOrderCorrectionJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.orderId') = ?", [$order->id])
-        ->exists();
+        ->exists());
 
     expect($dispatched)->toBeFalse();
 })->with([
@@ -151,10 +158,10 @@ it('still dispatches when position is plain active and drift is observed', funct
     // Position remains 'active' — no sync in progress.
     $order->updateSaving(['price' => '0.40000000']);
 
-    $dispatched = Step::query()
+    $dispatched = Steps::usingPrefix('trading', fn (): bool => Step::query()
         ->where('class', PrepareOrderCorrectionJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.orderId') = ?", [$order->id])
-        ->exists();
+        ->exists());
 
     expect($dispatched)->toBeTrue();
 });
