@@ -50,9 +50,12 @@ class TieredStrategy extends CleanupStrategy
             return;
         }
 
-        $hourlyCount = (int) config('kraite.backup_tiers.hourly', 3);
-        $dailyCount = (int) config('kraite.backup_tiers.daily', 3);
-        $weeklyCount = (int) config('kraite.backup_tiers.weekly', 3);
+        /** @var int $hourlyCount */
+        $hourlyCount = intval(config('kraite.backup_tiers.hourly', 3));
+        /** @var int $dailyCount */
+        $dailyCount = intval(config('kraite.backup_tiers.daily', 3));
+        /** @var int $weeklyCount */
+        $weeklyCount = intval(config('kraite.backup_tiers.weekly', 3));
 
         $keepPaths = $this->selectKeepPaths($sorted, $hourlyCount, $dailyCount, $weeklyCount);
 
