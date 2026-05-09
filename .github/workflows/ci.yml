@@ -78,15 +78,21 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      - name: Remove patch plugin for CI
+      - name: Prepare composer.json for CI
         run: |
-          # Remove the patches plugin and its dependency completely from composer.json
           php -r "
             \$c = json_decode(file_get_contents('composer.json'), true);
+            // Remove patches plugin
             unset(\$c['extra']['patches']);
             unset(\$c['extra']['composer-patches']);
             unset(\$c['require-dev']['cweagans/composer-patches']);
             unset(\$c['config']['allow-plugins']['cweagans/composer-patches']);
+            // Rewrite path repos from ../packages/ to ./packages/ for CI
+            foreach (\$c['repositories'] as &\$repo) {
+                if (isset(\$repo['url']) && str_starts_with(\$repo['url'], '../packages/')) {
+                    \$repo['url'] = './' . substr(\$repo['url'], 3);
+                }
+            }
             file_put_contents('composer.json', json_encode(\$c, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
           "
           rm -f composer.lock
