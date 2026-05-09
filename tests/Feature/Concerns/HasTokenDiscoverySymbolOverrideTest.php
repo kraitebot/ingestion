@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__.'/HasTokenDiscoveryTest.php';
+
 use Illuminate\Support\Facades\Config;
 use Kraite\Core\Models\Position;
 use StepDispatcher\Models\StepsDispatcher;

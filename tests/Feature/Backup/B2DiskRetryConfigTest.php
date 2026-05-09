@@ -46,6 +46,10 @@ it('declares adaptive retries with >3 max attempts on the b2 disk config', funct
  * `retries` array and breaks the disk at boot.
  */
 it('boots the b2 disk into a real S3Client with the retry config attached', function () {
+    if (! config('filesystems.disks.b2.key')) {
+        $this->markTestSkipped('B2 credentials not configured — skipping S3Client boot test.');
+    }
+
     $client = Storage::disk('b2')->getClient();
 
     expect($client)->toBeInstanceOf(S3Client::class);

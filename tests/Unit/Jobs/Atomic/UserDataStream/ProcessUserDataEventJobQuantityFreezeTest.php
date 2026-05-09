@@ -46,6 +46,13 @@ use Kraite\Core\Models\Symbol;
  * progress lives ONLY in `api_data_stream` rows, not on the local
  * Order model.
  */
+beforeEach(function (): void {
+    config()->set('kraite.user_data_stream.binance.dispatched_executions', [
+        'TRADE', 'AMENDMENT', 'CANCELED', 'EXPIRED',
+        'ALGO_NEW', 'ALGO_CANCELED', 'ALGO_EXPIRED', 'ALGO_FILLED',
+    ]);
+});
+
 function buildOrderForUserDataEvent(string $exchangeOrderId, string $originalQuantity, string $initialStatus = 'NEW'): Order
 {
     $apiSystem = ApiSystem::factory()->exchange()->create([
