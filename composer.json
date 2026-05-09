@@ -20,6 +20,7 @@
         "laravel/ui": "^4.6",
         "league/flysystem-aws-s3-v3": "^3.32",
         "nunomaduro/essentials": "^1.0.1",
+        "resend/resend-php": "^1.3",
         "spatie/laravel-backup": "^10.2"
     },
     "require-dev": {
@@ -129,43 +130,10 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": [
-        {
-            "type": "path",
-            "url": "./packages/kraitebot/core",
-            "options": {
-                "symlink": true
-            }
-        },
-        {
-            "type": "path",
-            "url": "./packages/brunocfalcao/step-dispatcher",
-            "options": {
-                "symlink": true
-            }
-        },
-        {
-            "type": "path",
-            "url": "./packages/brunocfalcao/blade-feather-icons",
-            "canonical": false,
-            "options": {
-                "symlink": true
-            }
-        },
-        {
-            "type": "path",
-            "url": "./packages/brunocfalcao/laravel-helpers",
-            "canonical": false,
-            "options": {
-                "symlink": true
-            }
-        },
-        {
-            "type": "path",
-            "url": "./packages/brunocfalcao/laravel-zepto-mail-api-driver",
-            "canonical": false,
-            "options": {
-                "symlink": true
-            }
-        }
+        {"type": "path", "url": "../packages/kraitebot/core", "options": {"symlink": true}},
+        {"type": "path", "url": "../packages/brunocfalcao/step-dispatcher", "options": {"symlink": true}},
+        {"type": "path", "url": "../packages/brunocfalcao/blade-feather-icons", "options": {"symlink": true}},
+        {"type": "path", "url": "../packages/brunocfalcao/laravel-helpers", "options": {"symlink": true}},
+        {"type": "path", "url": "../packages/brunocfalcao/laravel-zepto-mail-api-driver", "options": {"symlink": true}}
     ]
 }

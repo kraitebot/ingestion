@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.35.0 - 2026-05-09
+
+### Improvements
+- [IMPROVED] Bumps `kraitebot/core` to 1.35.0 — drop waitlist_subscribers table, admin credentials migration
+- [IMPROVED] `.env.testing` removed from git history (contained real API keys), added to `.gitignore`
+- [IMPROVED] Composer path repos updated to `../packages/` for unified local dev structure
+
 ## 1.34.1 - 2026-05-09
 
 ### Improvements

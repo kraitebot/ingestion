@@ -42,3 +42,4 @@ thoughts/
 
 # Miscellaneous
 backup-old-project
+.env.testing

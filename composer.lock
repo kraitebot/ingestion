@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6fe45067cd1b6edbc2832bc75eb9af41",
+    "content-hash": "146741be34caba1e8f90dbbac748c780",
     "packages": [
         {
             "name": "angle/chrono",
@@ -397,7 +397,7 @@
             "version": "dev-master",
             "dist": {
                 "type": "path",
-                "url": "./packages/brunocfalcao/blade-feather-icons",
+                "url": "../packages/brunocfalcao/blade-feather-icons",
                 "reference": "53f30ee48f02c6359d69dd3de3c331b5fc9ff6b4"
             },
             "require": {
@@ -470,7 +470,7 @@
             "version": "dev-master",
             "dist": {
                 "type": "path",
-                "url": "./packages/brunocfalcao/laravel-helpers",
+                "url": "../packages/brunocfalcao/laravel-helpers",
                 "reference": "6574e733a0fc5b631e5e8ce00b83158556b73737"
             },
             "require": {
@@ -518,7 +518,7 @@
             "version": "dev-master",
             "dist": {
                 "type": "path",
-                "url": "./packages/brunocfalcao/laravel-zepto-mail-api-driver",
+                "url": "../packages/brunocfalcao/laravel-zepto-mail-api-driver",
                 "reference": "47ae73410edf7d570a76ce10f49b3e047ad2b3d0"
             },
             "require": {
@@ -563,7 +563,7 @@
             "version": "dev-master",
             "dist": {
                 "type": "path",
-                "url": "./packages/brunocfalcao/step-dispatcher",
+                "url": "../packages/brunocfalcao/step-dispatcher",
                 "reference": "1446ce63d6c36eab525c78c5443dc93593cb1be3"
             },
             "require": {
@@ -1698,14 +1698,14 @@
             "version": "dev-master",
             "dist": {
                 "type": "path",
-                "url": "./packages/kraitebot/core",
-                "reference": "8f07faa2a14de8b280ab6fa7e42932eb62383adf"
+                "url": "../packages/kraitebot/core",
+                "reference": "2a418567d951ecd770e9d1a8646ebdc8ce02c649"
             },
             "require": {
                 "angle/chrono": "^1.0",
                 "binance/binance-connector-php": "^1.6",
-                "brunocfalcao/laravel-helpers": "dev-master",
-                "brunocfalcao/step-dispatcher": "dev-master",
+                "brunocfalcao/laravel-helpers": "dev-master || ^1.0",
+                "brunocfalcao/step-dispatcher": "dev-master || ^1.12",
                 "laravel-notification-channels/pushover": "^4.0",
                 "laravel/framework": "^12.0",
                 "php": "^8.4",
@@ -1724,6 +1724,9 @@
             },
             "type": "project",
             "extra": {
+                "branch-alias": {
+                    "dev-master": "1.x-dev"
+                },
                 "laravel": {
                     "providers": [
                         "Kraite\\Core\\CoreServiceProvider"
@@ -5288,6 +5291,63 @@
                 }
             ],
             "time": "2024-06-11T12:45:25+00:00"
+        },
+        {
+            "name": "resend/resend-php",
+            "version": "v1.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/resend/resend-php.git",
+                "reference": "87d29d98271a0ab1c09cdbee102daa2f9b3419db"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/resend/resend-php/zipball/87d29d98271a0ab1c09cdbee102daa2f9b3419db",
+                "reference": "87d29d98271a0ab1c09cdbee102daa2f9b3419db",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.5",
+                "php": "^8.1.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.13",
+                "mockery/mockery": "^1.6",
+                "pestphp/pest": "^1.0|^2.0|^3.0|^4.0"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/Resend.php"
+                ],
+                "psr-4": {
+                    "Resend\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Resend and contributors",
+                    "homepage": "https://github.com/resend/resend-php/contributors"
+                }
+            ],
+            "description": "Resend PHP library.",
+            "homepage": "https://resend.com/",
+            "keywords": [
+                "api",
+                "client",
+                "php",
+                "resend",
+                "sdk"
+            ],
+            "support": {
+                "issues": "https://github.com/resend/resend-php/issues",
+                "source": "https://github.com/resend/resend-php/tree/v1.3.0"
+            },
+            "time": "2026-04-11T10:48:32+00:00"
         },
         {
             "name": "spatie/db-dumper",
@@ -9443,16 +9503,16 @@
         },
         {
             "name": "amphp/pipeline",
-            "version": "v1.2.3",
+            "version": "v1.2.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/pipeline.git",
-                "reference": "7b52598c2e9105ebcddf247fc523161581930367"
+                "reference": "a044733e080940d1483f56caff0c412ad6982776"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/pipeline/zipball/7b52598c2e9105ebcddf247fc523161581930367",
-                "reference": "7b52598c2e9105ebcddf247fc523161581930367",
+                "url": "https://api.github.com/repos/amphp/pipeline/zipball/a044733e080940d1483f56caff0c412ad6982776",
+                "reference": "a044733e080940d1483f56caff0c412ad6982776",
                 "shasum": ""
             },
             "require": {
@@ -9464,7 +9524,7 @@
                 "amphp/php-cs-fixer-config": "^2",
                 "amphp/phpunit-util": "^3",
                 "phpunit/phpunit": "^9",
-                "psalm/phar": "^5.18"
+                "psalm/phar": "6.16.1"
             },
             "type": "library",
             "autoload": {
@@ -9498,7 +9558,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/pipeline/issues",
-                "source": "https://github.com/amphp/pipeline/tree/v1.2.3"
+                "source": "https://github.com/amphp/pipeline/tree/v1.2.4"
             },
             "funding": [
                 {
@@ -9506,7 +9566,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-03-16T16:33:53+00:00"
+            "time": "2026-05-06T05:37:57+00:00"
         },
         {
             "name": "amphp/process",
