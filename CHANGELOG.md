@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.36.0 - 2026-05-10
+
+### Features
+- [NEW FEATURE] `deploy.sh` v2 — role-aware deployment script (cooldown-verified, DB backup on ingestion, no Ploi)
+- [NEW FEATURE] Horizon environments for athena/apollo/ares with dedicated queue splits
+- [NEW FEATURE] `console.php` gated by `SERVER_ROLE=ingestion` — prevents accidental step-dispatching from workers
+- [NEW FEATURE] Bumps `kraitebot/core` to 1.36.0 — `kraite:cooldown` + `kraite:warmup` commands
+
+### Improvements
+- [IMPROVED] CI: fix PHPStan cast errors, Mago attestation, test fixes (10 tests fixed)
+- [IMPROVED] CI: trigger on tags + push to master
+
 ## 1.35.0 - 2026-05-09
 
 ### Improvements
