@@ -393,16 +393,6 @@ return [
                 'backoff' => 10,
                 'memory' => 256,
             ],
-            'indicators-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['indicators'],
-                'processes' => 2,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
