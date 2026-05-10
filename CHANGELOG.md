@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.37.2 - 2026-05-10
+
+### Improvements
+- [IMPROVED] `deploy.sh` v4 — tag-based deploys: requires `DEPLOY_TAG` env var, checks out exact tagged commit instead of branch HEAD
+
 ## 1.37.1 - 2026-05-10
 
 ### Improvements

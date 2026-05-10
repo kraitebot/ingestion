@@ -47,17 +47,25 @@ if ! su - waygou -c 'composer config --global --list 2>/dev/null' | grep -q 'git
 fi
 echo "[2/9] Composer auth: verified"
 
-# --- Step 3: Pull latest code ---
+# --- Step 3: Pull latest code (by TAG, not branch HEAD) ---
+# deploy.sh expects $DEPLOY_TAG to be set by the caller. If missing, abort.
+# This guarantees the server runs a pinned, CI-verified version — never
+# whatever happens to be on master (which may have untested commits).
+if [ -z "${DEPLOY_TAG:-}" ]; then
+    echo "ERROR: DEPLOY_TAG is not set. Pass it as: DEPLOY_TAG=v1.37.1 bash deploy.sh"
+    echo "The server MUST deploy a specific tagged version, not branch HEAD."
+    exit 1
+fi
+
 # Backup production composer files before git reset (VCS repos, not path repos).
 cp "$PROJECT_DIR/composer.json" /tmp/deploy-composer.json
 cp "$PROJECT_DIR/composer.lock" /tmp/deploy-composer.lock 2>/dev/null || true
 
 # Reset to HEAD first to clean any dirty index state (staged changes from
-# prior composer update, migration cruft, etc.) that would block the reset
-# to origin/master.
+# prior composer update, migration cruft, etc.) that would block the checkout.
 su - waygou -c "cd $PROJECT_DIR && git reset --hard HEAD && git clean -fd"
-su - waygou -c "cd $PROJECT_DIR && git fetch origin master"
-su - waygou -c "cd $PROJECT_DIR && git reset --hard origin/master"
+su - waygou -c "cd $PROJECT_DIR && git fetch origin --tags"
+su - waygou -c "cd $PROJECT_DIR && git checkout $DEPLOY_TAG"
 
 # Restore production composer.json (VCS repos, not dev path repos).
 # We restore the .json but NOT the .lock — the lock will be regenerated
