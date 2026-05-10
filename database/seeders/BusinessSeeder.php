@@ -22,9 +22,9 @@ final class BusinessSeeder extends Seeder
      */
     public function run(): void
     {
-        $role = config('kraite.server_role', 'web');
+        $hasTraderConfig = config('kraite-ingestion.traders.binance_bybit.email') !== null;
 
-        if (! in_array($role, ['local', 'testing', 'web'], strict: true) && app()->environment() !== 'local' && app()->environment() !== 'testing') {
+        if (! $hasTraderConfig) {
             $this->seedSysadminOnly();
 
             return;
