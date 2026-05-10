@@ -12,7 +12,9 @@ return [
 
     'use' => 'default',
 
-    'prefix' => env('HORIZON_PREFIX', Str::slug((string) env('APP_NAME', 'laravel'), '_').'_'.env('APP_ENV', 'env').'_horizon:'),
+    'env' => env('HORIZON_ENV', env('APP_ENV', 'production')),
+
+    'prefix' => env('HORIZON_PREFIX', Str::slug((string) env('APP_NAME', 'laravel'), '_').'_'.env('HORIZON_ENV', env('APP_ENV', 'env')).'_horizon:'),
 
     'middleware' => ['web'],
 
@@ -424,16 +426,6 @@ return [
         ],
 
         'apollo' => [
-            'indicators-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['indicators'],
-                'processes' => 10,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
@@ -477,16 +469,6 @@ return [
         ],
 
         'ares' => [
-            'indicators-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['indicators'],
-                'processes' => 10,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
@@ -520,6 +502,29 @@ return [
             'ares-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['ares'],
+                'processes' => 2,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+        ],
+
+        'artemis' => [
+            'indicators-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['indicators'],
+                'processes' => 20,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+            'artemis-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['artemis'],
                 'processes' => 2,
                 'timeout' => 0,
                 'sleep' => 1,

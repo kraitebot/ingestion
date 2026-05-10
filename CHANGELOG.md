@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.37.3 - 2026-05-10
+
+### Features
+- [NEW FEATURE] Dedicated indicators server (artemis) — 20 indicator workers on a separate $5/mo server
+- [NEW FEATURE] `HORIZON_ENV` config key — decouples Horizon environment selection from `APP_ENV`
+
+### Improvements
+- [IMPROVED] `deploy.sh` v4 — aborts if any `dev-master` packages detected in composer.lock
+- [IMPROVED] Indicators queue removed from apollo/ares (now handled by artemis)
+- [IMPROVED] Athena keeps 2 indicator workers for self-sufficiency during deploys
+
 ## 1.37.2 - 2026-05-10
 
 ### Improvements

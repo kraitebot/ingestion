@@ -86,6 +86,20 @@ su - waygou -c "cd $PROJECT_DIR && composer update kraitebot/core --no-interacti
 CORE_VERSION=$(su - waygou -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='kraitebot/core']" 2>/dev/null || echo "unknown")
 echo "[4/9] Composer: installed (core $CORE_VERSION)"
 
+# HARD RULE: no dev-master on production. Verify no packages resolved to dev-*.
+DEV_PKGS=$(su - waygou -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+devs=[f\"{p['name']}: {p['version']}\" for p in d['packages'] if p['version'].startswith('dev-')]
+if devs: print('\n'.join(devs))
+" 2>/dev/null || true)
+if [ -n "$DEV_PKGS" ]; then
+    echo "ERROR: dev-master packages detected in production!"
+    echo "$DEV_PKGS"
+    echo "Fix the version constraints in composer.json. Aborting."
+    exit 1
+fi
+
 # --- Step 5: Fix ownership + permissions ---
 # Run as root — only root can chown. Do this BEFORE artisan commands
 # so PHP-FPM can read the new files.
