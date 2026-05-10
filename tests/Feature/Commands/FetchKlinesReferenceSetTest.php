@@ -90,6 +90,8 @@ it('skips reference symbols that are not present on the target exchange (gracefu
     // to the 4 found ones and silently skip the missing one.
     ExchangeSymbol::where('api_system_id', $this->binance->id)
         ->where('token', 'SOL')
+        ->get()
+        ->each
         ->delete();
 
     $this->artisan('kraite:cron-fetch-klines', [

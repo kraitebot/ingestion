@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.37.0 - 2026-05-10
+
+### Features
+- [NEW FEATURE] `kraite:dispatch-daemon` — persistent single-process dispatcher replacing 20 scheduler forks/second (CPU load 105 → 0.68)
+- [NEW FEATURE] Indicator queue offloaded to workers (apollo 10, ares 10, athena 0) — frees ingestion RAM for WebSocket streams
+- [NEW FEATURE] `deploy.sh` v3 — backs up/restores production `composer.json` across `git reset --hard`
+- [NEW FEATURE] WebSocket stream URLs added to `config/kraite.php` (Binance fstream, Bybit, Bitget, KuCoin)
+
+### Improvements
+- [IMPROVED] Bumps `kraitebot/core` to v1.37.2 — cascade FK on `exchange_symbol_prices`, `ExchangeSymbolObserver::created()` auto-creates sidecar rows
+- [IMPROVED] `BusinessSeeder` uses `config()->string()` for PHPStan compliance
+- [IMPROVED] `FetchKlinesReferenceSetTest` uses model-level deletes for cascade FK compatibility
+
 ## 1.36.0 - 2026-05-10
 
 ### Features
