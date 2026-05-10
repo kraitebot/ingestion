@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.37.6 - 2026-05-10
+
+### Improvements
+- [IMPROVED] Bumps `kraitebot/core` to v1.37.5 — NOWPayments credentials on Kraite singleton (migration + encrypted columns)
+
 ## 1.37.4 - 2026-05-10
 
 ### Improvements
