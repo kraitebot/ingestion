@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.37.7 - 2026-05-10
+
+### Improvements
+- [IMPROVED] Local Horizon auto-balance (min 1 / max N per queue, saves ~1.7GB RAM)
+- [IMPROVED] Bumps `kraitebot/core` to v1.37.6 — php_binary config key
+
 ## 1.37.6 - 2026-05-10
 
 ### Improvements

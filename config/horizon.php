@@ -50,11 +50,27 @@ return [
 
         'local' => array_merge([
 
+            'cronjobs-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['cronjobs'],
+                'balance' => 'auto',
+                'autoScalingStrategy' => 'time',
+                'minProcesses' => 1,
+                'maxProcesses' => 2,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
-                'balance' => 'simple',
-                'processes' => 5,
+                'balance' => 'auto',
+                'autoScalingStrategy' => 'time',
+                'minProcesses' => 1,
+                'maxProcesses' => 2,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -65,20 +81,10 @@ return [
             'orders-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['orders'],
-                'balance' => 'simple',
-                'processes' => 5,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
-
-            'cronjobs-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['cronjobs'],
-                'balance' => 'simple',
-                'processes' => 5,
+                'balance' => 'auto',
+                'autoScalingStrategy' => 'time',
+                'minProcesses' => 1,
+                'maxProcesses' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -89,8 +95,10 @@ return [
             'indicators-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['indicators'],
-                'balance' => 'simple',
-                'processes' => 20,
+                'balance' => 'auto',
+                'autoScalingStrategy' => 'time',
+                'minProcesses' => 1,
+                'maxProcesses' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -101,8 +109,10 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'balance' => 'simple',
-                'processes' => 8,
+                'balance' => 'auto',
+                'autoScalingStrategy' => 'time',
+                'minProcesses' => 1,
+                'maxProcesses' => 2,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -114,7 +124,7 @@ return [
                 'connection' => 'redis',
                 'queue' => ['user-data-stream'],
                 'balance' => 'simple',
-                'processes' => 5,
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -123,8 +133,6 @@ return [
             ],
 
         ], [
-            // Dynamic hostname-based queue for server-specific work
-            // (e.g., ConnectivityTestController).
             mb_strtolower(str_replace('-', '', gethostname() ?: 'unknown')).'-supervisor' => [
                 'connection' => 'redis',
                 'queue' => [mb_strtolower(str_replace('-', '', gethostname() ?: 'unknown'))],
