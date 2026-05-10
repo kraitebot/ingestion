@@ -15,9 +15,21 @@ final class BusinessSeeder extends Seeder
 {
     /**
      * Seed business data: traders, accounts, and exchange integrations.
+     *
+     * On production servers (SERVER_ROLE != local/testing), only the
+     * sysadmin user is created. Trader accounts are created via the
+     * registration flow, not the seeder.
      */
     public function run(): void
     {
+        $role = config('kraite.server_role', 'web');
+
+        if (! in_array($role, ['local', 'testing', 'web'], strict: true) && app()->environment() !== 'local' && app()->environment() !== 'testing') {
+            $this->seedSysadminOnly();
+
+            return;
+        }
+
         $binance = ApiSystem::where('canonical', 'binance')->firstOrFail();
         $bybit = ApiSystem::where('canonical', 'bybit')->firstOrFail();
         $kucoin = ApiSystem::where('canonical', 'kucoin')->firstOrFail();
@@ -35,6 +47,19 @@ final class BusinessSeeder extends Seeder
         $this->setupBinanceOnlyIntegration($binance);
         $this->cleanupAccountCredentials();
         $this->deactivateNonPrimaryAccounts();
+    }
+
+    private function seedSysadminOnly(): void
+    {
+        User::updateOrCreate(
+            ['email' => config('kraite.admin_user_email', 'bruno@kraite.com')],
+            [
+                'name' => config('kraite.admin_user_name', 'Admin'),
+                'password' => bcrypt(config('kraite.admin_user_password', 'password')),
+                'is_active' => true,
+                'is_admin' => true,
+            ]
+        );
     }
 
     /**
