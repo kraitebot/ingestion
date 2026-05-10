@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.37.4 - 2026-05-10
+
+### Improvements
+- [IMPROVED] BusinessSeeder simplified: production = sysadmin only, local = sysadmin + Karine + Binance account
+- [IMPROVED] Bumps `kraitebot/core` to v1.37.4 — local symbol restriction (21 tokens when APP_ENV=local), HORIZON_ENV config key
+
 ## 1.37.3 - 2026-05-10
 
 ### Features
