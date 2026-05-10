@@ -55,7 +55,7 @@ final class BusinessSeeder extends Seeder
             ['email' => config('kraite.admin_user_email', 'bruno@kraite.com')],
             [
                 'name' => config('kraite.admin_user_name', 'Admin'),
-                'password' => bcrypt((string) config('kraite.admin_user_password', 'password')),
+                'password' => bcrypt(config()->string('kraite.admin_user_password', 'password')),
                 'is_active' => true,
                 'is_admin' => true,
             ]
