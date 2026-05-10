@@ -30,8 +30,17 @@ fi
 echo "[1/7] Cooldown verified"
 
 # --- Step 2: Pull latest code ---
+# Backup production composer files (VCS repos, not dev path repos)
+cp composer.json /tmp/deploy-composer.json
+cp composer.lock /tmp/deploy-composer.lock 2>/dev/null || true
+
 git fetch origin master
 git reset --hard origin/master
+
+# Restore production composer files
+cp /tmp/deploy-composer.json composer.json
+cp /tmp/deploy-composer.lock composer.lock 2>/dev/null || true
+
 COMMIT=$(git log --oneline -1)
 echo "[2/7] Code: $COMMIT"
 
