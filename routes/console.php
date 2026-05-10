@@ -45,59 +45,10 @@ if (config('kraite.server_role') !== 'ingestion') {
     return;
 }
 
-if (config('kraite.can_dispatch_steps')) {
-    $stepDispatcherGroups = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
-
-    foreach ($stepDispatcherGroups as $stepDispatcherGroup) {
-        Schedule::command('steps:dispatch --group='.$stepDispatcherGroup)
-            ->everySecond()
-            // runInBackground forks each per-group invocation into its
-            // own subprocess so the 10 dispatchers run in parallel
-            // rather than serialised behind one scheduler tick. Without
-            // it, the scheduler runs the commands in-process — total
-            // tick time = sum of all 10, defeating the per-group lift.
-            // Verified empirically 2026-05-08: in-process serial
-            // execution drove tick age to 11-17s; backgrounded forks
-            // restore sub-second cadence per group.
-            ->runInBackground()
-            ->when(function () {
-                return config('kraite.can_dispatch_steps');
-            })
-            // Per-prefix maintenance gate. `pauseStepsDispatch('')`
-            // pauses ONLY the default dispatcher; the all-scope
-            // pause (`pauseStepsDispatch(null)`) still freezes both.
-            // OptimizeBreadcrumbTablesCommand uses the all-scope
-            // path so the existing OPTIMIZE wiring keeps working
-            // unchanged.
-            ->skip(function () {
-                return \Kraite\Core\Support\MaintenanceMode::isStepsDispatchPaused('');
-            });
-
-        // Parallel `trading_*` dispatcher — same per-group fan-out, same
-        // cadence, but reads / writes against `trading_steps`,
-        // `trading_steps_dispatcher`, `trading_steps_dispatcher_ticks`,
-        // `trading_steps_archive`. Wired in 2026-05-08 to isolate
-        // trade-critical workflows (sync-orders today; opens / closes /
-        // drift heals next) from calculation churn on the default tables.
-        // The package's `BaseCommand::__construct()` injects the
-        // `--prefix=` option universally; `RuntimeContext` pushes
-        // `trading_` for the duration of the tick so every Step query
-        // resolves to the prefixed set.
-        Schedule::command('steps:dispatch --prefix=trading --group='.$stepDispatcherGroup)
-            ->everySecond()
-            ->runInBackground()
-            ->when(function () {
-                return config('kraite.can_dispatch_steps');
-            })
-            // Per-prefix gate scoped to `trading`. The trading dispatcher
-            // freezes only when `pauseStepsDispatch('trading')` (or the
-            // all-scope null form) is armed; pausing the default
-            // dispatcher leaves trading alone, and vice versa.
-            ->skip(function () {
-                return \Kraite\Core\Support\MaintenanceMode::isStepsDispatchPaused('trading');
-            });
-    }
-}
+// Step dispatcher runs as a long-running daemon via supervisor
+// (kraite:dispatch-daemon), NOT as scheduler forks. This eliminates
+// the 20 forks/second that saturated 4-vCPU machines at 100% CPU.
+// See: /etc/supervisor/conf.d/kraite-dispatch-daemon.conf
 
 // Per-minute flush of the dispatcher saturation counters from Redis
 // into `steps_dispatcher_saturation`. Reads the previous completed
