@@ -75,19 +75,14 @@ php artisan route:cache
 php artisan view:cache
 echo "[6/7] Caches: rebuilt"
 
-# --- Step 7: Fix permissions + restart services ---
+# --- Step 7: Fix permissions ---
 chmod -R 775 storage bootstrap/cache
 chmod 644 bootstrap/cache/*.php 2>/dev/null || true
+echo "[7/7] Permissions: fixed"
 
-if command -v systemctl &>/dev/null && systemctl is-active --quiet php8.4-fpm 2>/dev/null; then
-    sudo systemctl reload php8.4-fpm
-    echo "[7/7] PHP-FPM: reloaded"
-fi
-
-if [ -f "config/horizon.php" ] && command -v supervisorctl &>/dev/null; then
-    sudo supervisorctl restart horizon 2>/dev/null || true
-    echo "[7/7] Horizon: restarted"
-fi
+# NOTE: PHP-FPM reload, Horizon restart, and supervisor start are handled
+# by kraite:warmup — NOT here. deploy.sh leaves the server in maintenance
+# mode for the operator to verify before bringing online.
 
 echo ""
 echo "=== Deploy complete ==="
