@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.37.1 - 2026-05-10
+
+### Improvements
+- [IMPROVED] Athena Horizon: add 2 workers per queue (positions, orders, indicators, priority) for self-sufficient deploys
+- [IMPROVED] `deploy.sh` v4 — verify composer auth, update kraitebot/core after install, suppress view:cache on workers, clean dirty index before fetch
+
 ## 1.37.0 - 2026-05-10
 
 ### Features
