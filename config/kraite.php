@@ -401,10 +401,12 @@ return [
         'url' => [
             'binance' => [
                 'rest' => 'https://fapi.binance.com',
+                'stream' => 'wss://fstream.binance.com',
             ],
 
             'bybit' => [
                 'rest' => 'https://api.bybit.com',
+                'stream' => 'wss://stream.bybit.com',
             ],
 
             'kucoin' => [
@@ -413,6 +415,7 @@ return [
 
             'bitget' => [
                 'rest' => 'https://api.bitget.com',
+                'stream' => 'wss://ws.bitget.com/v2/ws/public',
             ],
 
             'alternativeme' => [
