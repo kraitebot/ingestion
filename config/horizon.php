@@ -361,16 +361,6 @@ return [
                 'backoff' => 10,
                 'memory' => 256,
             ],
-            'indicators-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['indicators'],
-                'processes' => 20,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
             'user-data-stream-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['user-data-stream'],
@@ -394,6 +384,16 @@ return [
         ],
 
         'apollo' => [
+            'indicators-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['indicators'],
+                'processes' => 10,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
@@ -437,6 +437,16 @@ return [
         ],
 
         'ares' => [
+            'indicators-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['indicators'],
+                'processes' => 10,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
