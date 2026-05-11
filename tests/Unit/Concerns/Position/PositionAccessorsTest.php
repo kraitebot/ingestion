@@ -58,15 +58,15 @@ it('current_price falls back to "0" when exchange symbol has no recent candles (
     expect($position->current_price)->toBe('0');
 });
 
-it('pnl accessor coerces null to "0" (template-safe — no NULL into notifications)', function (): void {
-    // A position with no exchange symbol can't compute pnl. Accessor MUST
-    // ship "0" not null so notification templates render cleanly.
+it('unrealized_pnl accessor coerces null to "0" (template-safe — no NULL into notifications)', function (): void {
+    // A position with no exchange symbol can't compute unrealized PnL.
+    // Accessor MUST ship "0" not null so notification templates render cleanly.
     $position = Position::factory()->long()->create([
         'exchange_symbol_id' => null,
     ]);
 
-    expect($position->pnl)->toBeString()
-        ->and($position->pnl)->toBe('0');
+    expect($position->unrealized_pnl)->toBeString()
+        ->and($position->unrealized_pnl)->toBe('0');
 });
 
 it('daily_variation_percentage falls back to "0.00" with no exchange symbol', function (): void {
