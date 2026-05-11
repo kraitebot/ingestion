@@ -55,17 +55,21 @@ it('CorrectModifiedOrder: passes when active LIMIT has quantity drift from refer
 });
 
 it('CorrectModifiedOrder: refuses when no drift exists (price + quantity match reference)', function (): void {
-    // PRODUCTION GAP DETECTED 2026-05-09: `Order::price` has an accessor
-    // that strips trailing zeros (`0.10000000` → `0.1`) while
-    // `reference_price` has no accessor and reads raw. CorrectModified-
-    // OrderJob::startOrFail uses strict `!==` to compare them, so on a
-    // round-tripped LIMIT row whose price and reference_price are
-    // numerically identical, the gate falsely detects drift. In
-    // production the observer (which uses `Math::equal`) pre-filters
-    // these — the bug is masked by the observer's looser comparison.
-    // Test marked as todo; align the gate with the observer when fixing.
-    expect(true)->toBeTrue();
-})->todo();
+    $position = Position::factory()->long()->create(['status' => 'active', 'total_limit_orders' => 4]);
+    $order = Order::create([
+        'position_id' => $position->id,
+        'side' => 'BUY',
+        'position_side' => $position->direction,
+        'type' => 'LIMIT',
+        'price' => '0.10000000',
+        'reference_price' => '0.10000000',
+        'quantity' => '100.00000000',
+        'reference_quantity' => '100.00000000',
+        'status' => 'NEW',
+    ]);
+
+    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+});
 
 it('CorrectModifiedOrder: refuses on algo orders (require cancel+recreate, not modify)', function (): void {
     $position = Position::factory()->long()->create(['status' => 'active']);
