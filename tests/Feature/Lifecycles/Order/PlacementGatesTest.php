@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Kraite\Core\Jobs\Atomic\Order\DispatchLimitOrdersJob;
 use Kraite\Core\Jobs\Atomic\Order\PlaceMarketOrderJob;
 use Kraite\Core\Jobs\Atomic\Order\PlaceProfitOrderJob;
+use Kraite\Core\Jobs\Atomic\Order\PlaceStopLossOrderJob;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 
@@ -138,6 +139,116 @@ it('PlaceProfitOrder: refuses when profit_percentage is missing (PrepareData sna
     ]);
 
     expect((new PlaceProfitOrderJob($position->id))->startOrFail())->toBeFalse();
+});
+
+it('PlaceProfitOrder: rehydrates an existing PROFIT-LIMIT row on retry instead of creating a duplicate', function (): void {
+    // Without the retry guard, a worker crashed after Order::create but
+    // before the local reference-field commit would on retry create a
+    // SECOND TP row and place a SECOND TP on the exchange.
+    $position = Position::factory()->long()->create([
+        'status' => 'active',
+        'opening_price' => '0.16490',
+        'quantity' => '5872',
+        'profit_percentage' => '5.000',
+    ]);
+
+    $existingTp = Order::create([
+        'position_id' => $position->id,
+        'side' => 'SELL',
+        'position_side' => $position->direction,
+        'type' => 'PROFIT-LIMIT',
+        'price' => '0.17314',
+        'quantity' => '5872',
+        'status' => 'NEW',
+    ]);
+
+    $job = new PlaceProfitOrderJob($position->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->profitOrder->id)->toBe($existingTp->id);
+});
+
+it('PlaceProfitOrder: ignores a CANCELLED prior attempt and treats placement as fresh', function (): void {
+    // CANCELLED rows are no longer on the exchange book — a fresh placement
+    // is required. The status filter must exclude them.
+    $position = Position::factory()->long()->create([
+        'status' => 'active',
+        'opening_price' => '0.16490',
+        'quantity' => '5872',
+        'profit_percentage' => '5.000',
+    ]);
+
+    Order::create([
+        'position_id' => $position->id,
+        'side' => 'SELL',
+        'position_side' => $position->direction,
+        'type' => 'PROFIT-LIMIT',
+        'price' => '0.17314',
+        'quantity' => '5872',
+        'status' => 'CANCELLED',
+    ]);
+
+    $job = new PlaceProfitOrderJob($position->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->profitOrder)->toBeNull();
+});
+
+// ───────────────────────── PlaceStopLossOrderJob::startOrFail ─────────────────────────
+
+it('PlaceStopLossOrder: rehydrates an existing STOP-MARKET row on retry instead of creating a duplicate', function (): void {
+    // Without the retry guard, a worker crashed after Order::create but
+    // before the local reference-field commit would on retry create a
+    // SECOND SL row and place a SECOND SL on the exchange — the position's
+    // order-cap observer would then reject one of them, leaving local
+    // state inconsistent with the exchange book.
+    $position = Position::factory()->long()->create([
+        'status' => 'opening',
+        'opening_price' => '0.16490',
+        'quantity' => '5872',
+        'stop_market_percentage' => '20.000',
+        'total_limit_orders' => 0,  // simple-trade mode — anchor = opening_price
+    ]);
+
+    $existingSl = Order::create([
+        'position_id' => $position->id,
+        'side' => 'SELL',
+        'position_side' => $position->direction,
+        'type' => 'STOP-MARKET',
+        'price' => '0.13192',
+        'quantity' => '5872',
+        'status' => 'NEW',
+    ]);
+
+    $job = new PlaceStopLossOrderJob($position->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->stopLossOrder->id)->toBe($existingSl->id);
+});
+
+it('PlaceStopLossOrder: ignores a CANCELLED prior attempt and treats placement as fresh', function (): void {
+    $position = Position::factory()->long()->create([
+        'status' => 'opening',
+        'opening_price' => '0.16490',
+        'quantity' => '5872',
+        'stop_market_percentage' => '20.000',
+        'total_limit_orders' => 0,
+    ]);
+
+    Order::create([
+        'position_id' => $position->id,
+        'side' => 'SELL',
+        'position_side' => $position->direction,
+        'type' => 'STOP-MARKET',
+        'price' => '0.13192',
+        'quantity' => '5872',
+        'status' => 'CANCELLED',
+    ]);
+
+    $job = new PlaceStopLossOrderJob($position->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->stopLossOrder)->toBeNull();
 });
 
 // ───────────────────────── DispatchLimitOrdersJob::startOrFail ─────────────────────────

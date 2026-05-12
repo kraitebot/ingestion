@@ -61,24 +61,30 @@ it('sends server_rate_limit_exceeded notification when API returns 429', functio
     );
 });
 
-// Test server_ip_forbidden notification
-it('sends server_ip_forbidden notification when API returns 418', function () {
+// HTTP 418 (Binance IP ban) is intentionally NOT classified by
+// BinanceNotificationHandler anymore — the broad `server_ip_forbidden`
+// emitted by ApiRequestLogObserver was duplicating the specific
+// `server_ip_banned` / `server_ip_rate_limited` notifications that
+// ForbiddenHostnameObserver fires once the exception path classifies the
+// 418 and writes a ForbiddenHostname row. Pin that contract: a bare
+// ApiRequestLog with status 418 (no exception path running) MUST NOT fire
+// any broad notification.
+it('does NOT send broad server_ip_forbidden notification when API returns 418 (specific notification comes from ForbiddenHostnameObserver via the exception path)', function () {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
-    // Create the notification canonical definition (required by observer)
-    \Kraite\Core\Models\Notification::factory()
-        ->serverIpForbidden()
-        ->create();
+    // Create both canonicals — broad (must not fire) and specific (would fire
+    // via ForbiddenHostnameObserver if we created the row, which this test
+    // intentionally does not).
+    \Kraite\Core\Models\Notification::factory()->serverIpForbidden()->create();
+    \Kraite\Core\Models\Notification::factory()->serverIpBanned()->create();
 
-    // Create API system
     $apiSystem = ApiSystem::factory()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
         'is_exchange' => true,
     ]);
 
-    // Create Engine record (singleton) for admin notifications
     Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
@@ -87,7 +93,6 @@ it('sends server_ip_forbidden notification when API returns 418', function () {
         'notification_channels' => ['mail'],
     ]);
 
-    // Create API request log with 418 status code (triggers notification via observer)
     ApiRequestLog::factory()->create([
         'api_system_id' => $apiSystem->id,
         'http_response_code' => 418,
@@ -95,15 +100,10 @@ it('sends server_ip_forbidden notification when API returns 418', function () {
         'path' => '/api/v3/account',
     ]);
 
-    // Assert notification was sent to admin
-    Notification::assertSentTo(
+    Notification::assertNotSentTo(
         Kraite::admin(),
         AlertNotification::class,
-        function ($notification) {
-            return $notification->canonical === 'server_ip_forbidden'
-                && str_contains($notification->message, 'Binance')
-                && str_contains($notification->message, '418');
-        }
+        fn ($notification) => $notification->canonical === 'server_ip_forbidden'
     );
 });
 

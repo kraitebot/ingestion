@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.39.0 - 2026-05-13
+
+### Features
+- [FEATURE] Bumps `kraitebot/core` to v1.39.0 — code-review pass + original-price forensic anchors + idempotency parity
+- [FEATURE] `CheckSystemHealthCommand` adds `checkStaleSyncingPositions` watchdog (15-min threshold)
+- [FEATURE] `slow_query_detected` notification gets cache-key-based throttling (per-connection)
+
+### Improvements
+- [IMPROVED] `NotificationService` cache-key build wrapped in failure containment
+- [IMPROVED] `AlertNotification` carries per-send relatable (eliminates cached-admin user audit-log leak)
+- [IMPROVED] `NotificationLogListener::createLog` body contained; Telegram channel/recipient normalized
+- [IMPROVED] `ApiRequestLogObserver::saved` per-branch try/catch; TAAPI deactivation notification fires after commit
+- [IMPROVED] Broad `serverForbiddenHttpCodes` cleared on Binance/Bybit, reduced to `[403]` on Bitget/Kucoin (eliminates double-fire with `ForbiddenHostnameObserver`)
+- [IMPROVED] `CreatePositionsCommand` shuffles account dispatch order
+- [IMPROVED] `PlaceMarketOrderJob` consults `apiSystem->inCooldown()` before firing
+- [IMPROVED] `PlaceStopLossOrderJob` and `PlaceProfitOrderJob` rehydrate-existing-on-retry idempotency parity
+- [IMPROVED] `BaseApiableJob::getRetryDiagnostics` rewritten with type-aware ban messages
+- [IMPROVED] `BaseQueueableJob::onExceptionLogged` wrapped in failure containment
+- [IMPROVED] Mail-from name auto-derived from address local-part
+- [IMPROVED] Original-price forensic anchors on orders + write-once protection in `OrderObserver` (parallel workstream)
+
+### Hardening
+- [HARDENED] `CreatePositionsCommand --clean` refused outside local/testing
+- [HARDENED] `SyncOrdersCommand --clean` refused outside local/testing
+- [HARDENED] `SyncOrdersCommand --order_id` requires `--force` outside local/testing + bypass-safety warning
+
 ## 1.37.7 - 2026-05-10
 
 ### Improvements
