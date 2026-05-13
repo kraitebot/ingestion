@@ -7,6 +7,7 @@ use Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
 
 /**
  * CalculateWap::complete() is the exit point for a successful WAP run.
@@ -98,7 +99,9 @@ it('does nothing extra when every filled LIMIT is already acked', function () {
 
     runCompleteFor($position, $profitOrder);
 
-    expect(Step::where('class', ApplyWapJob::class)->count())->toBe(0);
+    // Follow-up WAP steps land in the `trading_steps` prefix as of
+    // 2026-05-13 review-15 Finding 6 (explicit Steps::usingPrefix wrap).
+    expect(Steps::usingPrefix('trading', fn () => Step::where('class', ApplyWapJob::class)->count()))->toBe(0);
 });
 
 it('claims unacked filled LIMITs and enqueues a follow-up WAP', function () {
@@ -117,7 +120,7 @@ it('claims unacked filled LIMITs and enqueues a follow-up WAP', function () {
     expect($limitA->fresh()->reference_status)->toBe('FILLED')
         ->and($limitB->fresh()->reference_status)->toBe('FILLED');
 
-    $followUp = Step::where('class', ApplyWapJob::class)->first();
+    $followUp = Steps::usingPrefix('trading', fn () => Step::where('class', ApplyWapJob::class)->first());
 
     expect($followUp)->not->toBeNull()
         ->and($followUp->arguments['positionId'])->toBe($position->id)
@@ -145,5 +148,5 @@ it('only claims LIMIT rows — ignores unacked non-LIMIT orders', function () {
     runCompleteFor($position, $profitOrder);
 
     expect($market->fresh()->reference_status)->toBeNull()
-        ->and(Step::where('class', ApplyWapJob::class)->count())->toBe(0);
+        ->and(Steps::usingPrefix('trading', fn () => Step::where('class', ApplyWapJob::class)->count()))->toBe(0);
 });

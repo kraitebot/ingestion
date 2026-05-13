@@ -8,13 +8,23 @@ use Kraite\Core\Models\Kraite;
 
 /**
  * Helper to check if system is cooling down.
- * Returns false if database is unavailable (e.g., during CI/CD package discovery).
+ *
+ * Returns false ONLY when the DB read genuinely succeeds and the flag
+ * is false. On DB-read failure: returns false in non-production
+ * (CI/CD package discovery, local boot when DB isn't migrated yet) so
+ * `php artisan` continues to work, but returns TRUE on production-role
+ * servers (`ingestion`, `worker`) so an unknown cooldown state fails
+ * CLOSED — registering only health/cleanup commands instead of every
+ * cron tick. A transient DB blip during schedule boot must NOT mean
+ * "schedule everything as if all systems are go".
  */
 $isCoolingDown = function (): bool {
     try {
         return (bool) Kraite::first()?->is_cooling_down;
     } catch (Throwable) {
-        return false;
+        $role = (string) (config('kraite.server_role') ?? '');
+
+        return in_array($role, ['ingestion', 'worker'], true);
     }
 };
 
@@ -152,7 +162,8 @@ if (! $isCoolingDown()) {
 
     // Fetch klines for active positions only (5m timeframe)
     Schedule::command('kraite:cron-fetch-klines --only-active-positions')
-        ->everyFiveMinutes();
+        ->everyFiveMinutes()
+        ->withoutOverlapping();
 
     // Fetch 15m klines for the BSCS reference basket (BTC + ETH/SOL/BNB/XRP
     // by default, configurable via MARKET_REGIME_SYMBOLS). Required by the
@@ -165,26 +176,32 @@ if (! $isCoolingDown()) {
 
     // Fetch klines for all symbols at indicator timeframes (for correlation data)
     Schedule::command('kraite:cron-fetch-klines --timeframe=4h')
-        ->cron('5 */4 * * *');
+        ->cron('5 */4 * * *')
+        ->withoutOverlapping();
 
     Schedule::command('kraite:cron-fetch-klines --timeframe=6h')
-        ->cron('5 */6 * * *');
+        ->cron('5 */6 * * *')
+        ->withoutOverlapping();
 
     Schedule::command('kraite:cron-fetch-klines --timeframe=12h')
-        ->cron('5 */12 * * *');
+        ->cron('5 */12 * * *')
+        ->withoutOverlapping();
 
     Schedule::command('kraite:cron-store-accounts-balances')
-        ->everyFiveMinutes();
+        ->everyFiveMinutes()
+        ->withoutOverlapping();
 
     Schedule::command('kraite:cron-upsert-pnls')
         ->everyFiveMinutes()
         ->withoutOverlapping();
 
     Schedule::command('kraite:cron-refresh-exchange-symbols')
-        ->hourlyAt(15);
+        ->hourlyAt(15)
+        ->withoutOverlapping();
 
     Schedule::command('kraite:cron-conclude-symbols-direction')
-        ->hourlyAt(30);
+        ->hourlyAt(30)
+        ->withoutOverlapping();
 
     Schedule::command('kraite:cron-renew-subscriptions')
         ->dailyAt('00:00')

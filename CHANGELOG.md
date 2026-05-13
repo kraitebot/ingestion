@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.40.0 - 2026-05-13
+
+### Features
+- [FEATURE] Bumps `kraitebot/core` to v1.40.0 — code-review pass closing reviews 10–24 (~50 source files patched, 2 new migrations, idempotency parity for `RecreateCancelledOrderJob`, dual-prefix recovery, sticky forbidden records, fail-closed throttler on Redis outage, HTTP timeouts, `withOnlyFromStatus` lifecycle guards, account-scoped user-data event resolution, exchange-only drift signals, deletion of `Kraite::computeMarketOrder` + `HasPositionPlanning` dead code).
+- [FEATURE] Bumps `brunocfalcao/step-dispatcher` to v1.12.2 — `doubleCheck` exhaustion fails the step (was silent complete), `retryJobWithBackoff` preserves DB backoff, `buildStepsCache` group-scoped, `batchTransitionSteps` log on failure.
+
+### Improvements
+- [IMPROVED] `withoutOverlapping()` added to several heavy recurring crons (kline fetches, balances, exchange-symbols refresh, conclude-symbols-direction).
+- [IMPROVED] Production-role schedule helper fails CLOSED (registers only operational schedules) on DB-read failure for `ingestion` / `worker` server roles. Local / package-discovery boots still fail open for legacy compatibility.
+
+### Hardening
+- [HARDENED] 11 new TDD test files pinning the contract for every Implement verdict in the cycle (idempotency, lock+dedupe, account-scoping, throttler fail-closed, HTTP timeouts, etc.).
+
 ## 1.39.0 - 2026-05-13
 
 ### Features

@@ -1,110 +1,84 @@
-# WhereAreWe — 2026-05-08 (dispatcher table-prefix split — trading vs default)
+# WhereAreWe — 2026-05-13 (code review cycle COMPLETE: reviews 10–24)
 
 ## Date
-2026-05-08 (later session, follows the parallelism + saturation work
-earlier the same day)
+2026-05-13
 
 ## Session summary
 
-Major structural change shipped: the step-dispatcher now runs as two
-isolated ecosystems against the same MySQL database — the default
-`steps_*` set continues to handle calculation churn (klines,
-indicators, BSCS, balance snapshots, leverage brackets) while a new
-`trading_*` set carries every trade-critical workflow (opens, sync
-orders, close, drift heals, WAP, order corrections, user-data
-events). One dispatcher fleet per prefix, isolated saturation,
-isolated retention, isolated cooldown.
+Sequential pass through reviews 10–24 via the `/code-review` skill,
+posture-defended lifecycle. 15 reviews closed end-to-end. Bruno set
+batch authorisation mid-session: Discard auto-proceeded, Implement
+verdicts shipped without per-finding green-light wait once the
+cadence was confirmed.
 
-The package (`brunocfalcao/step-dispatcher`) gained per-prefix
-support end-to-end on the `feature/table-prefix` branch:
-RuntimeContext + Steps facade + per-prefix flag files + per-prefix
-cache keys + per-prefix CTE interpolation + per-prefix cache key
-scoping + idempotent `steps:install --prefix=<name>` command +
-universal `--prefix=` CLI option injected by `BaseCommand` +
-worker-side prefix push in `BaseStepJob::__unserialize()` (the
-critical fix that made the trading workers actually load their step
-rows from the correct table during deserialize).
+Cycle is COMPLETE. No code-review markdown files remain in
+`~/Herd/docs/kraite/code-reviews/`.
 
-The Kraite host wraps every trade-critical entry point in
-`Steps::usingPrefix('trading', …)` — `SyncOrdersCommand`,
-`CreatePositionsCommand`, `CheckDriftsCommand`,
-`StreamBinanceUserDataCommand` daemon, `OrderObserver` (5 sites),
-`PositionObserver::updated`, `Concerns\Order\HandlesChanges` trait
-(3-step WAP block).
+## Reviews processed
 
-`MaintenanceMode` is now per-prefix aware: pause null = all,
-pause `''` = default only, pause `'trading'` = trading only.
-`OptimizeBreadcrumbTablesCommand`'s no-arg call still pauses
-everything (backward compat). The `routes/console.php` skip
-callbacks pass each entry's prefix; the three Kraite callers
-(SendStaleStepsNotification, CheckSystemHealthCommand,
-CheckDriftsCommand) gate on the prefix that owns their data.
+| # | Topic | Verdicts | Implements |
+|---|-------|----------|------------|
+| 10 | Trading engine | 3 Implement / 1 docblock / 8 Discard | dead-method delete + `?string` min_notional + ladder warnings appLog + alt-model docblock |
+| 11 | OrderObserver | 4 Implement / 7 Discard | locked re-check + `recreated_from_order_id` lineage + `apiModify` string|int|float|null + WAP follow-up `Steps::usingPrefix` |
+| 12 | Recovery | 6 Implement / 8 Discard | dual-prefix freeze/cancel + observer suppression + Phase 4 in-flight guard + multi-exchange key extraction + position-scoped order idempotency + untested-exchange gate + MYSQL_PWD |
+| 13 | Drift checker | 5 Implement / 9 Discard | alert-only docs + dead-method delete + snapshot-failed signal + exchange-only position+orders signals + REJECTED filter + multi-exchange normalizeDirection |
+| 14 | Exchange retry | 2 Implement / 9 Discard | Guzzle timeouts + Bitget 429 explicit-ban-evidence |
+| 15 | Step dispatcher | 6 Implement / 2 Discard | doubleCheck → fail / `VerifyPositionExistsOnExchangeJob` lock+dedupe / `withOnlyFromStatus` + close+cancel wiring / DB backoff / batch-transition log / cache group-scoped |
+| 16 | Concurrency | 2 Implement / 6 Discard | CreatePositions + SyncOrders active-step dedupe |
+| 17 | Operator safety | 6 Implement / 3 Discard | auth on connectivity-test / `--force` gates on `--override` + `--clean` / dual-prefix safe-to-restart + cooldown / no-clobber recovery freezeTrading / all-prefix warmup |
+| 18 | Onboarding | 4 Implement / 5 Discard | secret + key required / WS close+error → closeAndUnsetSlot / DispatchPositionSlots final re-check / balance redaction |
+| 19 | Mappers | 3 Implement / 5 Discard | Bitget one-way LONG/SHORT / Binance algo both shapes / `closePosition` DTO field |
+| 20 | Exception handling | 3 Implement / 5 Discard | HTTP 200 reorder / sticky forbidden records / auto-flip cooldown |
+| 21 | Throttler | 1 Implement / 7 Discard | fail-closed cache failure across all 4 throttlers |
+| 22 | Daemon liveness | 4 Implement / 5 Discard | cooldown probes return -1 / dead-letter file_put_contents check / production-role schedule fail-closed / withoutOverlapping on heavy crons |
+| 23 | User-data stream | 3 Implement / 4 Discard | account-scoped order resolution / `closePosition` consumed in manual-close detect / idempotency comment migration |
+| 24 | HTTP timeouts | 1 contract-pin test / 1 Discard | timeouts already shipped via review-14; pin test added |
 
-8-minute post-cutover monitor: zero leakage, zero failed jobs,
-trading_steps grew 275 → 381 organically through opening + sync
-cycles, default kept receiving only its expected classes
-(DetectMarketShock, FetchKlines, StoreAccountBalance, etc.).
+Implementation total: ~50 source files patched, 2 new migrations,
+11 new TDD test files, 0 regressions.
 
-## Current state
+## Migrations applied (already run on prod kraite DB this session)
 
-- Package suite (`packages/brunocfalcao/step-dispatcher`):
-  60 green (31 original + 29 new prefix tests).
-- Production:
-  - Default dispatcher: running, 712k+ historical steps,
-    Pending=0.
-  - Trading dispatcher: running, ~380 steps cycling cleanly
-    through opens and syncs.
-  - failed_jobs: 0.
-- Branch state: `feature/table-prefix` local-only (not pushed
-  remotely); the symlinked path repo means the live ingestion
-  server runs the branch directly.
+- `2026_05_13_080000_add_recreated_from_order_id_to_orders`
+- `2026_05_13_090000_align_api_data_stream_idempotency_key_comment`
 
-## WIP
+## Local deploy state at end-of-session
 
-Nothing in-flight. The split is fully deployed and verified.
+- Horizon: terminated + respawned, pid 49352, "Horizon is running"
+- Stream-binance-user-data daemon: pid 49631, daemon log confirms
+  account #1 (Karine Binance) initialised post-restart
+- Stream-binance-prices daemon: pid 49634, kicked
+- Dispatch-daemon: pid 1047 (long-running, picks up new opcode on
+  next tick automatically; not hard-restarted)
+- Scheduler: pid 1064
+- System health pass: 2 pre-existing alerts only
+  (`balance_stale_account_3`, `stale_syncing_position_293` —
+  both pre-cycle state, not regressions).
+
+## Operator-visible behaviour flips that need awareness
+
+- Throttler fail-CLOSED on Redis outage (was fail-OPEN). Redis
+  incident now stops exchange traffic cold.
+- Sticky forbidden records — `forbidIpNotWhitelisted` and
+  `forbidAccountBlocked` no longer auto-expire after 24h. Cleared
+  by the existing success-path self-heal on next valid call after
+  the user repairs.
+- Auto-flip position mode 10-min cooldown — second flip in window
+  refused with warning log.
+- doubleCheck exhaustion now fails the step (was silent complete).
+- `/connectivity-test/start` and `/connectivity-test/status/*`
+  require auth.
+- `kraite:recover-positions --override` w/o scope requires `--force`,
+  refuses to proceed when snapshot fails (override via
+  `--allow-snapshot-failure`).
+- `kraite:cron-store-accounts-balances --clean` outside `local`
+  requires `--force`.
+- `UpdatePositionStatusJob withOnlyFromStatus` guard wired to
+  close + cancel orchestrators — stale lifecycle steps no-op
+  cleanly when the position has moved on.
 
 ## Pending
 
-1. **Push the package branch** `feature/table-prefix` to
-   `kraitebot/step-dispatcher` (remote backup anchor). Kraite
-   host changes already ran in production but the package branch
-   has not been pushed.
-2. **`FlushDispatcherSaturationCommand` (Kraite host) is not
-   prefix-aware.** It reads default-shape Redis keys; trading
-   saturation metrics are lost on flush. Low priority
-   (observability), follow-up.
-3. **Per-prefix archive/purge retention** is currently identical
-   to default (5-day rolling). If trading wants different
-   retention, the schedule entry is the tuning point.
-4. **Saturation telemetry table** does not yet have a `prefix`
-   column; if trading saturation gets a dashboard the schema
-   wants extending. Out of scope today.
-
-## Key decisions made this session
-
-- **Per-table idempotent installer** (after Bruno's pushback on
-  the original "atomic refuse on any conflict" semantics).
-  Re-running `steps:install --prefix=trading` is now a no-op when
-  fully installed, and a heal pass when partially installed. The
-  dispatcher seed (alpha..kappa rows) only fires on fresh
-  dispatcher creation so re-runs cannot duplicate seeds.
-- **Worker-side prefix push moved to `__unserialize()`**, not
-  `handle()`. Laravel's `SerializesModels` trait runs
-  deserialize-time DB fetches BEFORE handle() — without the gate,
-  every prefixed job hit `ModelNotFoundException`. Surfaced as a
-  failed_jobs spike on the cutover smoke test, fixed inline.
-- **Daemon Step::create wrapped per-event, NOT lifetime.**
-  StreamBinanceUserDataCommand is a long-running ReactPHP loop;
-  pushing the prefix for the entire process would leak across
-  any future non-trading event types. Tight closure around the
-  per-frame Step::create only.
-- **Per-prefix MaintenanceMode** chosen over single-flag:
-  the whole point of the prefix split is isolation; a single
-  pause that freezes both ecosystems undoes the design intent.
-  The `null` argument keeps backward compat with
-  `OptimizeBreadcrumbTablesCommand`'s no-arg call.
-- **Kept default `steps_*` live during cutover.** The migration
-  did not decommission default — the two table sets coexist
-  permanently, and the default dispatcher continues to handle
-  every workflow that isn't explicitly wrapped in
-  `Steps::usingPrefix('trading', …)`.
+Release pipeline (`/kraite-release`) currently in flight. Phase 0
+docs done. Next: Phase 1 (tests), Phase 2 (tag), Phase 3 (deploy
+to athena/apollo/ares/artemis), Phase 4 (health), Phase 5 (cleanup).

@@ -172,3 +172,55 @@ test('hasMinOrderRequirements returns false for symbol without any min order dat
 
     expect(Kraite::hasMinOrderRequirements($symbol))->toBeFalse();
 });
+
+/*
+|--------------------------------------------------------------------------
+| Type-precision contract: getEffectiveMinNotional must return ?string
+| so the value flows through Math::* without a float round-trip that
+| could lose precision on KuCoin's lot_size × multiplier × price product.
+|--------------------------------------------------------------------------
+*/
+
+test('getEffectiveMinNotional returns string for direct min_notional', function () {
+    $symbol = ExchangeSymbol::factory()->create([
+        'min_notional' => '10.00',
+    ]);
+
+    expect(Kraite::getEffectiveMinNotional($symbol))
+        ->toBeString()
+        ->toBe('10.00');
+});
+
+test('getEffectiveMinNotional returns string for KuCoin contract value', function () {
+    $symbol = ExchangeSymbol::factory()->create([
+        'min_notional' => null,
+        'kucoin_lot_size' => '1',
+        'kucoin_multiplier' => '0.001',
+    ]);
+
+    createCandleWithPrice($symbol, '50000.00');
+
+    expect(Kraite::getEffectiveMinNotional($symbol))
+        ->toBeString()
+        ->toBe('50.0000000000000000');
+});
+
+test('getEffectiveMinNotional preserves precision past float-safe digits', function () {
+    $symbol = ExchangeSymbol::factory()->create([
+        'min_notional' => '0.123456789012345678',
+    ]);
+
+    expect(Kraite::getEffectiveMinNotional($symbol))
+        ->toBeString()
+        ->toBe('0.123456789012345678');
+});
+
+test('getEffectiveMinNotional returns null when symbol has no min order data', function () {
+    $symbol = ExchangeSymbol::factory()->create([
+        'min_notional' => null,
+        'kucoin_lot_size' => null,
+        'kucoin_multiplier' => null,
+    ]);
+
+    expect(Kraite::getEffectiveMinNotional($symbol))->toBeNull();
+});

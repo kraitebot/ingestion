@@ -20,7 +20,18 @@ beforeEach(function (): void {
         'name' => 'Binance',
     ]);
 
+    // The account's user must be tradeable so DispatchPositionSlotsJob's
+    // final-boundary re-check (added 2026-05-13 review-18) doesn't bail.
+    // UserFactory defaults to `can_trade=false`; override to true for
+    // these idempotency tests, which are scoped to step-creation
+    // semantics rather than user-state gating.
+    $user = \Kraite\Core\Models\User::factory()->create([
+        'is_active' => true,
+        'can_trade' => true,
+    ]);
+
     $this->account = Account::factory()->create([
+        'user_id' => $user->id,
         'api_system_id' => $apiSystem->id,
         'is_active' => true,
         'can_trade' => true,
