@@ -80,13 +80,21 @@ echo "[3/9] Code: $COMMIT"
 # --- Step 4: Install + update dependencies ---
 # composer install resolves from the production composer.json.
 # composer update pulls the latest tagged version of every kraite-owned
-# package (the lock from the previous deploy may pin an older tag).
-# Both kraitebot/core AND brunocfalcao/step-dispatcher MUST be listed —
-# leaving step-dispatcher out leaves it on the previous lock entry, which
-# in turn left workers on dev-master after the v1.40.0 release on
-# 2026-05-13 until manual `composer update` was run per host.
+# path package (the shipped lock comes from a dev environment where the
+# packages resolve via path repos to `dev-master` with aliases like
+# `1.40.x-dev`, which satisfy the production constraints `^1.36` etc.
+# Composer treats the locked dev-master entries as already-satisfying
+# and refuses to promote them unless EVERY kraite-owned package is named
+# in the same `composer update` invocation — partial updates leave the
+# unnamed packages on dev-master, and cross-references then block the
+# named ones too. List all four every time.
+# 2026-05-13 v1.40.1 incident: the previous form named only kraitebot/core
+# + brunocfalcao/step-dispatcher; deploy ran clean but the resulting lock
+# kept all four kraite-owned packages on dev-master across every server,
+# until a manual `composer update <all four>` was issued per host.
+# Removed `--quiet` so future no-ops are visible in the deploy log.
 su - waygou -c "cd $PROJECT_DIR && composer install --no-interaction --no-dev --optimize-autoloader --quiet"
-su - waygou -c "cd $PROJECT_DIR && composer update kraitebot/core brunocfalcao/step-dispatcher --no-interaction --no-dev --quiet"
+su - waygou -c "cd $PROJECT_DIR && composer update kraitebot/core brunocfalcao/step-dispatcher brunocfalcao/blade-feather-icons brunocfalcao/laravel-helpers --no-interaction --no-dev"
 CORE_VERSION=$(su - waygou -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='kraitebot/core']" 2>/dev/null || echo "unknown")
 SD_VERSION=$(su - waygou -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='brunocfalcao/step-dispatcher']" 2>/dev/null || echo "unknown")
 echo "[4/9] Composer: installed (core $CORE_VERSION, step-dispatcher $SD_VERSION)"
