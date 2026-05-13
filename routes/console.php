@@ -22,7 +22,8 @@ $isCoolingDown = function (): bool {
     try {
         return (bool) Kraite::first()?->is_cooling_down;
     } catch (Throwable) {
-        $role = (string) (config('kraite.server_role') ?? '');
+        $rawRole = config('kraite.server_role');
+        $role = is_string($rawRole) ? $rawRole : '';
 
         return in_array($role, ['ingestion', 'worker'], true);
     }
