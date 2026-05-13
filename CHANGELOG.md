@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.40.1 - 2026-05-13
+
+### Infrastructure
+- [INFRA] `deploy.sh` adds `brunocfalcao/step-dispatcher` to the `composer update` allow-list alongside `kraitebot/core`. Prevents the v1.40.0 dev-master regression where the lock pinned a stale step-dispatcher entry and workers ran old code until manual `composer update` was issued per host.
+
+### Maintenance
+- [CHORE] Vendor lock refresh: `aws/aws-sdk-php` 3.380.3 → 3.381.0, Symfony components (cache, console, http-kernel, finder, etc.) → v7.4.11 / v8.0.11, `league/flysystem` 2.4.2 → 2.4.3, `dasprid/enum` v4.1.3 → v4.1.4.
+
 ## 1.40.0 - 2026-05-13
 
 ### Features
