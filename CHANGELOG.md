@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.45.0 - 2026-05-15
+
+Plan rename `starter` -> `basic` to match the registration-flow copy locked during the private-beta onboarding elicitation.
+
+### Improvements
+
+- [IMPROVED] **`rename_starter_subscription_to_basic` migration** updates the entry-tier row in `subscriptions` in place — `canonical: starter -> basic`, `name: Starter -> Basic`. Idempotent (down() reverses). FK references (`users.subscription_id = 1`) keep working because the row is renamed, not replaced.
+
 ## 1.44.0 - 2026-05-15
 
 Adds the public-facing `users.uuid` column used by the new admin.kraite.com registration-completion URL. Pairs with kraitebot/core v1.43.0 (auto-stamp at create) and kraite.test v0.10.0 (verify-link redirect target).
