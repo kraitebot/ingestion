@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.41.0 - 2026-05-15
+
+Coordinated rename of onboarding notification canonicals from `waitlist_*` to `private_beta_*`. Pairs with kraitebot/core v1.41.0 (match arms + body text) and kraite.test v0.8.0 (marketing surface).
+
+### Improvements
+
+- [IMPROVED] **New migration `rename_waitlist_canonicals_to_private_beta`** updates the two onboarding rows in `notifications` in place — `waitlist_email_verification` → `private_beta_email_verification`, `waitlist_welcome_password_reset` → `private_beta_welcome_password_reset` — refreshing description / detailed_description / usage_reference to the new "Kraite private beta" wording. Rows renamed in place so existing `notification_logs` FK references remain valid. Reversible via `down()`.
+
 ## 1.40.1 - 2026-05-13
 
 ### Infrastructure
