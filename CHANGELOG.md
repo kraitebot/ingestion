@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.43.0 - 2026-05-15
+
+Listener path migration to the now-shared event class. Pairs with kraitebot/core v1.42.0 (event lifted into the package) and kraite.test v0.9.0 (firing site live).
+
+### Improvements
+
+- [IMPROVED] **`AttachPrivateBetaCoupon` listener** now type-hints `Kraite\Core\Events\UserEmailConfirmed` instead of the ingestion-local `App\Events\UserEmailConfirmed`. Test imports follow.
+- [IMPROVED] **Local `app/Events/UserEmailConfirmed.php` removed** — the event is now shipped from `kraitebot/core` so kraite.com (the firing site) and ingestion (the listener) share a single class definition.
+
+### Dependencies
+
+- [DEPENDENCIES] `kraitebot/core` path-package reference bumped (`19882e7` → v1.42.0 — shared `UserEmailConfirmed` event).
+
 ## 1.42.0 - 2026-05-15
 
 Foundation for the always-on, structural Coupon system. Phase 1: schema + entity + auto-attach listener. Billing-side integration (`User::billing()->topUp()`, bonus-line emission per coupon, `CouponUserObserver` mail dispatch) lands in a follow-up.

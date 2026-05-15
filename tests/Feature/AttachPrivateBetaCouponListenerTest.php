@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Events\UserEmailConfirmed;
 use App\Listeners\AttachPrivateBetaCoupon;
 use App\Models\Coupon;
 use Illuminate\Support\Facades\DB;
+use Kraite\Core\Events\UserEmailConfirmed;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\User;
 

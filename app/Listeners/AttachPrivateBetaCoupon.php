@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Events\UserEmailConfirmed;
 use App\Models\Coupon;
 use Illuminate\Support\Facades\DB;
+use Kraite\Core\Events\UserEmailConfirmed;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\User;
 
