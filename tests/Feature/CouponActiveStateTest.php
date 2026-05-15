@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Models\Coupon;
-use App\Models\CouponUser;
 use Illuminate\Support\Facades\DB;
+use Kraite\Core\Models\Coupon;
+use Kraite\Core\Models\CouponUser;
 use Kraite\Core\Models\User;
 
 /**

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.48.0 - 2026-05-15
+
+Drops the ingestion-local Coupon/CouponUser models + AttachPrivateBetaCoupon listener (they live in kraitebot/core v1.46.0 now). Pure cleanup release — Pest spec still 31/31 green after rewriting imports to the new namespace.
+
+### Improvements
+
+- [IMPROVED] **Deleted** `app/Models/Coupon.php`, `app/Models/CouponUser.php`, `app/Listeners/AttachPrivateBetaCoupon.php`. The kraitebot/core copies are the single source of truth — the listener now implements `ShouldQueue` so dispatches from kraite.com (which couldn't see this app's `App\Listeners` namespace before) finally route through the Redis queue to ingestion's Horizon workers and attach the coupon.
+- [IMPROVED] **Test imports rewritten** from `App\Models\{Coupon,CouponUser}` + `App\Listeners\AttachPrivateBetaCoupon` to the `Kraite\Core\*` namespaces. 31/31 Pest tests still pass.
+
+### Dependencies
+
+- [DEPENDENCIES] `kraitebot/core` path-package reference bumped (v1.45.0 → v1.46.0 — listener + models lifted, Event::listen wired).
+
 ## 1.47.0 - 2026-05-15
 
 Locks the kraitebot/core v1.45.0 event-on-activation contract with Pest. No schema change.
