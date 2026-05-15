@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.42.0 - 2026-05-15
+
+Foundation for the always-on, structural Coupon system. Phase 1: schema + entity + auto-attach listener. Billing-side integration (`User::billing()->topUp()`, bonus-line emission per coupon, `CouponUserObserver` mail dispatch) lands in a follow-up.
+
+### Features
+
+- [NEW FEATURE] **`coupons` table.** Stand-alone discount template entity. Columns: `slug` (unique machine key), `name`, `description`, `type` (`percentage` | `absolute`), `value` (decimal 14,4), `valid_from`, `valid_until` (nullable — open windows), `max_usage` (global attachment cap, nullable = unlimited), `max_usage_per_user` (per-user redemption cap, nullable = unlimited), `is_active` (operator hard switch). No soft-deletes — used coupons are immortal per the audit rule.
+- [NEW FEATURE] **`coupon_user` pivot table.** Permanent attachment ledger. One row per `(user_id, coupon_id)` pair (unique). Per-attachment `valid_from`/`valid_until` window, a `usage_count` counter, `attached_at`, `last_used_at`. Both FKs use `restrictOnDelete()` per the project-wide no-cascade rule. Pivots never detach — active state is derived from columns.
+- [NEW FEATURE] **`kraite.in_private_beta` flag.** Global on/off switch on the singleton `kraite` row. When `true`, the `AttachPrivateBetaCoupon` listener auto-attaches the seeded private-beta coupon on `UserEmailConfirmed`. Defaults to `true` on existing row at migration time so the current cohort gets coverage; flip to `false` once private beta ends.
+- [NEW FEATURE] **Seeded `private_beta_25` coupon.** Type `percentage`, value `25.0000`, no end date, no usage caps. The canonical reward attached on every confirmed email during the private-beta era. Idempotent `updateOrInsert` on slug.
+- [NEW FEATURE] **`App\Models\Coupon`** with `globallyActive` query scope + `isGloballyActive()` instance method (mirrors of the same gates) — covers `is_active`, `valid_from`/`valid_until` window, and `max_usage` budget. `bonusFor(string $sourceAmount)` returns the BCMath bonus string for any source amount, respecting `type`. Singleton accessor `Coupon::privateBeta()` for callers.
+- [NEW FEATURE] **`App\Models\CouponUser`** custom pivot exposing `isActive()` — derived from pivot window + parent coupon's `max_usage_per_user` cap against the row's `usage_count`. Designed for Phase-2 observer mail dispatch on `created`.
+- [NEW FEATURE] **`App\Events\UserEmailConfirmed`** — fired the moment a user's `email_verified_at` flips from null to a timestamp. Carries `userId` only (listeners refetch the model to see latest DB state).
+- [NEW FEATURE] **`App\Listeners\AttachPrivateBetaCoupon`** — auto-discovered listener handling `UserEmailConfirmed`. Attaches the private-beta coupon iff `kraite.in_private_beta = true`, the user exists, the seed row exists, and the user does not already have it. Wrapped in a `DB::transaction` with a `lockForUpdate()` on the candidate pivot row so concurrent fires of the same event race-safely produce at most one attachment.
+
+### Tests
+
+- [NEW FEATURE] **`tests/Feature/AttachPrivateBetaCouponListenerTest.php`** — 5 Pest tests: attaches when flag on, no-op when flag off, idempotent on repeat-fire, never leaks across users, no-op gracefully when the seed row is missing.
+- [NEW FEATURE] **`tests/Feature/CouponActiveStateTest.php`** — 11 Pest tests covering the full active-check matrix at both global (Coupon) and per-user (pivot) layers, plus the `bonusFor()` BCMath shape for both `percentage` and `absolute` types, plus the `privateBeta()` singleton accessor returning the seeded row.
+
+### Open for Phase 2 (intentionally not in this release)
+
+- `User::billing()->topUp($x)` funnel emitting paid line + per-coupon bonus lines under a shared `transaction_uuid`.
+- `User::billing()->rollback($transaction_uuid)` emitting negative mirror lines (append-only).
+- `CouponUserObserver` dispatching the per-coupon notification canonical on pivot `created`.
+- Wiring `kraite.test`'s `PrivateBetaController` to fire `UserEmailConfirmed` after `email_verified_at` is persisted (needs the event class accessible from kraite.test — likely lifted into `kraitebot/core` at that point).
+- `coupons_applied` generic notification canonical + match arm in `kraitebot/core` for the multi-coupon batch attachment mail.
+
 ## 1.41.0 - 2026-05-15
 
 Coordinated rename of onboarding notification canonicals from `waitlist_*` to `private_beta_*`. Pairs with kraitebot/core v1.41.0 (match arms + body text) and kraite.test v0.8.0 (marketing surface).
