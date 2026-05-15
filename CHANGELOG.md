@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.47.0 - 2026-05-15
+
+Locks the kraitebot/core v1.45.0 event-on-activation contract with Pest. No schema change.
+
+### Tests
+
+- [NEW FEATURE] **`tests/Feature/AccountActivationDispatchesPreparePositionsTest.php`** — 4 Pest tests covering the new `AccountObserver::updated` behavior: fires on the false→true transition, does NOT fire when can_trade was already true, does NOT fire when gate 3 (subscription) fails, and is deduped against an already-pending step for the same account.
+
+### Dependencies
+
+- [DEPENDENCIES] `kraitebot/core` path-package reference bumped (v1.44.0 → v1.45.0 event-on-activation observer).
+
 ## 1.46.0 - 2026-05-15
 
 Pairs with kraitebot/core v1.44.0 — the BillingManager / SubscriptionState facade and the new `Account::isReadyToTrade()` 3-gate. This release locks the consumer surface with a Pest spec; no schema change.
