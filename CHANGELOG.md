@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.46.0 - 2026-05-15
+
+Pairs with kraitebot/core v1.44.0 — the BillingManager / SubscriptionState facade and the new `Account::isReadyToTrade()` 3-gate. This release locks the consumer surface with a Pest spec; no schema change.
+
+### Tests
+
+- [NEW FEATURE] **`tests/Feature/AccountIsReadyToTradeTest.php`** — 11 Pest tests covering the 3-gate matrix: BillingManager / SubscriptionState wiring, `isActive` polarity vs `isInClosingMode`, paused-state, past-anchor, trial-active-without-wallet, and every single-gate-flips-to-false scenario for `Account::isReadyToTrade()`.
+
+### Dependencies
+
+- [DEPENDENCIES] `kraitebot/core` path-package reference bumped (`633b0f1` → v1.44.0 billing facade + Account readiness gate).
+
 ## 1.45.0 - 2026-05-15
 
 Plan rename `starter` -> `basic` to match the registration-flow copy locked during the private-beta onboarding elicitation.
