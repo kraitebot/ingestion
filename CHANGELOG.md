@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.44.0 - 2026-05-15
+
+Adds the public-facing `users.uuid` column used by the new admin.kraite.com registration-completion URL. Pairs with kraitebot/core v1.43.0 (auto-stamp at create) and kraite.test v0.10.0 (verify-link redirect target).
+
+### Features
+
+- [NEW FEATURE] **`users.uuid` column** (char(36), unique, NOT NULL). Backs the `admin.kraite.com/register/{uuid}` URL that private-beta confirmers land on after clicking the verify link from kraite.com. Migration runs in three phases — nullable add, per-row `Str::uuid()` backfill via `lazyById()`, then NOT NULL + unique index — so existing rows never trigger a constraint violation during the ALTER. Down() drops the unique index then the column.
+
 ## 1.43.0 - 2026-05-15
 
 Listener path migration to the now-shared event class. Pairs with kraitebot/core v1.42.0 (event lifted into the package) and kraite.test v0.9.0 (firing site live).
