@@ -43,3 +43,7 @@ thoughts/
 # Miscellaneous
 backup-old-project
 .env.testing
+
+# Local agent tooling (not tracked)
+.serena/
+.codex/
