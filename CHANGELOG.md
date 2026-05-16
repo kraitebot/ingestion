@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.49.3 - 2026-05-16
+
+Infrastructure-only patch on top of v1.49.2: fixes the new pre-migration mysqldump backup against the `kraite` MySQL user's privilege set.
+
+### Infrastructure
+
+- [BUG FIX] **`deploy.sh` mysqldump now passes `--no-tablespaces` and drops `--events`.** The `kraite@%` MySQL user lacks the `PROCESS` privilege (required by MySQL 8's default tablespace dump) and the `EVENT` privilege. On the v1.49.2 athena deploy mysqldump exited non-zero with "Access denied; you need the PROCESS privilege" before writing any rows — the new hard-gate aborted the deploy as designed (no migrations ran). `--no-tablespaces` skips the tablespace dump explicitly; `--events` is dropped because the kraite schema doesn't declare scheduled events anyway. `--single-transaction --routines --triggers` still produce a consistent snapshot with stored routines + triggers.
+
 ## 1.49.2 - 2026-05-16
 
 Infrastructure-only patch on top of v1.49.1: fixes a `composer install` failure that surfaced during the v1.49.1 athena deploy.

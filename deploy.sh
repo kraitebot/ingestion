@@ -161,7 +161,21 @@ if [ "$SERVER_ROLE" = "ingestion" ]; then
     # `set -o pipefail` is already enabled at the top of this script, so a
     # mysqldump failure surfaces here as a non-zero exit even though it sits
     # on the left side of a pipe. `set -e` then aborts the whole deploy.
-    mysqldump -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" --single-transaction --routines --triggers --events | gzip > "$BACKUP_FILE"
+    #
+    # Flag choices:
+    #  --single-transaction → consistent snapshot without locking tables
+    #  --routines           → include stored procedures/functions
+    #  --triggers           → include table triggers
+    #  --no-tablespaces     → skip tablespace dump; the `kraite` MySQL user
+    #                         does not have the PROCESS privilege, and MySQL
+    #                         8 defaults to dumping tablespaces unless this
+    #                         flag is set. Without --no-tablespaces, mysqldump
+    #                         errors out with "Access denied; you need the
+    #                         PROCESS privilege" before writing any rows.
+    #  (no --events)        → omitted because the `kraite` user lacks the
+    #                         EVENT privilege, and the kraite schema does
+    #                         not declare any scheduled events to capture.
+    mysqldump -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" --single-transaction --routines --triggers --no-tablespaces | gzip > "$BACKUP_FILE"
 
     # Defence in depth — pipefail covers exec failures, but if mysqldump
     # ever succeeds-with-empty-output (e.g. permission to connect but not
