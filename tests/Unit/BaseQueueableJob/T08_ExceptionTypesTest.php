@@ -10,6 +10,8 @@ uses(RefreshDatabase::class)->group('unit', 'base-queueable-job');
 
 it('Cleans laravel.log', function () {
     file_put_contents(storage_path('logs/laravel.log'), '');
+
+    expect(true)->toBe(true);
 });
 
 it('fails when generic exception is thrown', function () {

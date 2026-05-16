@@ -46,9 +46,18 @@ it('declares adaptive retries with >3 max attempts on the b2 disk config', funct
  * `retries` array and breaks the disk at boot.
  */
 it('boots the b2 disk into a real S3Client with the retry config attached', function () {
-    if (! config('filesystems.disks.b2.key')) {
-        $this->markTestSkipped('B2 credentials not configured — skipping S3Client boot test.');
-    }
+    // Inject fake credentials so the boot check is decoupled from the
+    // host's .env.testing. The SDK only validates config shape here —
+    // no network call is made — so any non-empty values exercise the
+    // same code path as production credentials would.
+    config()->set('filesystems.disks.b2.key', 'fake-key-id');
+    config()->set('filesystems.disks.b2.secret', 'fake-application-key');
+    config()->set('filesystems.disks.b2.region', 'eu-central-003');
+    config()->set('filesystems.disks.b2.bucket', 'fake-bucket');
+    config()->set('filesystems.disks.b2.endpoint', 'https://s3.eu-central-003.backblazeb2.com');
+
+    // Flush any previously-resolved disk so the new config takes effect.
+    Storage::forgetDisk('b2');
 
     $client = Storage::disk('b2')->getClient();
 

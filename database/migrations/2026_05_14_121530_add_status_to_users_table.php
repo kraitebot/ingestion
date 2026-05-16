@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -25,7 +26,7 @@ return new class extends Migration
         // either email verification (kraite.com) or operator action
         // (console.kraite.com).
         DB::table('users')
-            ->where(function ($query): void {
+            ->where(function (Builder $query): void {
                 $query->whereNotNull('email_verified_at')
                     ->orWhere('is_admin', true);
             })
