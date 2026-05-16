@@ -126,8 +126,16 @@ SERVER_ROLE=$(su - waygou -c "cd $PROJECT_DIR && php artisan tinker --execute=\"
 echo "[6/9] Server role: $SERVER_ROLE"
 
 # --- Step 7: DB backup + migrate (ingestion only) ---
+# Backups land in $PROJECT_DIR/db-backups/ — a flat directory at the
+# project root, intentionally separate from Laravel's storage/ tree so
+# operator rollback recipes don't have to dig through framework state.
+# Files are timestamped (pre-deploy-YYYYMMDD_HHMMSS.sql.gz) and NEVER
+# deleted by deploy — full history is preserved for point-in-time
+# rollback. The backup is a HARD gate: if mysqldump fails (zero bytes
+# or non-zero exit) the deploy aborts BEFORE running migrations, so a
+# migration is never executed without a fresh, restorable snapshot.
 if [ "$SERVER_ROLE" = "ingestion" ]; then
-    BACKUP_DIR="$PROJECT_DIR/storage/backups"
+    BACKUP_DIR="$PROJECT_DIR/db-backups"
     mkdir -p "$BACKUP_DIR"
     chown waygou:www-data "$BACKUP_DIR"
     BACKUP_FILE="$BACKUP_DIR/pre-deploy-$(date +%Y%m%d_%H%M%S).sql.gz"
@@ -137,9 +145,22 @@ if [ "$SERVER_ROLE" = "ingestion" ]; then
     DB_USER=$(su - waygou -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.username');\"" 2>/dev/null | tail -1)
     DB_PASS=$(su - waygou -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.password');\"" 2>/dev/null | tail -1)
 
-    mysqldump -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" --single-transaction 2>/dev/null | gzip > "$BACKUP_FILE"
+    # `set -o pipefail` is already enabled at the top of this script, so a
+    # mysqldump failure surfaces here as a non-zero exit even though it sits
+    # on the left side of a pipe. `set -e` then aborts the whole deploy.
+    mysqldump -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" --single-transaction --routines --triggers --events | gzip > "$BACKUP_FILE"
+
+    # Defence in depth — pipefail covers exec failures, but if mysqldump
+    # ever succeeds-with-empty-output (e.g. permission to connect but not
+    # to dump), the gzip would also "succeed" and leave a near-zero-byte
+    # file. Refuse to migrate against an empty snapshot.
+    if [ ! -s "$BACKUP_FILE" ] || [ "$(stat -c %s "$BACKUP_FILE" 2>/dev/null || stat -f %z "$BACKUP_FILE")" -lt 1024 ]; then
+        echo "[7/9] DB backup FAILED — snapshot is empty or under 1KB at $BACKUP_FILE. Aborting before migrations."
+        exit 1
+    fi
+
     chown waygou:www-data "$BACKUP_FILE"
-    echo "[7/9] DB backup: $(du -h "$BACKUP_FILE" | cut -f1)"
+    echo "[7/9] DB backup: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
 
     su - waygou -c "cd $PROJECT_DIR && php artisan migrate --force --no-interaction"
     echo "[7/9] Migrations: done"

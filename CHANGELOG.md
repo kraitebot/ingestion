@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.49.1 - 2026-05-16
+
+Infrastructure-only patch: hardens the pre-migration DB backup that runs inside `deploy.sh` on the ingestion role (athena). No application-code change, no migration, no behavioural shift on the trading path.
+
+### Infrastructure
+
+- [IMPROVED] **Pre-migration DB backup is now a HARD GATE.** `deploy.sh` writes the snapshot to `$PROJECT_DIR/db-backups/pre-deploy-YYYYMMDD_HHMMSS.sql.gz` (was `storage/backups/...`), keeping every historical backup in a flat directory at the project root — easier to find for operator rollback than burrowing into Laravel's storage tree. If `mysqldump` exits non-zero, OR the resulting gzip is smaller than 1KB (catches the "connection OK but no dump privileges" silent-empty case), the deploy aborts BEFORE `php artisan migrate --force` runs. A migration can no longer execute without a fresh, restorable snapshot on disk.
+- [IMPROVED] **mysqldump flags expanded** from `--single-transaction` to `--single-transaction --routines --triggers --events`. Captures stored routines, triggers, and scheduled events alongside the table data so a restore from `db-backups/` reconstitutes the full schema — not just rows.
+
 ## 1.49.0 - 2026-05-16
 
 Bug-fix + small-feature roll-up. Catches a lapsed-subscription edge case that stranded orphan positions, tightens the Larastan surface on the new waitlist migration, removes the last risky / skipped test from the suite, and lays the schema groundwork for user avatars. Full suite: 2319/2319 green, 0 risky, 0 skipped, 0 Larastan errors.
