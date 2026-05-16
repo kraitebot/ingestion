@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.49.4 - 2026-05-17
+
+### Fixes
+
+- [BUG FIX] Seeded users are now marked `status=active` during `migrate:fresh --seed` instead of falling back to pending.
+- [BUG FIX] Business seeding now includes Karine's trader account in the testing environment so console browser tests have deterministic account fixtures.
+
+### Tests
+
+- [NEW FEATURE] Added seeder coverage for Resend API key persistence on the shared Kraite credentials row.
+
+### Dependencies
+
+- [DEPENDENCIES] `kraitebot/core` path-package reference bumped to `5e15c70`.
+
 ## 1.49.3 - 2026-05-16
 
 Infrastructure-only patch on top of v1.49.2: fixes the new pre-migration mysqldump backup against the `kraite` MySQL user's privilege set.

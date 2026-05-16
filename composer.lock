@@ -106,16 +106,16 @@
         },
         {
             "name": "aws/aws-sdk-php",
-            "version": "3.381.1",
+            "version": "3.381.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/aws/aws-sdk-php.git",
-                "reference": "405affc23ea14950c378d5ae79420302fcb467dc"
+                "reference": "ffa8a93faafea878155853ae2caf61871363869d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/aws/aws-sdk-php/zipball/405affc23ea14950c378d5ae79420302fcb467dc",
-                "reference": "405affc23ea14950c378d5ae79420302fcb467dc",
+                "url": "https://api.github.com/repos/aws/aws-sdk-php/zipball/ffa8a93faafea878155853ae2caf61871363869d",
+                "reference": "ffa8a93faafea878155853ae2caf61871363869d",
                 "shasum": ""
             },
             "require": {
@@ -197,9 +197,9 @@
             "support": {
                 "forum": "https://github.com/aws/aws-sdk-php/discussions",
                 "issues": "https://github.com/aws/aws-sdk-php/issues",
-                "source": "https://github.com/aws/aws-sdk-php/tree/3.381.1"
+                "source": "https://github.com/aws/aws-sdk-php/tree/3.381.2"
             },
-            "time": "2026-05-14T18:08:28+00:00"
+            "time": "2026-05-15T18:08:57+00:00"
         },
         {
             "name": "binance/binance-connector-php",
@@ -1654,7 +1654,7 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/kraitebot/core",
-                "reference": "e20cb5e97da2927e9d22db2c71a78fa2e8d870be"
+                "reference": "5e15c70e5ca3b6ccfdf247af8a54b294419e3e96"
             },
             "require": {
                 "angle/chrono": "^1.0",
@@ -9274,16 +9274,16 @@
         },
         {
             "name": "amphp/http-client",
-            "version": "v5.3.5",
+            "version": "v5.3.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/http-client.git",
-                "reference": "90005b86255fa87a705671a769ec8d0451b3c61a"
+                "reference": "ca155026acafa74a612d776a97202d53077fee86"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/http-client/zipball/90005b86255fa87a705671a769ec8d0451b3c61a",
-                "reference": "90005b86255fa87a705671a769ec8d0451b3c61a",
+                "url": "https://api.github.com/repos/amphp/http-client/zipball/ca155026acafa74a612d776a97202d53077fee86",
+                "reference": "ca155026acafa74a612d776a97202d53077fee86",
                 "shasum": ""
             },
             "require": {
@@ -9359,7 +9359,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/http-client/issues",
-                "source": "https://github.com/amphp/http-client/tree/v5.3.5"
+                "source": "https://github.com/amphp/http-client/tree/v5.3.6"
             },
             "funding": [
                 {
@@ -9367,7 +9367,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-05-13T23:17:50+00:00"
+            "time": "2026-05-15T23:29:38+00:00"
         },
         {
             "name": "amphp/http-server",
@@ -13096,16 +13096,16 @@
         },
         {
             "name": "revolt/event-loop",
-            "version": "v1.0.8",
+            "version": "v1.0.9",
             "source": {
                 "type": "git",
                 "url": "https://github.com/revoltphp/event-loop.git",
-                "reference": "b6fc06dce8e9b523c9946138fa5e62181934f91c"
+                "reference": "44061cf513e53c6200372fc935ac42271566295d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/revoltphp/event-loop/zipball/b6fc06dce8e9b523c9946138fa5e62181934f91c",
-                "reference": "b6fc06dce8e9b523c9946138fa5e62181934f91c",
+                "url": "https://api.github.com/repos/revoltphp/event-loop/zipball/44061cf513e53c6200372fc935ac42271566295d",
+                "reference": "44061cf513e53c6200372fc935ac42271566295d",
                 "shasum": ""
             },
             "require": {
@@ -13115,7 +13115,7 @@
                 "ext-json": "*",
                 "jetbrains/phpstorm-stubs": "^2019.3",
                 "phpunit/phpunit": "^9",
-                "psalm/phar": "^5.15"
+                "psalm/phar": "6.16.*"
             },
             "type": "library",
             "extra": {
@@ -13162,9 +13162,9 @@
             ],
             "support": {
                 "issues": "https://github.com/revoltphp/event-loop/issues",
-                "source": "https://github.com/revoltphp/event-loop/tree/v1.0.8"
+                "source": "https://github.com/revoltphp/event-loop/tree/v1.0.9"
             },
-            "time": "2025-08-27T21:33:23+00:00"
+            "time": "2026-05-16T17:55:38+00:00"
         },
         {
             "name": "sebastian/cli-parser",

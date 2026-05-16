@@ -16,7 +16,7 @@ final class BusinessSeeder extends Seeder
     {
         $this->seedSysadmin();
 
-        if (app()->environment('local')) {
+        if (app()->environment(['local', 'testing'])) {
             $this->seedKarineTrader();
         }
     }
@@ -28,6 +28,7 @@ final class BusinessSeeder extends Seeder
             [
                 'name' => config('kraite.admin_user_name', 'Bruno Falcao'),
                 'password' => bcrypt(config()->string('kraite.admin_user_password', 'password')),
+                'status' => 'active',
                 'is_active' => true,
                 'is_admin' => true,
             ]
@@ -47,6 +48,7 @@ final class BusinessSeeder extends Seeder
             [
                 'name' => 'Karine Esnault',
                 'password' => bcrypt('password'),
+                'status' => 'active',
                 'is_active' => true,
                 'is_admin' => false,
                 'notification_channels' => ['mail'],

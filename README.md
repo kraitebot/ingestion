@@ -20,6 +20,7 @@ Kraite Ingestion is the central nervous system of the Kraite trading infrastruct
 - **Horizon Queue Management** — orchestrates job distribution across ingestion and worker servers
 - **Market Regime Analysis** — BTC correlation, cascade detection, regime scoring
 - **Cooldown/Warmup** — zero-downtime deploy cycle with queue draining
+- **Business Seeding** — deterministic admin/trader users and shared credentials for local, testing, and production environments
 
 ## Architecture
 
@@ -35,6 +36,10 @@ Kraite Ingestion is the central nervous system of the Kraite trading infrastruct
 - MySQL 8+ (remote on Zeus)
 - Redis (local on Athena)
 - Supervisor
+
+## Seeding
+
+`BusinessSeeder` marks seeded users as active and includes the local trader fixture in both local and testing environments. Shared credentials are seeded through `kraitebot/core`, including the Resend API key used by private-beta verification emails when configured.
 
 ## Disclaimer
 
