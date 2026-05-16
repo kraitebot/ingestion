@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.49.2 - 2026-05-16
+
+Infrastructure-only patch on top of v1.49.1: fixes a `composer install` failure that surfaced during the v1.49.1 athena deploy.
+
+### Infrastructure
+
+- [BUG FIX] **`deploy.sh` runs `composer update` for the four path packages BEFORE `composer install`.** Pre-fix, the shipped `composer.lock` carries `kraitebot/core` + the three `brunocfalcao/*` packages as `dev-master` (because locally they resolve via path repos). Only `kraitebot/core` has a `branch-alias` (`dev-master → 1.x-dev`); the three brunocfalcao packages do not, so their `dev-master` lock entry does not satisfy production constraints `^6.0` / `^1.12` / `^1.0`. `composer install` aborts with "Required package … is in the lock file as dev-master but that does not satisfy your constraint …". Running `composer update <named-packages>` first regenerates those four lock entries with their tagged versions, after which `composer install` is a clean no-op. No application-code change.
+
 ## 1.49.1 - 2026-05-16
 
 Infrastructure-only patch: hardens the pre-migration DB backup that runs inside `deploy.sh` on the ingestion role (athena). No application-code change, no migration, no behavioural shift on the trading path.

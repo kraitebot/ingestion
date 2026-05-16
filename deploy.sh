@@ -78,23 +78,36 @@ COMMIT=$(su - waygou -c "cd $PROJECT_DIR && git log --oneline -1")
 echo "[3/9] Code: $COMMIT"
 
 # --- Step 4: Install + update dependencies ---
-# composer install resolves from the production composer.json.
-# composer update pulls the latest tagged version of every kraite-owned
-# path package (the shipped lock comes from a dev environment where the
-# packages resolve via path repos to `dev-master` with aliases like
-# `1.40.x-dev`, which satisfy the production constraints `^1.36` etc.
-# Composer treats the locked dev-master entries as already-satisfying
-# and refuses to promote them unless EVERY kraite-owned package is named
-# in the same `composer update` invocation — partial updates leave the
-# unnamed packages on dev-master, and cross-references then block the
-# named ones too. List all four every time.
-# 2026-05-13 v1.40.1 incident: the previous form named only kraitebot/core
-# + brunocfalcao/step-dispatcher; deploy ran clean but the resulting lock
-# kept all four kraite-owned packages on dev-master across every server,
-# until a manual `composer update <all four>` was issued per host.
-# Removed `--quiet` so future no-ops are visible in the deploy log.
-su - waygou -c "cd $PROJECT_DIR && composer install --no-interaction --no-dev --optimize-autoloader --quiet"
+# Order matters: composer update (4 path packages) runs BEFORE composer install.
+#
+# Why this order? The shipped composer.lock comes from a dev environment
+# where the four kraite-owned packages resolve via local path repos and
+# get locked as `dev-master`. Only `kraitebot/core` carries a
+# `branch-alias` (`dev-master → 1.x-dev`) in its composer.json — the
+# three brunocfalcao packages do not, so their `dev-master` lock entry
+# does NOT satisfy the production constraints `^6.0` / `^1.12` / `^1.0`.
+# That means `composer install` against the shipped lock aborts with
+# "Required package … is in the lock file as dev-master but that does
+# not satisfy your constraint …" — exactly the failure that bit the
+# v1.49.1 athena deploy on 2026-05-16.
+#
+# Calling `composer update <named-packages>` first sidesteps the lock
+# validation for the unnamed packages and regenerates the four entries
+# with their latest tagged versions (resolved via the production VCS
+# repos, since composer.json was already swapped to the prod manifest).
+# Once those four are pinned to real tags, the lock matches every
+# composer.json constraint and the subsequent `composer install` is a
+# clean no-op against the freshly-rewritten lock.
+#
+# 2026-05-13 v1.40.1 incident — kept here for the record: the previous
+# form named only kraitebot/core + brunocfalcao/step-dispatcher; deploy
+# ran clean but the resulting lock kept all four kraite-owned packages
+# on dev-master across every server until a manual
+# `composer update <all four>` was issued per host. List all four every
+# time — partial updates leave unnamed packages on dev-master and
+# cross-references then block the named ones too.
 su - waygou -c "cd $PROJECT_DIR && composer update kraitebot/core brunocfalcao/step-dispatcher brunocfalcao/blade-feather-icons brunocfalcao/laravel-helpers --no-interaction --no-dev"
+su - waygou -c "cd $PROJECT_DIR && composer install --no-interaction --no-dev --optimize-autoloader --quiet"
 CORE_VERSION=$(su - waygou -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='kraitebot/core']" 2>/dev/null || echo "unknown")
 SD_VERSION=$(su - waygou -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='brunocfalcao/step-dispatcher']" 2>/dev/null || echo "unknown")
 echo "[4/9] Composer: installed (core $CORE_VERSION, step-dispatcher $SD_VERSION)"
