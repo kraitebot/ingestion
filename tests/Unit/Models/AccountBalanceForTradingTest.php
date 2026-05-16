@@ -7,26 +7,12 @@ use Kraite\Core\Models\ApiSnapshot;
 
 /*
  * Account::balanceForTrading() decides which exchange-side balance
- * figure feeds margin sizing.
- *
- *   both allow_other_* = false  →  total-wallet-balance (current
- *                                  behaviour: full utilisation when
- *                                  Kraite owns the account exclusively)
- *
- *   at least one true            →  available-balance (free margin
- *                                  remaining after locked-in orders +
- *                                  initial margin of open positions —
- *                                  the conservative figure that
- *                                  keeps us safe when the user is
- *                                  also placing trades)
- *
- * The two figures live in the most-recent `account-balance`
- * `ApiSnapshot` row stamped by `StoreAccountBalanceJob`. When no
- * snapshot exists yet (cold start), the helper falls back to the
- * account's `margin` column.
+ * figure feeds margin sizing. The operator selects whether Kraite trades
+ * from total wallet balance or available balance; allow_other_* stays
+ * scoped to orphan cleanup policy.
  */
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 function seedAccountBalanceSnapshot(Account $account, string $totalWallet, string $available): void
 {
@@ -36,10 +22,11 @@ function seedAccountBalanceSnapshot(Account $account, string $totalWallet, strin
     ]);
 }
 
-test('returns total-wallet-balance when both allow_other_* flags are false', function () {
+test('returns total-wallet-balance when the trading balance basis is total', function () {
     $account = Account::factory()->create([
-        'allow_other_positions' => false,
-        'allow_other_orders' => false,
+        'balance_for_trading_basis' => 'total',
+        'allow_other_positions' => true,
+        'allow_other_orders' => true,
     ]);
 
     seedAccountBalanceSnapshot($account, totalWallet: '1000.00', available: '600.00');
@@ -47,32 +34,11 @@ test('returns total-wallet-balance when both allow_other_* flags are false', fun
     expect($account->balanceForTrading())->toBe('1000.00');
 });
 
-test('returns available-balance when allow_other_orders is true', function () {
+test('returns available-balance when the trading balance basis is available', function () {
     $account = Account::factory()->create([
+        'balance_for_trading_basis' => 'available',
         'allow_other_positions' => false,
-        'allow_other_orders' => true,
-    ]);
-
-    seedAccountBalanceSnapshot($account, totalWallet: '1000.00', available: '600.00');
-
-    expect($account->balanceForTrading())->toBe('600.00');
-});
-
-test('returns available-balance when allow_other_positions is true', function () {
-    $account = Account::factory()->create([
-        'allow_other_positions' => true,
         'allow_other_orders' => false,
-    ]);
-
-    seedAccountBalanceSnapshot($account, totalWallet: '1000.00', available: '600.00');
-
-    expect($account->balanceForTrading())->toBe('600.00');
-});
-
-test('returns available-balance when both allow_other_* flags are true', function () {
-    $account = Account::factory()->create([
-        'allow_other_positions' => true,
-        'allow_other_orders' => true,
     ]);
 
     seedAccountBalanceSnapshot($account, totalWallet: '1000.00', available: '600.00');
@@ -82,8 +48,7 @@ test('returns available-balance when both allow_other_* flags are true', functio
 
 test('falls back to account.margin when no balance snapshot exists', function () {
     $account = Account::factory()->create([
-        'allow_other_positions' => false,
-        'allow_other_orders' => false,
+        'balance_for_trading_basis' => 'total',
         'margin' => '250.00000000',
     ]);
 
@@ -92,8 +57,7 @@ test('falls back to account.margin when no balance snapshot exists', function ()
 
 test('falls back to account.margin when snapshot lacks the expected key', function () {
     $account = Account::factory()->create([
-        'allow_other_positions' => true,
-        'allow_other_orders' => false,
+        'balance_for_trading_basis' => 'available',
         'margin' => '777.00000000',
     ]);
 

@@ -48,7 +48,7 @@ pest()->extend(TestCase::class)
 
         seedKraiteServerIpCache();
     })
-    ->in('Browser', 'Feature');
+    ->in('Feature');
 
 // Pure unit tests without database
 pest()->extend(TestCase::class)

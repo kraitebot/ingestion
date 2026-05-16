@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Kraite\Core\Jobs\Atomic\Position\PreparePositionDataJob;
 use Kraite\Core\Models\Account;
+use Kraite\Core\Models\ApiSnapshot;
 
 /**
  * Regression cover for the 2026-04-24 split of `max_position_percentage`
@@ -83,6 +84,28 @@ it('falls back to 5.00 when the direction column is missing', function (): void 
 
     expect((float) $job->calculateMarginWithSubscriptionCap($account, 'LONG'))->toBe(50.0);
     expect((float) $job->calculateMarginWithSubscriptionCap($account, 'SHORT'))->toBe(50.0);
+});
+
+it('sizes positions from the account selected trading balance basis', function (): void {
+    $account = Account::factory()->create([
+        'balance_for_trading_basis' => 'total',
+        'margin' => '1000',
+        'margin_percentage_long' => '10.00',
+        'margin_percentage_short' => '10.00',
+    ]);
+
+    ApiSnapshot::storeFor($account, 'account-balance', [
+        'total-wallet-balance' => '2000.00',
+        'available-balance' => '600.00',
+    ]);
+
+    $job = newJobForCalc();
+
+    expect((float) $job->calculateMarginWithSubscriptionCap($account, 'LONG'))->toBe(200.0);
+
+    $account->forceFill(['balance_for_trading_basis' => 'available']);
+
+    expect((float) $job->calculateMarginWithSubscriptionCap($account, 'LONG'))->toBe(60.0);
 });
 
 it('reads the method signature source to pin direction param presence', function (): void {

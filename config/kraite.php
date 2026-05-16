@@ -48,22 +48,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Indicator Batch Processing
-    |--------------------------------------------------------------------------
-    |
-    | jobs_per_index_batch: Number of parallel QueryAllIndicatorsForSymbolsChunkJob
-    |                       jobs that can run simultaneously in the same index group.
-    |                       Higher values = faster execution but more API rate limit risk.
-    |                       Default: 20 (balanced between speed and safety)
-    |                       Conservative: 10 (0% rate limiting)
-    |                       Aggressive: 30+ (faster but may hit rate limits)
-    */
-    'indicators' => [
-        'jobs_per_index_batch' => (int) env('INDICATORS_JOBS_PER_INDEX_BATCH', 30),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | BTC Correlation Analysis
     |--------------------------------------------------------------------------
     |
