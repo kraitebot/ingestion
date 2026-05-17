@@ -17,6 +17,21 @@ All notable changes to this project will be documented in this file.
 
 - [DEPENDENCIES] `kraitebot/core` path-package reference bumped to `5e15c70`.
 
+### Removed (dead-code sweep)
+
+- [REMOVED] **Frontend leftover island.** `resources-backup/` (63 files of dead Blade views/css/js/images), `app/helpers.php` (`theme()` + `theme_map_color()` — only consumed by the dead views), and `config/theme.php` (only consumer was the dead helper) all deleted. `app/helpers.php` removed from `composer.json` autoload `files`.
+- [REMOVED] **Empty scaffold directories**: `app/{Actions,Console,Enums,Models,Services}/`, `tests/Fixtures/`, `lang/` (held only `vendor/backup/` translations from spatie/laravel-backup). All gone — `.gitkeep` placeholders removed.
+- [REMOVED] **Browser testsuite** — `tests/Browser/WelcomeTest.php` was a single test whose entire body sat inside a `/* */` comment block. Suite wiring stripped from `tests/Pest.php` (`->in('Browser', ...)`) and `phpunit.xml` (`<testsuite name="Browser">`).
+- [REMOVED] **`app/Providers/HorizonServiceProvider.php`** — class defined the `viewHorizon` Gate but was never registered in `bootstrap/providers.php`, so the Gate definition never ran.
+- [REMOVED] **`routes/web.php`** — contained only `declare(strict_types=1);`. `bootstrap/app.php` `withRouting()` no longer references it.
+- [REMOVED] **`laravel/ui`** composer require — zero `Laravel\Ui\*` imports anywhere in ingestion or any consumed package.
+- [REMOVED] Stale `phpunit.xml` source exclude entries (`app/Mail/AlertMail.php` — file no longer exists; `app/Support/Tests/` — needed only when EchoJob shipped under a coverage-excluded path).
+- [REMOVED] Unread `kraite.indicators.jobs_per_index_batch` config key from `config/kraite.php`.
+
+### Improvements
+
+- [IMPROVED] **`app/Support/Tests/EchoJob` docblock** now warns about the FQCN-string coupling from `StepDispatcher\Database\Factories\StepFactory` (which references `'App\Support\Tests\EchoJob'` as a string literal — IDE/refactor tools will NOT pick up renames).
+
 ## 1.49.3 - 2026-05-16
 
 Infrastructure-only patch on top of v1.49.2: fixes the new pre-migration mysqldump backup against the `kraite` MySQL user's privilege set.
