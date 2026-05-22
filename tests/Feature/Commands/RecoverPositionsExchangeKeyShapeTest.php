@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Str;
 use Kraite\Core\Commands\RecoverPositionsCommand;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;

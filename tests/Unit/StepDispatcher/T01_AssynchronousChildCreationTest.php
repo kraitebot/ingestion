@@ -9,13 +9,13 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
-it('creates M1 -> M2 (parent) -> M3 steps with a child block uuid that is not created yet', function () {
+it('creates M1 -> M2 (parent) -> M3 steps with a child block uuid that is not created yet', function (): void {
     $mainBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 

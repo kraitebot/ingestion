@@ -573,7 +573,7 @@ test('can query entire workflow graph with single where clause', function (): vo
     expect($workflowSteps)->toHaveCount(6);
 
     // All should have the same workflow_id
-    $workflowSteps->each(function (Step $step) use ($workflowId) {
+    $workflowSteps->each(function (Step $step) use ($workflowId): void {
         expect($step->workflow_id)->toBe($workflowId);
     });
 });
@@ -614,7 +614,7 @@ test('workflow_id query does not include steps from other workflows', function (
     expect($wfASteps)->toHaveCount(2);
 
     // Verify none have workflow B's ID
-    $wfASteps->each(function (Step $step) use ($wfBRoot) {
+    $wfASteps->each(function (Step $step) use ($wfBRoot): void {
         expect($step->workflow_id)->not->toBe($wfBRoot->workflow_id);
     });
 
@@ -623,7 +623,7 @@ test('workflow_id query does not include steps from other workflows', function (
     expect($wfBSteps)->toHaveCount(2);
 
     // Verify none have workflow A's ID
-    $wfBSteps->each(function (Step $step) use ($wfARoot) {
+    $wfBSteps->each(function (Step $step) use ($wfARoot): void {
         expect($step->workflow_id)->not->toBe($wfARoot->workflow_id);
     });
 });

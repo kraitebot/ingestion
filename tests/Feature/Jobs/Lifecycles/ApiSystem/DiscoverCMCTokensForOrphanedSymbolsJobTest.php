@@ -95,7 +95,7 @@ function executeCMCLifecycleJobWithStep(): array
     ];
 }
 
-test('creates child steps for orphaned exchange symbols', function () {
+test('creates child steps for orphaned exchange symbols', function (): void {
     // Create 3 orphaned symbols
     $orphanedSymbols = createOrphanedSymbolsForCMCLifecycle(3);
 
@@ -124,7 +124,7 @@ test('creates child steps for orphaned exchange symbols', function () {
     }
 });
 
-test('does not create steps for symbols with cmc_api_called true', function () {
+test('does not create steps for symbols with cmc_api_called true', function (): void {
     // Create 2 orphaned symbols that have already been processed
     createOrphanedSymbolsForCMCLifecycle(2, cmcApiCalled: true);
 
@@ -142,7 +142,7 @@ test('does not create steps for symbols with cmc_api_called true', function () {
     expect($childSteps)->toHaveCount(1);
 });
 
-test('does not create steps for linked symbols', function () {
+test('does not create steps for linked symbols', function (): void {
     // Create linked symbols (have symbol_id)
     createLinkedSymbolForCMCLifecycle('LINKED1');
     createLinkedSymbolForCMCLifecycle('LINKED2');
@@ -154,7 +154,7 @@ test('does not create steps for linked symbols', function () {
     expect($result['steps_created'])->toBe(0);
 });
 
-test('leaves child_block_uuid null when no children to create', function () {
+test('leaves child_block_uuid null when no children to create', function (): void {
     // No orphaned symbols - all are linked or already processed
     createLinkedSymbolForCMCLifecycle();
 
@@ -169,7 +169,7 @@ test('leaves child_block_uuid null when no children to create', function () {
     expect($step->child_block_uuid)->toBeNull();
 });
 
-test('returns informative message when all symbols already processed', function () {
+test('returns informative message when all symbols already processed', function (): void {
     // Create orphaned symbols that were already processed
     createOrphanedSymbolsForCMCLifecycle(5, cmcApiCalled: true);
 
@@ -183,7 +183,7 @@ test('returns informative message when all symbols already processed', function 
     expect($result['message'])->toContain('5 already checked via CMC API');
 });
 
-test('returns informative message when no orphaned symbols exist', function () {
+test('returns informative message when no orphaned symbols exist', function (): void {
     // Only linked symbols
     createLinkedSymbolForCMCLifecycle();
     createLinkedSymbolForCMCLifecycle();
@@ -197,7 +197,7 @@ test('returns informative message when no orphaned symbols exist', function () {
     expect($result['message'])->toBe('No orphaned exchange symbols found');
 });
 
-test('handles mixed scenario with linked, orphaned, and already processed', function () {
+test('handles mixed scenario with linked, orphaned, and already processed', function (): void {
     // 2 linked symbols
     createLinkedSymbolForCMCLifecycle('LINKED_A');
     createLinkedSymbolForCMCLifecycle('LINKED_B');
@@ -224,7 +224,7 @@ test('handles mixed scenario with linked, orphaned, and already processed', func
     }
 });
 
-test('preserves child_block_uuid when children are created', function () {
+test('preserves child_block_uuid when children are created', function (): void {
     // Create orphaned symbol
     createOrphanedSymbolsForCMCLifecycle(1);
 
@@ -236,7 +236,7 @@ test('preserves child_block_uuid when children are created', function () {
     expect($step->child_block_uuid)->toBe($execution['child_block_uuid']);
 });
 
-test('child steps use parent child_block_uuid as their block_uuid', function () {
+test('child steps use parent child_block_uuid as their block_uuid', function (): void {
     createOrphanedSymbolsForCMCLifecycle(2);
 
     $execution = executeCMCLifecycleJobWithStep();
@@ -251,7 +251,7 @@ test('child steps use parent child_block_uuid as their block_uuid', function () 
     }
 });
 
-test('integration: deleted exchange symbol is recreated and rediscovered', function () {
+test('integration: deleted exchange symbol is recreated and rediscovered', function (): void {
     // Create a symbol in the symbols table
     $btcSymbol = Symbol::factory()->create(['token' => 'BTC', 'cmc_id' => 1]);
 
@@ -309,7 +309,7 @@ test('integration: deleted exchange symbol is recreated and rediscovered', funct
     expect($childSteps->first()->arguments['exchangeSymbolId'])->toBe($recreatedSymbol->id);
 });
 
-test('handles large number of orphaned symbols efficiently', function () {
+test('handles large number of orphaned symbols efficiently', function (): void {
     // Create 50 orphaned symbols
     $orphanedSymbols = createOrphanedSymbolsForCMCLifecycle(50);
 

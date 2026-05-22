@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: [∅]
 // A single unindexed step should immediately run and complete.
-it('runs a single skipped step with no index or children', function () {
+it('runs a single skipped step with no index or children', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['skip' => true]],
     ], TestQueueableJob::class)[0];
@@ -34,7 +34,7 @@ it('runs a single skipped step with no index or children', function () {
 
 // Schematic: 1 -> 2
 // Two steps in sequence should run one after the other.
-it('runs two sequential steps (index 1 → 2), one skipped', function () {
+it('runs two sequential steps (index 1 → 2), one skipped', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -57,7 +57,7 @@ it('runs two sequential steps (index 1 → 2), one skipped', function () {
 
 // Schematic: 1,1
 // Two steps at the same index should run in parallel.
-it('runs two parallel steps at the same index, one skipped', function () {
+it('runs two parallel steps at the same index, one skipped', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -79,7 +79,7 @@ it('runs two parallel steps at the same index, one skipped', function () {
 
 // Schematic: 1 -> 2,2 -> 3
 // Mixed case: sequential step, then two parallel steps, then another sequential step, 2 skipped
-it('runs a sequence with parallel middle: 1 → (2 + 2) → 3', function () {
+it('runs a sequence with parallel middle: 1 → (2 + 2) → 3', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -103,7 +103,7 @@ it('runs a sequence with parallel middle: 1 → (2 + 2) → 3', function () {
         ->test();
 });
 
-it('runs two parallel steps at the same index in a 3-level nested structure with parents and child blocks, some skipped', function () {
+it('runs two parallel steps at the same index in a 3-level nested structure with parents and child blocks, some skipped', function (): void {
     $mainBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
     $grandchildBlock = (string) Str::uuid();
@@ -218,7 +218,7 @@ it('runs two parallel steps at the same index in a 3-level nested structure with
         ->test();
 });
 
-it('runs a child-and-parent step that will be skipped', function () {
+it('runs a child-and-parent step that will be skipped', function (): void {
     $mainBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
     $grandchildBlock = (string) Str::uuid();

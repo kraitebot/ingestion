@@ -25,7 +25,7 @@ use StepDispatcher\Support\Steps;
  * actual purge is run — we are only pinning the dispatch, not the job
  * body).
  */
-function purgeTrailStepsForPosition(int $positionId): \Illuminate\Support\Collection
+function purgeTrailStepsForPosition(int $positionId): Illuminate\Support\Collection
 {
     return Steps::usingPrefix('trading', function () use ($positionId) {
         return Step::query()

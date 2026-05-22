@@ -131,7 +131,7 @@ function makeBitgetPnlJob(int $accountId, array $exchangePositions): BitgetFetch
     };
 }
 
-it('computes Binance net PnL correctly from income entries', function () {
+it('computes Binance net PnL correctly from income entries', function (): void {
     $account = createBinanceAccountForPnl();
     $position = createClosedPositionForPnl(
         $account, 'XRP', 'LONG',
@@ -167,7 +167,7 @@ it('computes Binance net PnL correctly from income entries', function () {
         ->and((float) $position->pnl)->toEqualWithDelta(0.103, 0.0001);
 });
 
-it('matches Bitget positions by time window and stores netProfit', function () {
+it('matches Bitget positions by time window and stores netProfit', function (): void {
     $account = createBitgetAccountForPnl();
     $position = createClosedPositionForPnl(
         $account, 'BTC', 'LONG',
@@ -199,7 +199,7 @@ it('matches Bitget positions by time window and stores netProfit', function () {
         ->and((float) $position->pnl)->toEqualWithDelta(14.5, 0.0001);
 });
 
-it('handles sequential same-token positions without cross-contamination', function () {
+it('handles sequential same-token positions without cross-contamination', function (): void {
     $account = createBinanceAccountForPnl();
 
     $pos1 = createClosedPositionForPnl($account, 'XRP', 'LONG', '2026-05-11 10:00:00', '2026-05-11 10:30:00');
@@ -245,7 +245,7 @@ it('handles sequential same-token positions without cross-contamination', functi
         ->and((float) $pos3->pnl)->toEqualWithDelta(1.30, 0.0001);
 });
 
-it('leaves pnl null when exchange returns no income data', function () {
+it('leaves pnl null when exchange returns no income data', function (): void {
     $account = createBinanceAccountForPnl();
     $position = createClosedPositionForPnl(
         $account, 'XRP', 'LONG',
@@ -270,7 +270,7 @@ it('leaves pnl null when exchange returns no income data', function () {
     expect($position->pnl)->toBeNull();
 });
 
-it('command fans out one step per account with pending positions', function () {
+it('command fans out one step per account with pending positions', function (): void {
     $account1 = createBinanceAccountForPnl();
     $account2 = createBinanceAccountForPnl();
 
@@ -290,7 +290,7 @@ it('command fans out one step per account with pending positions', function () {
         ->toEqual([$account1->id, $account2->id]);
 });
 
-it('skips positions already having pnl', function () {
+it('skips positions already having pnl', function (): void {
     $account = createBinanceAccountForPnl();
 
     $withPnl = createClosedPositionForPnl($account, 'XRP', 'LONG', '2026-05-11 10:00:00', '2026-05-11 10:30:00', '0.50000000');

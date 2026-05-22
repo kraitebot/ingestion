@@ -70,7 +70,7 @@ function createMockKlinesResponse(int $count = 1, int $baseTimestamp = 170406720
     return $klines;
 }
 
-test('fetches and stores single kline from Binance API', function () {
+test('fetches and stores single kline from Binance API', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('BTC_'.$testId);
     $baseTimestamp = 1704067200000; // 2024-01-01 00:00:00 UTC in ms
@@ -108,7 +108,7 @@ test('fetches and stores single kline from Binance API', function () {
     expect((float) $candle->volume)->toBe(1000.5);
 });
 
-test('fetches and stores multiple klines', function () {
+test('fetches and stores multiple klines', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('ETH_'.$testId);
     $baseTimestamp = 1704067200000;
@@ -144,7 +144,7 @@ test('fetches and stores multiple klines', function () {
     }
 });
 
-test('handles different timeframes', function () {
+test('handles different timeframes', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('SOL_'.$testId);
 
@@ -170,7 +170,7 @@ test('handles different timeframes', function () {
     expect($candle->timeframe)->toBe('1h');
 });
 
-test('returns zero when API returns empty response', function () {
+test('returns zero when API returns empty response', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('DOGE_'.$testId);
 
@@ -190,7 +190,7 @@ test('returns zero when API returns empty response', function () {
     expect($result['message'])->toBe('No klines returned from API');
 });
 
-test('upserts existing candles instead of duplicating', function () {
+test('upserts existing candles instead of duplicating', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('PEPE_'.$testId);
     $baseTimestamp = 1704067200000;
@@ -254,7 +254,7 @@ test('upserts existing candles instead of duplicating', function () {
     expect((float) $candles->first()->volume)->toBe(1500000000.0);
 });
 
-test('normalizes millisecond timestamps to seconds', function () {
+test('normalizes millisecond timestamps to seconds', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('LINK_'.$testId);
 
@@ -283,7 +283,7 @@ test('normalizes millisecond timestamps to seconds', function () {
     expect($candle->candle_time_utc->format('Y-m-d H:i:s'))->toBe('2024-01-01 00:00:00');
 });
 
-test('stores candle_time_utc and candle_time_local correctly', function () {
+test('stores candle_time_utc and candle_time_local correctly', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('AVAX_'.$testId);
 
@@ -325,7 +325,7 @@ test('stores candle_time_utc and candle_time_local correctly', function () {
     expect($candle->candle_time_local)->not->toBeNull();
 });
 
-test('includes symbol info in result', function () {
+test('includes symbol info in result', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('UNI_'.$testId);
 
@@ -345,7 +345,7 @@ test('includes symbol info in result', function () {
     expect($result['symbol'])->toBe($exchangeSymbol->parsed_trading_pair);
 });
 
-test('default limit is 1 when not specified', function () {
+test('default limit is 1 when not specified', function (): void {
     $testId = uniqid();
     $exchangeSymbol = createExchangeSymbolForKlineJob('MATIC_'.$testId);
 

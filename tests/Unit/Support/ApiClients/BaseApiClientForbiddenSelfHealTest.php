@@ -26,7 +26,7 @@ use Kraite\Core\Support\ValueObjects\ApiRequest;
  */
 uses(RefreshDatabase::class)->group('unit', 'api-client', 'forbidden-hostname', 'self-heal');
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -47,7 +47,7 @@ beforeEach(function () {
     ]);
 });
 
-it('deletes ip_not_whitelisted row for the same account+ip+exchange after a successful call', function () {
+it('deletes ip_not_whitelisted row for the same account+ip+exchange after a successful call', function (): void {
     $row = ForbiddenHostname::create([
         'api_system_id' => $this->apiSystem->id,
         'account_id' => $this->account->id,
@@ -69,7 +69,7 @@ it('deletes ip_not_whitelisted row for the same account+ip+exchange after a succ
     expect(ForbiddenHostname::find($row->id))->toBeNull();
 });
 
-it('deletes account_blocked row for the same account+ip+exchange after a successful call', function () {
+it('deletes account_blocked row for the same account+ip+exchange after a successful call', function (): void {
     $row = ForbiddenHostname::create([
         'api_system_id' => $this->apiSystem->id,
         'account_id' => $this->account->id,
@@ -91,7 +91,7 @@ it('deletes account_blocked row for the same account+ip+exchange after a success
     expect(ForbiddenHostname::find($row->id))->toBeNull();
 });
 
-it('does NOT delete ip_rate_limited rows (those auto-recover via forbidden_until)', function () {
+it('does NOT delete ip_rate_limited rows (those auto-recover via forbidden_until)', function (): void {
     $row = ForbiddenHostname::create([
         'api_system_id' => $this->apiSystem->id,
         'account_id' => $this->account->id,
@@ -113,7 +113,7 @@ it('does NOT delete ip_rate_limited rows (those auto-recover via forbidden_until
     expect(ForbiddenHostname::find($row->id))->not->toBeNull();
 });
 
-it('does NOT delete ip_banned rows (system-wide; a single account success cannot vouch for global state)', function () {
+it('does NOT delete ip_banned rows (system-wide; a single account success cannot vouch for global state)', function (): void {
     $row = ForbiddenHostname::create([
         'api_system_id' => $this->apiSystem->id,
         'account_id' => null,
@@ -135,7 +135,7 @@ it('does NOT delete ip_banned rows (system-wide; a single account success cannot
     expect(ForbiddenHostname::find($row->id))->not->toBeNull();
 });
 
-it('does NOT delete rows belonging to other accounts on the same IP+exchange', function () {
+it('does NOT delete rows belonging to other accounts on the same IP+exchange', function (): void {
     $otherUser = User::factory()->create();
     $otherAccount = Account::factory()->create([
         'user_id' => $otherUser->id,
@@ -163,7 +163,7 @@ it('does NOT delete rows belonging to other accounts on the same IP+exchange', f
     expect(ForbiddenHostname::find($row->id))->not->toBeNull();
 });
 
-it('does NOT delete rows for a different exchange on the same account+ip', function () {
+it('does NOT delete rows for a different exchange on the same account+ip', function (): void {
     $otherApiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'bybit',
         'name' => 'Bybit',

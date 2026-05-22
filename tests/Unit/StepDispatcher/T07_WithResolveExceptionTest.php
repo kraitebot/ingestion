@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: 1 (default, fails) + resolve-exception (no index)
 // When a default step fails, resolve-exception with no index should be promoted to Pending
-it('promotes resolve-exception without index when default step fails', function () {
+it('promotes resolve-exception without index when default step fails', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -44,7 +44,7 @@ it('promotes resolve-exception without index when default step fails', function 
 
 // Schematic: 1 (default, fails) + resolve-exception (index 1)
 // resolve-exception with index 1 should dispatch when previous default step fails
-it('runs resolve-exception with index 1 after failure', function () {
+it('runs resolve-exception with index 1 after failure', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -70,7 +70,7 @@ it('runs resolve-exception with index 1 after failure', function () {
 
 // Schematic: resolve-exception (index 1) -> resolve-exception (index 2)
 // Sequential resolve-exception steps should follow index order
-it('runs sequential resolve-exception steps in order', function () {
+it('runs sequential resolve-exception steps in order', function (): void {
     $block = (string) Str::uuid();
 
     // First create a failing default step to trigger resolve-exception promotion
@@ -103,7 +103,7 @@ it('runs sequential resolve-exception steps in order', function () {
 
 // Schematic: 1 (default, completes) + resolve-exception (no index)
 // If no failures, resolve-exception should NOT be promoted
-it('does not promote resolve-exception when no failures', function () {
+it('does not promote resolve-exception when no failures', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -128,7 +128,7 @@ it('does not promote resolve-exception when no failures', function () {
 
 // Schematic: 1 (default, stopped) + resolve-exception
 // Stopped counts as failure, so resolve-exception should be promoted
-it('promotes resolve-exception when step is stopped', function () {
+it('promotes resolve-exception when step is stopped', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -154,7 +154,7 @@ it('promotes resolve-exception when step is stopped', function () {
 
 // Schematic: Parent (lifecycle) -> Child (fails) + resolve-exception in child block
 // resolve-exception in child block should be promoted and COMPLETE before parent fails
-it('promotes resolve-exception in child block when child fails', function () {
+it('promotes resolve-exception in child block when child fails', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -199,7 +199,7 @@ it('promotes resolve-exception in child block when child fails', function () {
 
 // Schematic: 1,1 (both default, both fail) + resolve-exception
 // Multiple failures should still promote resolve-exception once
-it('promotes resolve-exception with multiple failures at same index', function () {
+it('promotes resolve-exception with multiple failures at same index', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -226,7 +226,7 @@ it('promotes resolve-exception with multiple failures at same index', function (
 
 // Schematic: 1 (default, cancelled) + resolve-exception
 // Cancelled step should NOT trigger resolve-exception promotion
-it('does not promote resolve-exception when step is cancelled', function () {
+it('does not promote resolve-exception when step is cancelled', function (): void {
     $block = (string) Str::uuid();
 
     // Create steps but manually set first to cancelled
@@ -255,7 +255,7 @@ it('does not promote resolve-exception when step is cancelled', function () {
 // Schematic: Parent block (1-6 + resolve-exception) -> Step 5 (parent) -> Child block (child steps + resolve-exception)
 // When child fails, child's resolve-exception runs FIRST, then parent fails, then parent's resolve-exception runs.
 // This ensures error handlers in child blocks complete before cascading failure up.
-it('promotes resolve-exception in both child and parent blocks when child fails', function () {
+it('promotes resolve-exception in both child and parent blocks when child fails', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -348,7 +348,7 @@ it('promotes resolve-exception in both child and parent blocks when child fails'
 
 // Schematic: Parent -> Child (fails) + 3 parallel resolve-exceptions (same index, one skipped)
 // When one resolve-exception is skipped, parent should wait only for non-terminal ones before failing
-it('handles skipped resolve-exception among parallel resolve-exceptions in child block', function () {
+it('handles skipped resolve-exception among parallel resolve-exceptions in child block', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -407,7 +407,7 @@ it('handles skipped resolve-exception among parallel resolve-exceptions in child
 
 // Schematic: Parent -> Child (fails) + 3 sequential resolve-exceptions (indexes 1,2,3, middle one skipped)
 // When middle resolve-exception is skipped, remaining ones still execute in order
-it('handles skipped resolve-exception among sequential resolve-exceptions in child block', function () {
+it('handles skipped resolve-exception among sequential resolve-exceptions in child block', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -478,7 +478,7 @@ it('handles skipped resolve-exception among sequential resolve-exceptions in chi
 // Level 3: has sequential resolve-exceptions that all skip one by one
 // Level 2: parent step in middle fails (cascade from level 3)
 // Level 1 (root): resolve-exception runs, other steps cancelled
-it('handles 4-level deep nesting with resolve-exceptions skipping at level 3', function () {
+it('handles 4-level deep nesting with resolve-exceptions skipping at level 3', function (): void {
     $level1Block = (string) Str::uuid();
     $level2Block = (string) Str::uuid();
     $level3Block = (string) Str::uuid();
@@ -634,7 +634,7 @@ it('handles 4-level deep nesting with resolve-exceptions skipping at level 3', f
 
 // Schematic: Parent -> Children (all complete) + resolve-exception (stays NotRunnable)
 // Dormant resolve-exception should NOT block parent completion on success path
-it('completes parent when all children succeed and resolve-exception stays NotRunnable', function () {
+it('completes parent when all children succeed and resolve-exception stays NotRunnable', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -684,7 +684,7 @@ it('completes parent when all children succeed and resolve-exception stays NotRu
 
 // Schematic: Parent -> Children (all complete) + multiple resolve-exceptions (all stay NotRunnable)
 // Multiple dormant resolve-exceptions should NOT block parent completion
-it('completes parent with multiple dormant resolve-exceptions on success path', function () {
+it('completes parent with multiple dormant resolve-exceptions on success path', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 

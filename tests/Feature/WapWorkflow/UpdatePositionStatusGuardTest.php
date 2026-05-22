@@ -30,7 +30,7 @@ function runStatusUpdate(Position $position, string $target, ?string $onlyFromSt
     return $job;
 }
 
-it('flips status when onlyFromStatus matches current state', function () {
+it('flips status when onlyFromStatus matches current state', function (): void {
     $position = buildPositionInStatus('waping');
 
     runStatusUpdate($position, 'active', onlyFromStatus: 'waping');
@@ -38,7 +38,7 @@ it('flips status when onlyFromStatus matches current state', function () {
     expect($position->fresh()->status)->toBe('active');
 });
 
-it('no-ops when onlyFromStatus does not match current state', function () {
+it('no-ops when onlyFromStatus does not match current state', function (): void {
     $position = buildPositionInStatus('closing');
 
     runStatusUpdate($position, 'active', onlyFromStatus: 'waping');
@@ -46,7 +46,7 @@ it('no-ops when onlyFromStatus does not match current state', function () {
     expect($position->fresh()->status)->toBe('closing');
 });
 
-it('flips status unconditionally when onlyFromStatus is omitted', function () {
+it('flips status unconditionally when onlyFromStatus is omitted', function (): void {
     $position = buildPositionInStatus('closing');
 
     runStatusUpdate($position, 'active');
@@ -54,7 +54,7 @@ it('flips status unconditionally when onlyFromStatus is omitted', function () {
     expect($position->fresh()->status)->toBe('active');
 });
 
-it('no-ops the WAP resolve-exception path when close has already claimed the position', function () {
+it('no-ops the WAP resolve-exception path when close has already claimed the position', function (): void {
     // Real-world race: a TP filled mid-WAP, the observer dispatched a close
     // workflow, and the close has already transitioned the position into
     // 'closing'. WAP's resolve-exception must not drag it back to 'active'.
@@ -65,7 +65,7 @@ it('no-ops the WAP resolve-exception path when close has already claimed the pos
     expect($position->fresh()->status)->toBe('closing');
 });
 
-it('returns a skipped result payload when the guard blocks the transition', function () {
+it('returns a skipped result payload when the guard blocks the transition', function (): void {
     $position = buildPositionInStatus('cancelling');
 
     $job = new UpdatePositionStatusJob(

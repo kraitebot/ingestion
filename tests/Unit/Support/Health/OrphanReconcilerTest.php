@@ -26,7 +26,7 @@ use Kraite\Core\Support\Health\OrphanReconciler;
  * logic — easy to test in isolation, easy to reason about.
  */
 
-test('returns empty report when exchange is empty', function () {
+test('returns empty report when exchange is empty', function (): void {
     $report = OrphanReconciler::reconcile(
         exchangeOpenOrderIds: [],
         exchangePositionKeys: [],
@@ -41,7 +41,7 @@ test('returns empty report when exchange is empty', function () {
     expect($report->positionsToClose)->toBe([]);
 });
 
-test('returns empty when exchange state matches Kraite state exactly', function () {
+test('returns empty when exchange state matches Kraite state exactly', function (): void {
     $report = OrphanReconciler::reconcile(
         exchangeOpenOrderIds: ['111', '222'],
         exchangePositionKeys: ['BTCUSDT:LONG'],
@@ -56,7 +56,7 @@ test('returns empty when exchange state matches Kraite state exactly', function 
     expect($report->positionsToClose)->toBe([]);
 });
 
-test('with both flags false, cancels all exchange orders not in Kraite open set', function () {
+test('with both flags false, cancels all exchange orders not in Kraite open set', function (): void {
     $report = OrphanReconciler::reconcile(
         exchangeOpenOrderIds: ['111', '222', '333', '444'],
         exchangePositionKeys: [],
@@ -70,7 +70,7 @@ test('with both flags false, cancels all exchange orders not in Kraite open set'
     expect($report->ordersToCancel)->toEqualCanonicalizing(['333', '444']);
 });
 
-test('with both flags false, closes all exchange positions not in Kraite opened set', function () {
+test('with both flags false, closes all exchange positions not in Kraite opened set', function (): void {
     $report = OrphanReconciler::reconcile(
         exchangeOpenOrderIds: [],
         exchangePositionKeys: ['BTCUSDT:LONG', 'ETHUSDT:SHORT', 'AKTUSDT:LONG'],
@@ -84,7 +84,7 @@ test('with both flags false, closes all exchange positions not in Kraite opened 
     expect($report->positionsToClose)->toEqualCanonicalizing(['AKTUSDT:LONG']);
 });
 
-test('with allow_other_orders=true, cancels only Kraite-leftover orphans', function () {
+test('with allow_other_orders=true, cancels only Kraite-leftover orphans', function (): void {
     // Exchange has 4 unmatched orders. Two are Kraite leftovers (matched
     // to recently-closed Kraite position client_order_ids). The other
     // two are user-placed and stay untouched.
@@ -101,7 +101,7 @@ test('with allow_other_orders=true, cancels only Kraite-leftover orphans', funct
     expect($report->ordersToCancel)->toEqualCanonicalizing(['111', '222']);
 });
 
-test('with allow_other_orders=true and no recent Kraite closes, cancels nothing', function () {
+test('with allow_other_orders=true and no recent Kraite closes, cancels nothing', function (): void {
     $report = OrphanReconciler::reconcile(
         exchangeOpenOrderIds: ['111', '222', '333'],
         exchangePositionKeys: [],
@@ -115,7 +115,7 @@ test('with allow_other_orders=true and no recent Kraite closes, cancels nothing'
     expect($report->ordersToCancel)->toBe([]);
 });
 
-test('with allow_other_positions=true, ignores all orphan positions', function () {
+test('with allow_other_positions=true, ignores all orphan positions', function (): void {
     $report = OrphanReconciler::reconcile(
         exchangeOpenOrderIds: [],
         exchangePositionKeys: ['BTCUSDT:LONG', 'ETHUSDT:SHORT', 'AKTUSDT:LONG'],
@@ -129,7 +129,7 @@ test('with allow_other_positions=true, ignores all orphan positions', function (
     expect($report->positionsToClose)->toBe([]);
 });
 
-test('mixed scenario — both true, only Kraite-leftover orders, no positions touched', function () {
+test('mixed scenario — both true, only Kraite-leftover orders, no positions touched', function (): void {
     $report = OrphanReconciler::reconcile(
         exchangeOpenOrderIds: ['111', '222', '333'],
         exchangePositionKeys: ['BTCUSDT:LONG', 'AKTUSDT:LONG'],
@@ -144,7 +144,7 @@ test('mixed scenario — both true, only Kraite-leftover orders, no positions to
     expect($report->positionsToClose)->toBe([]);
 });
 
-test('orders attached to currently-open Kraite positions are never flagged as orphans', function () {
+test('orders attached to currently-open Kraite positions are never flagged as orphans', function (): void {
     // Order 111 is on the exchange AND in our active orders set →
     // never appears in cancel list regardless of flag combinations.
     $report = OrphanReconciler::reconcile(
@@ -160,7 +160,7 @@ test('orders attached to currently-open Kraite positions are never flagged as or
     expect($report->ordersToCancel)->toBe([]);
 });
 
-test('hasInflightPositions=true suppresses order-orphan detection but keeps position-orphan detection active', function () {
+test('hasInflightPositions=true suppresses order-orphan detection but keeps position-orphan detection active', function (): void {
     // Reproduces the 2026-05-03 false-positive on ETCUSDT/LONG: a
     // position was being opened, its limit ladder was being placed
     // on the exchange, but the local Order rows had not yet received
@@ -187,7 +187,7 @@ test('hasInflightPositions=true suppresses order-orphan detection but keeps posi
     expect($report->positionsToClose)->toBe(['BTCUSDT:LONG']);
 });
 
-test('hasInflightPositions=false (default) preserves prior behaviour', function () {
+test('hasInflightPositions=false (default) preserves prior behaviour', function (): void {
     // Same input as the test above but with the flag off — order
     // classification fires normally. Pinned to confirm the new
     // parameter defaults to off and does not regress the existing

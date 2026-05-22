@@ -34,7 +34,7 @@ function billingUser(float $balance = 0.0, ?int $tierId = null): User
     ]);
 }
 
-it('credits the wallet, updates balance and writes a ledger row', function () {
+it('credits the wallet, updates balance and writes a ledger row', function (): void {
     $user = billingUser(balance: 10.0);
 
     $tx = (new Wallet())->credit(
@@ -56,7 +56,7 @@ it('credits the wallet, updates balance and writes a ledger row', function () {
     expect($tx->user_id)->toBe($user->id);
 });
 
-it('debits the wallet, updates balance and writes a signed-negative ledger row', function () {
+it('debits the wallet, updates balance and writes a signed-negative ledger row', function (): void {
     $user = billingUser(balance: 200.0);
 
     $tx = (new Wallet())->debit(
@@ -73,7 +73,7 @@ it('debits the wallet, updates balance and writes a signed-negative ledger row',
     expect($tx->type)->toBe(WalletTransaction::TYPE_DEBIT_SUBSCRIPTION);
 });
 
-it('rejects a debit when balance is below the requested amount', function () {
+it('rejects a debit when balance is below the requested amount', function (): void {
     $user = billingUser(balance: 10.0);
 
     expect(fn () => (new Wallet())->debit(
@@ -87,7 +87,7 @@ it('rejects a debit when balance is below the requested amount', function () {
     expect(WalletTransaction::where('user_id', $user->id)->count())->toBe(0);
 });
 
-it('rejects negative-or-zero amounts on credit', function () {
+it('rejects negative-or-zero amounts on credit', function (): void {
     $user = billingUser();
 
     expect(fn () => (new Wallet())->credit(
@@ -105,7 +105,7 @@ it('rejects negative-or-zero amounts on credit', function () {
     ))->toThrow(InvalidArgumentException::class);
 });
 
-it('rejects negative-or-zero amounts on debit', function () {
+it('rejects negative-or-zero amounts on debit', function (): void {
     $user = billingUser(balance: 200);
 
     expect(fn () => (new Wallet())->debit(
@@ -123,7 +123,7 @@ it('rejects negative-or-zero amounts on debit', function () {
     ))->toThrow(InvalidArgumentException::class);
 });
 
-it('runRenewal debits the monthly rate and pushes the anchor +1 month from the current value', function () {
+it('runRenewal debits the monthly rate and pushes the anchor +1 month from the current value', function (): void {
     $tier = billingTier('starter', monthly: 75.0);
     $anchor = now()->subDay(); // due renewal
     $user = User::factory()->create([
@@ -147,7 +147,7 @@ it('runRenewal debits the monthly rate and pushes the anchor +1 month from the c
     expect($tx->meta['subscription_canonical'])->toBe('starter');
 });
 
-it('runRenewal anchors to now+1 month when the user has no existing renews_at', function () {
+it('runRenewal anchors to now+1 month when the user has no existing renews_at', function (): void {
     $tier = billingTier('unlimited', monthly: 150.0);
     $user = User::factory()->create([
         'subscription_id' => $tier->id,
@@ -162,7 +162,7 @@ it('runRenewal anchors to now+1 month when the user has no existing renews_at', 
         ->toBe($expected->toDateString());
 });
 
-it('runRenewal honours an explicit anchor (read-only-unlock case)', function () {
+it('runRenewal honours an explicit anchor (read-only-unlock case)', function (): void {
     $tier = billingTier('starter', monthly: 75.0);
     $user = User::factory()->create([
         'subscription_id' => $tier->id,
@@ -178,7 +178,7 @@ it('runRenewal honours an explicit anchor (read-only-unlock case)', function () 
         ->toBe($explicit->toDateString());
 });
 
-it('runRenewal throws InsufficientFundsException and rolls back when wallet is short', function () {
+it('runRenewal throws InsufficientFundsException and rolls back when wallet is short', function (): void {
     $tier = billingTier('starter', monthly: 75.0);
     $user = User::factory()->create([
         'subscription_id' => $tier->id,
@@ -193,7 +193,7 @@ it('runRenewal throws InsufficientFundsException and rolls back when wallet is s
     expect(WalletTransaction::where('user_id', $user->id)->count())->toBe(0);
 });
 
-it('runRenewal rejects users without a subscription tier', function () {
+it('runRenewal rejects users without a subscription tier', function (): void {
     $user = User::factory()->create([
         'subscription_id' => null,
         'wallet_balance_usdt' => 200,
@@ -203,7 +203,7 @@ it('runRenewal rejects users without a subscription tier', function () {
         ->toThrow(InvalidArgumentException::class);
 });
 
-it('keeps balance and ledger consistent across a sequence of operations', function () {
+it('keeps balance and ledger consistent across a sequence of operations', function (): void {
     $user = billingUser(balance: 0.0);
     $wallet = new Wallet();
 

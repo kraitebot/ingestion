@@ -23,8 +23,8 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class)->group('integration',
 |
 */
 
-describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function () {
-    it('skips API call and retries when account has ip_not_whitelisted ban', function () {
+describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function (): void {
+    it('skips API call and retries when account has ip_not_whitelisted ban', function (): void {
         // Arrange: Create Binance account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $user = User::factory()->create();
@@ -69,7 +69,7 @@ describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function
         expect($events)->not->toContain('computeApiable:success');
     });
 
-    it('skips API call and retries when account has account_blocked ban', function () {
+    it('skips API call and retries when account has account_blocked ban', function (): void {
         // Arrange: Create Binance account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $user = User::factory()->create();
@@ -112,7 +112,7 @@ describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function
         expect($events)->not->toContain('computeApiable:start');
     });
 
-    it('does NOT block other accounts when ban is account-specific', function () {
+    it('does NOT block other accounts when ban is account-specific', function (): void {
         // Arrange: Create Binance API system
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
 
@@ -165,8 +165,8 @@ describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function
     });
 });
 
-describe('System-Wide Bans (IP Rate Limited, IP Banned)', function () {
-    it('skips API call and retries when system-wide ip_rate_limited ban exists', function () {
+describe('System-Wide Bans (IP Rate Limited, IP Banned)', function (): void {
+    it('skips API call and retries when system-wide ip_rate_limited ban exists', function (): void {
         // Arrange: Create Binance account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $user = User::factory()->create();
@@ -209,7 +209,7 @@ describe('System-Wide Bans (IP Rate Limited, IP Banned)', function () {
         expect($events)->not->toContain('computeApiable:start');
     });
 
-    it('skips API call and retries when system-wide ip_banned ban exists', function () {
+    it('skips API call and retries when system-wide ip_banned ban exists', function (): void {
         // Arrange: Create Binance account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $user = User::factory()->create();
@@ -252,7 +252,7 @@ describe('System-Wide Bans (IP Rate Limited, IP Banned)', function () {
         expect($events)->not->toContain('computeApiable:start');
     });
 
-    it('blocks ALL accounts when system-wide ban exists', function () {
+    it('blocks ALL accounts when system-wide ban exists', function (): void {
         // Arrange: Create Binance API system
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
 
@@ -309,8 +309,8 @@ describe('System-Wide Bans (IP Rate Limited, IP Banned)', function () {
     });
 });
 
-describe('Temporary Ban Expiry', function () {
-    it('allows API call when temporary ban has expired', function () {
+describe('Temporary Ban Expiry', function (): void {
+    it('allows API call when temporary ban has expired', function (): void {
         // Arrange: Create Binance account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $user = User::factory()->create();
@@ -354,7 +354,7 @@ describe('Temporary Ban Expiry', function () {
         expect($events)->toContain('computeApiable:success');
     });
 
-    it('blocks API call when temporary ban has NOT expired', function () {
+    it('blocks API call when temporary ban has NOT expired', function (): void {
         // Arrange: Create Binance account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $user = User::factory()->create();
@@ -398,8 +398,8 @@ describe('Temporary Ban Expiry', function () {
     });
 });
 
-describe('Cross-Exchange Isolation', function () {
-    it('does NOT block jobs for different API system', function () {
+describe('Cross-Exchange Isolation', function (): void {
+    it('does NOT block jobs for different API system', function (): void {
         // Arrange: Create both Binance and Bybit API systems
         $binanceSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $bybitSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);

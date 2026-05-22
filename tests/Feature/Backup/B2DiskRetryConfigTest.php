@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
  * key would silently re-expose production backups to the same
  * transient B2 failures, so this test pins both.
  */
-it('declares adaptive retries with >3 max attempts on the b2 disk config', function () {
+it('declares adaptive retries with >3 max attempts on the b2 disk config', function (): void {
     $retries = config('filesystems.disks.b2.retries');
 
     expect($retries)
@@ -45,7 +45,7 @@ it('declares adaptive retries with >3 max attempts on the b2 disk config', funct
  * where a future SDK upgrade changes the accepted shape of the
  * `retries` array and breaks the disk at boot.
  */
-it('boots the b2 disk into a real S3Client with the retry config attached', function () {
+it('boots the b2 disk into a real S3Client with the retry config attached', function (): void {
     // Inject fake credentials so the boot check is decoupled from the
     // host's .env.testing. The SDK only validates config shape here —
     // no network call is made — so any non-empty values exercise the

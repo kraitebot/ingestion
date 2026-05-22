@@ -41,7 +41,7 @@ function ledgerUser(): User
     ]);
 }
 
-it('writes a positive ledger row on a top-up credit, with type and meta', function () {
+it('writes a positive ledger row on a top-up credit, with type and meta', function (): void {
     $user = ledgerUser();
 
     (new Wallet())->credit(
@@ -63,7 +63,7 @@ it('writes a positive ledger row on a top-up credit, with type and meta', functi
     expect($row->meta)->toEqual(['payment_id' => 'abc123', 'gateway' => 'nowpayments']);
 });
 
-it('writes a separate ledger row for a prorate refund credit', function () {
+it('writes a separate ledger row for a prorate refund credit', function (): void {
     $user = ledgerUser();
     $wallet = new Wallet();
 
@@ -95,7 +95,7 @@ it('writes a separate ledger row for a prorate refund credit', function () {
     expect($rows[1]->meta['days_remaining'])->toBe(6);
 });
 
-it('writes a negative-amount row on a subscription debit', function () {
+it('writes a negative-amount row on a subscription debit', function (): void {
     $user = ledgerUser();
     $wallet = new Wallet();
 
@@ -112,7 +112,7 @@ it('writes a negative-amount row on a subscription debit', function () {
     expect($debitRow->isCredit())->toBeFalse();
 });
 
-it('runRenewal writes a single TYPE_DEBIT_SUBSCRIPTION row with renews_at meta', function () {
+it('runRenewal writes a single TYPE_DEBIT_SUBSCRIPTION row with renews_at meta', function (): void {
     $tier = ledgerTier('starter', monthly: 75.0);
     $user = User::factory()->create([
         'subscription_id' => $tier->id,
@@ -132,7 +132,7 @@ it('runRenewal writes a single TYPE_DEBIT_SUBSCRIPTION row with renews_at meta',
     expect($row->meta)->toHaveKey('renews_at_after');
 });
 
-it('records admin overrides with their own type and operator identity', function () {
+it('records admin overrides with their own type and operator identity', function (): void {
     $user = ledgerUser();
 
     (new Wallet())->credit(
@@ -150,7 +150,7 @@ it('records admin overrides with their own type and operator identity', function
     expect($row->meta['admin_email'])->toBe('bruno@kraite.com');
 });
 
-it('records admin debits separately from system debits', function () {
+it('records admin debits separately from system debits', function (): void {
     $user = ledgerUser();
     $wallet = new Wallet();
 
@@ -167,7 +167,7 @@ it('records admin debits separately from system debits', function () {
     expect($adminDebit->meta['admin_user_id'])->toBe(999);
 });
 
-it('preserves the cumulative balance_after sequence reconstructable from the ledger', function () {
+it('preserves the cumulative balance_after sequence reconstructable from the ledger', function (): void {
     $user = ledgerUser();
     $wallet = new Wallet();
 
@@ -202,7 +202,7 @@ it('preserves the cumulative balance_after sequence reconstructable from the led
     expect((float) $user->refresh()->wallet_balance_usdt)->toEqual(120.0);
 });
 
-it('does not write a ledger row when an InsufficientFundsException is thrown', function () {
+it('does not write a ledger row when an InsufficientFundsException is thrown', function (): void {
     $user = ledgerUser();
     $wallet = new Wallet();
 
@@ -210,7 +210,7 @@ it('does not write a ledger row when an InsufficientFundsException is thrown', f
 
     try {
         $wallet->debit($user, 75, WalletTransaction::TYPE_DEBIT_SUBSCRIPTION, 'Too much');
-    } catch (\Throwable) {
+    } catch (Throwable) {
         // expected
     }
 
@@ -222,7 +222,7 @@ it('does not write a ledger row when an InsufficientFundsException is thrown', f
     )->toBe(0);
 });
 
-it('exposes a chronological per-user history via the user relation', function () {
+it('exposes a chronological per-user history via the user relation', function (): void {
     $user = ledgerUser();
     $wallet = new Wallet();
 

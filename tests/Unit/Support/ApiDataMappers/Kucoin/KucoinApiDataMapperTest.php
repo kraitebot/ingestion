@@ -88,7 +88,7 @@ function createKucoinMockResponse(array $data, int $statusCode = 200): Response
 // MapsPlaceOrder Tests
 // =============================================================================
 
-test('preparePlaceOrderProperties sets correct properties for LIMIT order', function () {
+test('preparePlaceOrderProperties sets correct properties for LIMIT order', function (): void {
     $order = createKucoinTestOrder('PLACE_LIMIT', ['type' => 'LIMIT']);
     $mapper = new KucoinApiDataMapper;
 
@@ -103,7 +103,7 @@ test('preparePlaceOrderProperties sets correct properties for LIMIT order', func
     expect($properties->get('options.price'))->not->toBeNull();
 });
 
-test('preparePlaceOrderProperties sets correct properties for MARKET order', function () {
+test('preparePlaceOrderProperties sets correct properties for MARKET order', function (): void {
     $order = createKucoinTestOrder('PLACE_MARKET', ['type' => 'MARKET']);
     $mapper = new KucoinApiDataMapper;
 
@@ -114,7 +114,7 @@ test('preparePlaceOrderProperties sets correct properties for MARKET order', fun
     expect($properties->get('options.price'))->toBeNull();
 });
 
-test('preparePlaceOrderProperties sets stop properties for STOP-MARKET order closing LONG', function () {
+test('preparePlaceOrderProperties sets stop properties for STOP-MARKET order closing LONG', function (): void {
     // STOP-MARKET to close LONG uses SELL side, triggers when price falls (stop=down)
     $order = createKucoinTestOrder('PLACE_STOP_LONG', ['type' => 'STOP-MARKET', 'side' => 'SELL']);
     $mapper = new KucoinApiDataMapper;
@@ -127,7 +127,7 @@ test('preparePlaceOrderProperties sets stop properties for STOP-MARKET order clo
     expect($properties->get('options.stopPrice'))->not->toBeNull();
 });
 
-test('preparePlaceOrderProperties sets stop properties for STOP-MARKET order closing SHORT', function () {
+test('preparePlaceOrderProperties sets stop properties for STOP-MARKET order closing SHORT', function (): void {
     // STOP-MARKET to close SHORT uses BUY side, triggers when price rises (stop=up)
     $order = createKucoinTestOrder('PLACE_STOP_SHORT', ['type' => 'STOP-MARKET', 'side' => 'BUY']);
     $mapper = new KucoinApiDataMapper;
@@ -140,7 +140,7 @@ test('preparePlaceOrderProperties sets stop properties for STOP-MARKET order clo
     expect($properties->get('options.stopPrice'))->not->toBeNull();
 });
 
-test('preparePlaceOrderProperties sets stop properties for TAKE-PROFIT order closing LONG', function () {
+test('preparePlaceOrderProperties sets stop properties for TAKE-PROFIT order closing LONG', function (): void {
     // TAKE-PROFIT to close LONG uses SELL side, triggers when price rises (stop=up)
     $order = createKucoinTestOrder('PLACE_TP_LONG', ['type' => 'TAKE-PROFIT', 'side' => 'SELL']);
     $mapper = new KucoinApiDataMapper;
@@ -152,7 +152,7 @@ test('preparePlaceOrderProperties sets stop properties for TAKE-PROFIT order clo
     expect($properties->get('options.stopPriceType'))->toBe('MP');
 });
 
-test('preparePlaceOrderProperties sets stop properties for TAKE-PROFIT order closing SHORT', function () {
+test('preparePlaceOrderProperties sets stop properties for TAKE-PROFIT order closing SHORT', function (): void {
     // TAKE-PROFIT to close SHORT uses BUY side, triggers when price falls (stop=down)
     $order = createKucoinTestOrder('PLACE_TP_SHORT', ['type' => 'TAKE-PROFIT', 'side' => 'BUY']);
     $mapper = new KucoinApiDataMapper;
@@ -164,7 +164,7 @@ test('preparePlaceOrderProperties sets stop properties for TAKE-PROFIT order clo
     expect($properties->get('options.stopPriceType'))->toBe('MP');
 });
 
-test('resolvePlaceOrderResponse parses KuCoin response correctly', function () {
+test('resolvePlaceOrderResponse parses KuCoin response correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -187,7 +187,7 @@ test('resolvePlaceOrderResponse parses KuCoin response correctly', function () {
 // MapsOrderQuery Tests
 // =============================================================================
 
-test('prepareOrderQueryProperties sets correct properties', function () {
+test('prepareOrderQueryProperties sets correct properties', function (): void {
     $order = createKucoinTestOrder('QUERY_ORDER');
     $mapper = new KucoinApiDataMapper;
 
@@ -197,7 +197,7 @@ test('prepareOrderQueryProperties sets correct properties', function () {
     expect($properties->get('options.orderId'))->toBe('5cdfc138b21023a909e5ad55');
 });
 
-test('resolveOrderQueryResponse parses filled order correctly', function () {
+test('resolveOrderQueryResponse parses filled order correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -234,7 +234,7 @@ test('resolveOrderQueryResponse parses filled order correctly', function () {
     expect($result['side'])->toBe('BUY');
 });
 
-test('resolveOrderQueryResponse parses new order correctly', function () {
+test('resolveOrderQueryResponse parses new order correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -260,7 +260,7 @@ test('resolveOrderQueryResponse parses new order correctly', function () {
     expect($result['_price'])->toBe('1800');
 });
 
-test('resolveOrderQueryResponse parses partially filled order correctly', function () {
+test('resolveOrderQueryResponse parses partially filled order correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -284,7 +284,7 @@ test('resolveOrderQueryResponse parses partially filled order correctly', functi
     expect($result['executed_quantity'])->toBe('10');
 });
 
-test('resolveOrderQueryResponse handles not found order', function () {
+test('resolveOrderQueryResponse handles not found order', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -302,7 +302,7 @@ test('resolveOrderQueryResponse handles not found order', function () {
 // MapsOrderCancel Tests
 // =============================================================================
 
-test('prepareOrderCancelProperties sets correct properties', function () {
+test('prepareOrderCancelProperties sets correct properties', function (): void {
     $order = createKucoinTestOrder('CANCEL_ORDER');
     $mapper = new KucoinApiDataMapper;
 
@@ -312,7 +312,7 @@ test('prepareOrderCancelProperties sets correct properties', function () {
     expect($properties->get('options.orderId'))->toBe('5cdfc138b21023a909e5ad55');
 });
 
-test('resolveOrderCancelResponse parses response correctly', function () {
+test('resolveOrderCancelResponse parses response correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -328,7 +328,7 @@ test('resolveOrderCancelResponse parses response correctly', function () {
     expect($result['status'])->toBe('CANCELLED');
 });
 
-test('resolveOrderCancelResponse handles empty cancelled list', function () {
+test('resolveOrderCancelResponse handles empty cancelled list', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -348,7 +348,7 @@ test('resolveOrderCancelResponse handles empty cancelled list', function () {
 // MapsCancelOrders Tests
 // =============================================================================
 
-test('prepareCancelOrdersProperties sets correct properties', function () {
+test('prepareCancelOrdersProperties sets correct properties', function (): void {
     $position = createKucoinTestPosition('CANCEL_ALL');
     $mapper = new KucoinApiDataMapper;
 
@@ -358,7 +358,7 @@ test('prepareCancelOrdersProperties sets correct properties', function () {
     expect($properties->get('options.symbol'))->toBe('XBTUSDTM');
 });
 
-test('resolveCancelOrdersResponse parses cancelled order ids', function () {
+test('resolveCancelOrdersResponse parses cancelled order ids', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -382,7 +382,7 @@ test('resolveCancelOrdersResponse parses cancelled order ids', function () {
 // MapsAccountQueryTrades Tests
 // =============================================================================
 
-test('prepareQueryTokenTradesProperties sets correct properties', function () {
+test('prepareQueryTokenTradesProperties sets correct properties', function (): void {
     $position = createKucoinTestPosition('QUERY_TRADES');
     $mapper = new KucoinApiDataMapper;
 
@@ -392,7 +392,7 @@ test('prepareQueryTokenTradesProperties sets correct properties', function () {
     expect($properties->get('options.symbol'))->toBe('XBTUSDTM');
 });
 
-test('prepareQueryTokenTradesProperties includes lastId when provided', function () {
+test('prepareQueryTokenTradesProperties includes lastId when provided', function (): void {
     $position = createKucoinTestPosition('QUERY_TRADES_LAST');
     $mapper = new KucoinApiDataMapper;
 
@@ -401,7 +401,7 @@ test('prepareQueryTokenTradesProperties includes lastId when provided', function
     expect($properties->get('options.lastId'))->toBe('123456789');
 });
 
-test('resolveQueryTradeResponse parses fills correctly', function () {
+test('resolveQueryTradeResponse parses fills correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -453,7 +453,7 @@ test('resolveQueryTradeResponse parses fills correctly', function () {
 // MapsMarkPriceQuery Tests
 // =============================================================================
 
-test('prepareQueryMarkPriceProperties sets correct properties', function () {
+test('prepareQueryMarkPriceProperties sets correct properties', function (): void {
     $exchangeSymbol = createKucoinTestExchangeSymbol('MARK_PRICE');
     $mapper = new KucoinApiDataMapper;
 
@@ -463,7 +463,7 @@ test('prepareQueryMarkPriceProperties sets correct properties', function () {
     expect($properties->get('options.symbol'))->toBe('XBTUSDTM');
 });
 
-test('resolveQueryMarkPriceResponse returns mark price value', function () {
+test('resolveQueryMarkPriceResponse returns mark price value', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -482,7 +482,7 @@ test('resolveQueryMarkPriceResponse returns mark price value', function () {
     expect($result)->toBe('8287.86');
 });
 
-test('resolveQueryMarkPriceResponse returns null when value missing', function () {
+test('resolveQueryMarkPriceResponse returns null when value missing', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -501,7 +501,7 @@ test('resolveQueryMarkPriceResponse returns null when value missing', function (
 // MapsLeverageBracketsQuery Tests
 // =============================================================================
 
-test('prepareQueryLeverageBracketsDataProperties sets correct properties', function () {
+test('prepareQueryLeverageBracketsDataProperties sets correct properties', function (): void {
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $mapper = new KucoinApiDataMapper;
 
@@ -510,7 +510,7 @@ test('prepareQueryLeverageBracketsDataProperties sets correct properties', funct
     expect($properties->get('relatable'))->toBe($apiSystem);
 });
 
-test('resolveLeverageBracketsDataResponse parses risk limit levels', function () {
+test('resolveLeverageBracketsDataResponse parses risk limit levels', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -561,7 +561,7 @@ test('resolveLeverageBracketsDataResponse parses risk limit levels', function ()
 // MapsTokenLeverageRatios Tests
 // =============================================================================
 
-test('prepareUpdateLeverageRatioProperties sets correct properties', function () {
+test('prepareUpdateLeverageRatioProperties sets correct properties', function (): void {
     $position = createKucoinTestPosition('SET_LEVERAGE');
     $mapper = new KucoinApiDataMapper;
 
@@ -572,7 +572,7 @@ test('prepareUpdateLeverageRatioProperties sets correct properties', function ()
     expect($properties->get('options.leverage'))->toBe('20');
 });
 
-test('resolveUpdateLeverageRatioResponse parses success response', function () {
+test('resolveUpdateLeverageRatioResponse parses success response', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -586,7 +586,7 @@ test('resolveUpdateLeverageRatioResponse parses success response', function () {
     expect($result['_raw'])->toBeArray();
 });
 
-test('resolveUpdateLeverageRatioResponse handles failure response', function () {
+test('resolveUpdateLeverageRatioResponse handles failure response', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -603,7 +603,7 @@ test('resolveUpdateLeverageRatioResponse handles failure response', function () 
 // MapsSymbolMarginType Tests
 // =============================================================================
 
-test('prepareUpdateMarginTypeProperties sets correct properties', function () {
+test('prepareUpdateMarginTypeProperties sets correct properties', function (): void {
     $position = createKucoinTestPosition('SET_MARGIN');
     $mapper = new KucoinApiDataMapper;
 
@@ -618,7 +618,7 @@ test('prepareUpdateMarginTypeProperties sets correct properties', function () {
     expect($properties->get('options.marginMode'))->toBe($expectedMarginMode);
 });
 
-test('resolveUpdateMarginTypeResponse parses success response', function () {
+test('resolveUpdateMarginTypeResponse parses success response', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -636,7 +636,7 @@ test('resolveUpdateMarginTypeResponse parses success response', function () {
 // Canonical Order Type Tests
 // =============================================================================
 
-test('canonicalOrderType maps KuCoin order types correctly', function () {
+test('canonicalOrderType maps KuCoin order types correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $testCases = [
@@ -659,7 +659,7 @@ test('canonicalOrderType maps KuCoin order types correctly', function () {
 // Symbol Parsing and Formatting Tests
 // =============================================================================
 
-test('identifyBaseAndQuote parses KuCoin symbols correctly', function () {
+test('identifyBaseAndQuote parses KuCoin symbols correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     expect($mapper->identifyBaseAndQuote('XBTUSDTM'))->toBe(['base' => 'XBT', 'quote' => 'USDT']);
@@ -668,7 +668,7 @@ test('identifyBaseAndQuote parses KuCoin symbols correctly', function () {
     expect($mapper->identifyBaseAndQuote('SOLUSDCM'))->toBe(['base' => 'SOL', 'quote' => 'USDC']);
 });
 
-test('baseWithQuote formats KuCoin perpetual symbols correctly', function () {
+test('baseWithQuote formats KuCoin perpetual symbols correctly', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     expect($mapper->baseWithQuote('XBT', 'USDT'))->toBe('XBTUSDTM');
@@ -677,27 +677,27 @@ test('baseWithQuote formats KuCoin perpetual symbols correctly', function () {
     expect($mapper->baseWithQuote('SOL', 'USD'))->toBe('SOLUSDM');
 });
 
-test('sideType converts canonical sides to KuCoin format', function () {
+test('sideType converts canonical sides to KuCoin format', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     expect($mapper->sideType('BUY'))->toBe('buy');
     expect($mapper->sideType('SELL'))->toBe('sell');
 });
 
-test('directionType converts canonical directions to KuCoin format', function () {
+test('directionType converts canonical directions to KuCoin format', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     expect($mapper->directionType('LONG'))->toBe('long');
     expect($mapper->directionType('SHORT'))->toBe('short');
 });
 
-test('long returns lowercase long', function () {
+test('long returns lowercase long', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     expect($mapper->long())->toBe('long');
 });
 
-test('short returns lowercase short', function () {
+test('short returns lowercase short', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     expect($mapper->short())->toBe('short');
@@ -707,7 +707,7 @@ test('short returns lowercase short', function () {
 // Edge Cases and Error Handling
 // =============================================================================
 
-test('resolvers handle empty data gracefully', function () {
+test('resolvers handle empty data gracefully', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $emptyResponse = createKucoinMockResponse([
@@ -720,7 +720,7 @@ test('resolvers handle empty data gracefully', function () {
     expect($mapper->resolveLeverageBracketsDataResponse($emptyResponse))->toBe([]);
 });
 
-test('resolvers handle missing data key gracefully', function () {
+test('resolvers handle missing data key gracefully', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -732,7 +732,7 @@ test('resolvers handle missing data key gracefully', function () {
     expect($mapper->resolveQueryTradeResponse($response))->toBe([]);
 });
 
-test('resolvers handle missing items key in paginated response', function () {
+test('resolvers handle missing items key in paginated response', function (): void {
     $mapper = new KucoinApiDataMapper;
 
     $response = createKucoinMockResponse([
@@ -748,26 +748,26 @@ test('resolvers handle missing items key in paginated response', function () {
     expect($mapper->resolveQueryTradeResponse($response))->toBe([]);
 });
 
-test('sideType throws exception for invalid side', function () {
+test('sideType throws exception for invalid side', function (): void {
     $mapper = new KucoinApiDataMapper;
 
-    expect(function () use ($mapper) {
+    expect(function () use ($mapper): void {
         $mapper->sideType('INVALID');
     })->toThrow(InvalidArgumentException::class);
 });
 
-test('directionType throws exception for invalid direction', function () {
+test('directionType throws exception for invalid direction', function (): void {
     $mapper = new KucoinApiDataMapper;
 
-    expect(function () use ($mapper) {
+    expect(function () use ($mapper): void {
         $mapper->directionType('INVALID');
     })->toThrow(InvalidArgumentException::class);
 });
 
-test('identifyBaseAndQuote throws exception for invalid symbol format', function () {
+test('identifyBaseAndQuote throws exception for invalid symbol format', function (): void {
     $mapper = new KucoinApiDataMapper;
 
-    expect(function () use ($mapper) {
+    expect(function () use ($mapper): void {
         $mapper->identifyBaseAndQuote('INVALIDFORMAT');
     })->toThrow(InvalidArgumentException::class);
 });

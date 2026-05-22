@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Kraite\Core\Models\Account;
-use Kraite\Core\Models\ApiSnapshot;
-use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Support\Health\OrphanReconciler;
 use Kraite\Core\Support\Health\OrphanReport;
@@ -23,7 +21,7 @@ use Kraite\Core\Support\Health\OrphanReport;
 
 uses(RefreshDatabase::class);
 
-test('account with both flags false flags every exchange-only orphan', function () {
+test('account with both flags false flags every exchange-only orphan', function (): void {
     $account = Account::factory()->create([
         'allow_other_orders' => false,
         'allow_other_positions' => false,
@@ -46,7 +44,7 @@ test('account with both flags false flags every exchange-only orphan', function 
     expect($report->positionsToClose)->toEqualCanonicalizing(['AKTUSDT:LONG']);
 });
 
-test('account with allow_other_orders=true ignores non-Kraite orphans', function () {
+test('account with allow_other_orders=true ignores non-Kraite orphans', function (): void {
     $account = Account::factory()->create([
         'allow_other_orders' => true,
         'allow_other_positions' => true,
@@ -65,7 +63,7 @@ test('account with allow_other_orders=true ignores non-Kraite orphans', function
     expect($report->isEmpty())->toBeTrue();
 });
 
-test('match window is read from kraite.php config in MINUTES', function () {
+test('match window is read from kraite.php config in MINUTES', function (): void {
     // The command reads the window via config('kraite.health_watchdog.orphan_kraite_match_window_minutes')
     // — verify the key resolves to a sensible default (60min) when not overridden.
     $minutes = config('kraite.health_watchdog.orphan_kraite_match_window_minutes', 60);
@@ -74,7 +72,7 @@ test('match window is read from kraite.php config in MINUTES', function () {
     expect($minutes)->toBeGreaterThanOrEqual(1);
 });
 
-test('default account flags are false on factory-created accounts', function () {
+test('default account flags are false on factory-created accounts', function (): void {
     $account = Account::factory()->create();
 
     expect($account->allow_other_orders)->toBeFalse();

@@ -22,7 +22,7 @@ function seedAccountBalanceSnapshot(Account $account, string $totalWallet, strin
     ]);
 }
 
-test('returns total-wallet-balance when the trading balance basis is total', function () {
+test('returns total-wallet-balance when the trading balance basis is total', function (): void {
     $account = Account::factory()->create([
         'balance_for_trading_basis' => 'total',
         'allow_other_positions' => true,
@@ -34,7 +34,7 @@ test('returns total-wallet-balance when the trading balance basis is total', fun
     expect($account->balanceForTrading())->toBe('1000.00');
 });
 
-test('returns available-balance when the trading balance basis is available', function () {
+test('returns available-balance when the trading balance basis is available', function (): void {
     $account = Account::factory()->create([
         'balance_for_trading_basis' => 'available',
         'allow_other_positions' => false,
@@ -46,7 +46,7 @@ test('returns available-balance when the trading balance basis is available', fu
     expect($account->balanceForTrading())->toBe('600.00');
 });
 
-test('falls back to account.margin when no balance snapshot exists', function () {
+test('falls back to account.margin when no balance snapshot exists', function (): void {
     $account = Account::factory()->create([
         'balance_for_trading_basis' => 'total',
         'margin' => '250.00000000',
@@ -55,7 +55,7 @@ test('falls back to account.margin when no balance snapshot exists', function ()
     expect($account->balanceForTrading())->toBe('250.00000000');
 });
 
-test('falls back to account.margin when snapshot lacks the expected key', function () {
+test('falls back to account.margin when snapshot lacks the expected key', function (): void {
     $account = Account::factory()->create([
         'balance_for_trading_basis' => 'available',
         'margin' => '777.00000000',

@@ -159,7 +159,7 @@ function makeNewLongPositionSlot(Account $account): Position
     ]);
 }
 
-it('filters out tokens whose sidecar mark_price is older than the freshness threshold', function () {
+it('filters out tokens whose sidecar mark_price is older than the freshness threshold', function (): void {
     config()->set('kraite.token_discovery.mark_price_max_age_seconds', 30);
 
     $account = createAccountForStaleGateTest();
@@ -205,7 +205,7 @@ it('filters out tokens whose sidecar mark_price is older than the freshness thre
     );
 });
 
-it('opens nothing when every candidate is stale (general daemon stall shape)', function () {
+it('opens nothing when every candidate is stale (general daemon stall shape)', function (): void {
     config()->set('kraite.token_discovery.mark_price_max_age_seconds', 30);
 
     $account = createAccountForStaleGateTest();
@@ -232,7 +232,7 @@ it('opens nothing when every candidate is stale (general daemon stall shape)', f
     );
 });
 
-it('does not regress symbols with null sidecar (legacy / brand-new symbol path)', function () {
+it('does not regress symbols with null sidecar (legacy / brand-new symbol path)', function (): void {
     config()->set('kraite.token_discovery.mark_price_max_age_seconds', 30);
 
     $account = createAccountForStaleGateTest();

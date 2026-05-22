@@ -23,7 +23,7 @@ function tierFor(string $canonical, float $monthly, int $trialDays = 7): Subscri
     );
 }
 
-it('says trial is not active when trial_started_at is null', function () {
+it('says trial is not active when trial_started_at is null', function (): void {
     $user = User::factory()->create([
         'subscription_id' => tierFor('starter', 75)->id,
         'trial_started_at' => null,
@@ -33,7 +33,7 @@ it('says trial is not active when trial_started_at is null', function () {
     expect($user->isTrialExpired())->toBeFalse();
 });
 
-it('says trial is active during the trial window', function () {
+it('says trial is active during the trial window', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
     $user = User::factory()->create([
@@ -45,7 +45,7 @@ it('says trial is active during the trial window', function () {
     expect($user->isTrialExpired())->toBeFalse();
 });
 
-it('says trial is expired after trial_days have elapsed', function () {
+it('says trial is expired after trial_days have elapsed', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
     $user = User::factory()->create([
@@ -57,7 +57,7 @@ it('says trial is expired after trial_days have elapsed', function () {
     expect($user->isTrialExpired())->toBeTrue();
 });
 
-it('honours trial_days_override over the tier default', function () {
+it('honours trial_days_override over the tier default', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
     $user = User::factory()->create([
@@ -71,7 +71,7 @@ it('honours trial_days_override over the tier default', function () {
     expect($user->isTrialExpired())->toBeFalse();
 });
 
-it('falls back to the tier trial_days when override is null', function () {
+it('falls back to the tier trial_days when override is null', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
     $user = User::factory()->create([
@@ -84,7 +84,7 @@ it('falls back to the tier trial_days when override is null', function () {
     expect($user->isTrialActive())->toBeTrue();
 });
 
-it('treats trial_days_override of zero as no trial granted', function () {
+it('treats trial_days_override of zero as no trial granted', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
     $user = User::factory()->create([
@@ -97,7 +97,7 @@ it('treats trial_days_override of zero as no trial granted', function () {
     expect($user->isTrialActive())->toBeFalse();
 });
 
-it('reports the wallet covers the next renewal when balance >= monthly rate', function () {
+it('reports the wallet covers the next renewal when balance >= monthly rate', function (): void {
     $user = User::factory()->create([
         'subscription_id' => tierFor('starter', 75)->id,
         'wallet_balance_usdt' => 75,
@@ -107,7 +107,7 @@ it('reports the wallet covers the next renewal when balance >= monthly rate', fu
     expect($user->renewalShortfallUsdt())->toEqual(0.0);
 });
 
-it('reports a shortfall when wallet is below the monthly rate', function () {
+it('reports a shortfall when wallet is below the monthly rate', function (): void {
     $user = User::factory()->create([
         'subscription_id' => tierFor('starter', 75)->id,
         'wallet_balance_usdt' => 30,
@@ -117,7 +117,7 @@ it('reports a shortfall when wallet is below the monthly rate', function () {
     expect($user->renewalShortfallUsdt())->toEqual(45.0);
 });
 
-it('reports covered when no monthly rate is set (zero-rate tier)', function () {
+it('reports covered when no monthly rate is set (zero-rate tier)', function (): void {
     $user = User::factory()->create([
         'subscription_id' => tierFor('starter', 0.0)->id,
         'wallet_balance_usdt' => 0,
@@ -127,7 +127,7 @@ it('reports covered when no monthly rate is set (zero-rate tier)', function () {
     expect($user->renewalShortfallUsdt())->toEqual(0.0);
 });
 
-it('flags closing-mode when paused, regardless of trial state', function () {
+it('flags closing-mode when paused, regardless of trial state', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
     $user = User::factory()->create([
@@ -141,7 +141,7 @@ it('flags closing-mode when paused, regardless of trial state', function () {
     expect($user->isInClosingMode())->toBeTrue();
 });
 
-it('does not flag closing-mode while the trial is active', function () {
+it('does not flag closing-mode while the trial is active', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
     $user = User::factory()->create([
@@ -153,7 +153,7 @@ it('does not flag closing-mode while the trial is active', function () {
     expect($user->isInClosingMode())->toBeFalse();
 });
 
-it('flags closing-mode when post-trial and renews_at is null', function () {
+it('flags closing-mode when post-trial and renews_at is null', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
     $user = User::factory()->create([
@@ -165,7 +165,7 @@ it('flags closing-mode when post-trial and renews_at is null', function () {
     expect($user->isInClosingMode())->toBeTrue();
 });
 
-it('flags closing-mode when renews_at is in the past', function () {
+it('flags closing-mode when renews_at is in the past', function (): void {
     $tier = tierFor('starter', 75);
 
     $user = User::factory()->create([
@@ -177,7 +177,7 @@ it('flags closing-mode when renews_at is in the past', function () {
     expect($user->isInClosingMode())->toBeTrue();
 });
 
-it('does not flag closing-mode when renews_at is in the future', function () {
+it('does not flag closing-mode when renews_at is in the future', function (): void {
     $tier = tierFor('starter', 75);
 
     $user = User::factory()->create([
@@ -189,7 +189,7 @@ it('does not flag closing-mode when renews_at is in the future', function () {
     expect($user->isInClosingMode())->toBeFalse();
 });
 
-it('pause sets subscription_paused_at and is idempotent', function () {
+it('pause sets subscription_paused_at and is idempotent', function (): void {
     $user = User::factory()->create([
         'subscription_id' => tierFor('starter', 75)->id,
         'subscription_renews_at' => now()->addDays(20),
@@ -207,7 +207,7 @@ it('pause sets subscription_paused_at and is idempotent', function () {
         ->toBe($first->toIso8601String());
 });
 
-it('resume clears paused_at and pushes renews_at by the pause duration', function () {
+it('resume clears paused_at and pushes renews_at by the pause duration', function (): void {
     $originalAnchor = now()->addDays(15);
 
     $user = User::factory()->create([
@@ -227,7 +227,7 @@ it('resume clears paused_at and pushes renews_at by the pause duration', functio
         ->toBe($expected->toDateString());
 });
 
-it('resume is a no-op when the user is not paused', function () {
+it('resume is a no-op when the user is not paused', function (): void {
     $anchor = now()->addDays(15);
 
     $user = User::factory()->create([
@@ -243,7 +243,7 @@ it('resume is a no-op when the user is not paused', function () {
         ->toBe($anchor->toDateString());
 });
 
-it('resume leaves a null renews_at as null but still clears paused_at', function () {
+it('resume leaves a null renews_at as null but still clears paused_at', function (): void {
     $user = User::factory()->create([
         'subscription_id' => tierFor('starter', 75)->id,
         'subscription_renews_at' => null,

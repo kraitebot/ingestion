@@ -11,12 +11,12 @@ use Tests\Support\TestApiableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'base-apiable-job');
 
-it('cleans laravel.log', function () {
+it('cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
     expect(true)->toBe(true);
 });
 
-it('completes successfully when no exceptions are thrown', function () {
+it('completes successfully when no exceptions are thrown', function (): void {
     // Create test account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'test']);
     $user = User::factory()->create();
@@ -51,7 +51,7 @@ it('completes successfully when no exceptions are thrown', function () {
     expect($events)->toContain('computeApiable:success');
 });
 
-it('completes successfully when exception handler ignores exception', function () {
+it('completes successfully when exception handler ignores exception', function (): void {
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'test']);
     $user = User::factory()->create();
     $account = Account::factory()->create([
@@ -88,7 +88,7 @@ it('completes successfully when exception handler ignores exception', function (
     expect($events)->not->toContain('handleApiException:rethrow');
 });
 
-it('completes when job-level ignoreException returns true', function () {
+it('completes when job-level ignoreException returns true', function (): void {
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'test']);
     $user = User::factory()->create();
     $account = Account::factory()->create([
@@ -125,7 +125,7 @@ it('completes when job-level ignoreException returns true', function () {
     expect($ignoreCall['data']['result'])->toBeTrue();
 });
 
-it('resolves step when resolveException is triggered', function () {
+it('resolves step when resolveException is triggered', function (): void {
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'test']);
     $user = User::factory()->create();
     $account = Account::factory()->create([

@@ -19,18 +19,18 @@ use Kraite\Core\Support\TokenScoring\BatchDiversificationPenalty;
  * Returns a multiplier in [0, 1]. Missing or empty batch → 1.0.
  */
 
-test('empty already-picked batch returns 1.0 — no penalty', function () {
+test('empty already-picked batch returns 1.0 — no penalty', function (): void {
     expect(BatchDiversificationPenalty::for(0.95, []))->toBe(1.0);
 });
 
-test('candidate far from all picked symbols returns 1.0', function () {
+test('candidate far from all picked symbols returns 1.0', function (): void {
     $picked = [0.95, 0.92];
     $candidate = 0.30;
 
     expect(BatchDiversificationPenalty::for($candidate, $picked))->toBe(1.0);
 });
 
-test('candidate inside threshold of any picked symbol returns penalty', function () {
+test('candidate inside threshold of any picked symbol returns penalty', function (): void {
     $picked = [0.95];
     $candidate = 0.93;
 
@@ -40,7 +40,7 @@ test('candidate inside threshold of any picked symbol returns penalty', function
     expect($penalty)->toBeGreaterThan(0.0);
 });
 
-test('candidate exactly matching a picked symbol returns minimum penalty', function () {
+test('candidate exactly matching a picked symbol returns minimum penalty', function (): void {
     $picked = [0.95];
     $candidate = 0.95;
 
@@ -49,7 +49,7 @@ test('candidate exactly matching a picked symbol returns minimum penalty', funct
     expect($penalty)->toBeLessThan(0.6);
 });
 
-test('candidate sign opposite to picked is treated as different — no penalty', function () {
+test('candidate sign opposite to picked is treated as different — no penalty', function (): void {
     // A LONG ladder of LONG slots typically picks all positively
     // BTC-correlated tokens. A negatively-correlated candidate (one
     // that hedges BTC) is structurally distinct and should NOT be
@@ -60,7 +60,7 @@ test('candidate sign opposite to picked is treated as different — no penalty',
     expect(BatchDiversificationPenalty::for($candidate, $picked))->toBe(1.0);
 });
 
-test('penalty fires on the closest match — best match across batch determines weight', function () {
+test('penalty fires on the closest match — best match across batch determines weight', function (): void {
     // Picked set has one similar (0.94) and one very different (-0.50)
     // entry. Penalty should reflect the SIMILAR one — diversity is
     // about how "redundant" the candidate is with ANYTHING already
@@ -71,7 +71,7 @@ test('penalty fires on the closest match — best match across batch determines 
     expect($mixedBatch)->toBe($closeMatch);
 });
 
-test('threshold parameter controls penalty trigger distance', function () {
+test('threshold parameter controls penalty trigger distance', function (): void {
     // With a tighter threshold (0.05) candidate at 0.10 from picked
     // is outside → no penalty. With a looser threshold (0.20) it's
     // inside → penalty.

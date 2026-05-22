@@ -13,7 +13,7 @@ use Tests\Support\TestAlternativeMeApiableJob;
 
 uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'alternativeme');
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Create Engine admin record (required for forbidden hostname notifications)
     Kraite::create([
         'id' => 1,
@@ -24,13 +24,13 @@ beforeEach(function () {
     ]);
 });
 
-it('cleans laravel.log', function () {
+it('cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
     expect(true)->toBe(true);
 });
 
-describe('AlternativeMeExceptionHandler - Rate Limits', function () {
-    it('handles 429 rate limit by setting dispatch_after', function () {
+describe('AlternativeMeExceptionHandler - Rate Limits', function (): void {
+    it('handles 429 rate limit by setting dispatch_after', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -63,8 +63,8 @@ describe('AlternativeMeExceptionHandler - Rate Limits', function () {
     });
 });
 
-describe('AlternativeMeExceptionHandler - Ignorable Errors', function () {
-    it('handles 400 bad request as ignorable (skipped)', function () {
+describe('AlternativeMeExceptionHandler - Ignorable Errors', function (): void {
+    it('handles 400 bad request as ignorable (skipped)', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -95,8 +95,8 @@ describe('AlternativeMeExceptionHandler - Ignorable Errors', function () {
     });
 });
 
-describe('AlternativeMeExceptionHandler - Retryable Errors', function () {
-    it('handles 408 request timeout as retryable', function () {
+describe('AlternativeMeExceptionHandler - Retryable Errors', function (): void {
+    it('handles 408 request timeout as retryable', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -127,7 +127,7 @@ describe('AlternativeMeExceptionHandler - Retryable Errors', function () {
         expect($step->dispatch_after)->not->toBeNull();
     });
 
-    it('handles 500 internal server error as retryable', function () {
+    it('handles 500 internal server error as retryable', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -158,7 +158,7 @@ describe('AlternativeMeExceptionHandler - Retryable Errors', function () {
         expect($step->dispatch_after)->not->toBeNull();
     });
 
-    it('handles 502 bad gateway as retryable', function () {
+    it('handles 502 bad gateway as retryable', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -189,7 +189,7 @@ describe('AlternativeMeExceptionHandler - Retryable Errors', function () {
         expect($step->dispatch_after)->not->toBeNull();
     });
 
-    it('handles 503 service unavailable as retryable', function () {
+    it('handles 503 service unavailable as retryable', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -220,7 +220,7 @@ describe('AlternativeMeExceptionHandler - Retryable Errors', function () {
         expect($step->dispatch_after)->not->toBeNull();
     });
 
-    it('handles 504 gateway timeout as retryable', function () {
+    it('handles 504 gateway timeout as retryable', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -252,8 +252,8 @@ describe('AlternativeMeExceptionHandler - Retryable Errors', function () {
     });
 });
 
-describe('AlternativeMeExceptionHandler - Forbidden Errors (Account Blocked)', function () {
-    it('handles 401 unauthorized by creating forbidden_hostname with type account_blocked', function () {
+describe('AlternativeMeExceptionHandler - Forbidden Errors (Account Blocked)', function (): void {
+    it('handles 401 unauthorized by creating forbidden_hostname with type account_blocked', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -292,7 +292,7 @@ describe('AlternativeMeExceptionHandler - Forbidden Errors (Account Blocked)', f
         expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
     });
 
-    it('handles 402 payment required by creating forbidden_hostname with type account_blocked', function () {
+    it('handles 402 payment required by creating forbidden_hostname with type account_blocked', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -331,7 +331,7 @@ describe('AlternativeMeExceptionHandler - Forbidden Errors (Account Blocked)', f
         expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
     });
 
-    it('handles 403 forbidden by creating forbidden_hostname with type account_blocked', function () {
+    it('handles 403 forbidden by creating forbidden_hostname with type account_blocked', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();
@@ -371,8 +371,8 @@ describe('AlternativeMeExceptionHandler - Forbidden Errors (Account Blocked)', f
     });
 });
 
-describe('AlternativeMeExceptionHandler - Network Errors', function () {
-    it('handles network connection errors as retryable', function () {
+describe('AlternativeMeExceptionHandler - Network Errors', function (): void {
+    it('handles network connection errors as retryable', function (): void {
         // Arrange: Create AlternativeMe account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'alternativeme']);
         $user = User::factory()->create();

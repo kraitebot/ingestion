@@ -88,7 +88,7 @@ function createBybitMockResponse(array $data, int $statusCode = 200): Response
 // MapsPlaceOrder Tests
 // =============================================================================
 
-test('preparePlaceOrderProperties sets correct properties for LIMIT order', function () {
+test('preparePlaceOrderProperties sets correct properties for LIMIT order', function (): void {
     $order = createBybitTestOrder('PLACE_LIMIT', ['type' => 'LIMIT']);
     $mapper = new BybitApiDataMapper;
 
@@ -103,7 +103,7 @@ test('preparePlaceOrderProperties sets correct properties for LIMIT order', func
     expect($properties->get('options.positionIdx'))->toBe(0);
 });
 
-test('preparePlaceOrderProperties sets correct properties for MARKET order', function () {
+test('preparePlaceOrderProperties sets correct properties for MARKET order', function (): void {
     $order = createBybitTestOrder('PLACE_MARKET', ['type' => 'MARKET']);
     $mapper = new BybitApiDataMapper;
 
@@ -113,7 +113,7 @@ test('preparePlaceOrderProperties sets correct properties for MARKET order', fun
     expect($properties->get('options.price'))->toBeNull();
 });
 
-test('preparePlaceOrderProperties sets trigger properties for STOP-MARKET order', function () {
+test('preparePlaceOrderProperties sets trigger properties for STOP-MARKET order', function (): void {
     $order = createBybitTestOrder('PLACE_STOP', ['type' => 'STOP-MARKET', 'side' => 'SELL']);
     $mapper = new BybitApiDataMapper;
 
@@ -124,7 +124,7 @@ test('preparePlaceOrderProperties sets trigger properties for STOP-MARKET order'
     expect($properties->get('options.triggerDirection'))->toBe(2);
 });
 
-test('preparePlaceOrderProperties sets trigger properties for TAKE-PROFIT order', function () {
+test('preparePlaceOrderProperties sets trigger properties for TAKE-PROFIT order', function (): void {
     $order = createBybitTestOrder('PLACE_TP', ['type' => 'TAKE-PROFIT', 'side' => 'SELL']);
     $mapper = new BybitApiDataMapper;
 
@@ -135,7 +135,7 @@ test('preparePlaceOrderProperties sets trigger properties for TAKE-PROFIT order'
     expect($properties->get('options.triggerDirection'))->toBe(2);
 });
 
-test('resolvePlaceOrderResponse parses Bybit response correctly', function () {
+test('resolvePlaceOrderResponse parses Bybit response correctly', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -157,7 +157,7 @@ test('resolvePlaceOrderResponse parses Bybit response correctly', function () {
 // MapsOrderQuery Tests
 // =============================================================================
 
-test('prepareOrderQueryProperties sets correct properties', function () {
+test('prepareOrderQueryProperties sets correct properties', function (): void {
     $order = createBybitTestOrder('QUERY');
     $mapper = new BybitApiDataMapper;
 
@@ -168,7 +168,7 @@ test('prepareOrderQueryProperties sets correct properties', function () {
     expect($properties->get('options.category'))->toBe('linear');
 });
 
-test('resolveOrderQueryResponse parses filled order correctly', function () {
+test('resolveOrderQueryResponse parses filled order correctly', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -196,7 +196,7 @@ test('resolveOrderQueryResponse parses filled order correctly', function () {
     expect($result['executed_quantity'])->toBe('0.10');
 });
 
-test('resolveOrderQueryResponse parses new order correctly', function () {
+test('resolveOrderQueryResponse parses new order correctly', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -215,7 +215,7 @@ test('resolveOrderQueryResponse parses new order correctly', function () {
     expect($result['status'])->toBe('NEW');
 });
 
-test('resolveOrderQueryResponse parses partially filled order correctly', function () {
+test('resolveOrderQueryResponse parses partially filled order correctly', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -234,7 +234,7 @@ test('resolveOrderQueryResponse parses partially filled order correctly', functi
     expect($result['status'])->toBe('PARTIALLY_FILLED');
 });
 
-test('resolveOrderQueryResponse handles not found order', function () {
+test('resolveOrderQueryResponse handles not found order', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -253,7 +253,7 @@ test('resolveOrderQueryResponse handles not found order', function () {
 // MapsOrderCancel Tests
 // =============================================================================
 
-test('prepareOrderCancelProperties sets correct properties', function () {
+test('prepareOrderCancelProperties sets correct properties', function (): void {
     $order = createBybitTestOrder('CANCEL');
     $mapper = new BybitApiDataMapper;
 
@@ -265,7 +265,7 @@ test('prepareOrderCancelProperties sets correct properties', function () {
     expect($properties->get('options.category'))->toBe('linear');
 });
 
-test('resolveOrderCancelResponse parses response correctly', function () {
+test('resolveOrderCancelResponse parses response correctly', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -283,7 +283,7 @@ test('resolveOrderCancelResponse parses response correctly', function () {
     expect($result['success'])->toBeTrue();
 });
 
-test('resolveOrderCancelResponse handles empty result', function () {
+test('resolveOrderCancelResponse handles empty result', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -299,7 +299,7 @@ test('resolveOrderCancelResponse handles empty result', function () {
 // MapsCancelOrders Tests
 // =============================================================================
 
-test('prepareCancelOrdersProperties sets correct properties', function () {
+test('prepareCancelOrdersProperties sets correct properties', function (): void {
     $position = createBybitTestPosition('CANCEL_ALL');
     $mapper = new BybitApiDataMapper;
 
@@ -310,7 +310,7 @@ test('prepareCancelOrdersProperties sets correct properties', function () {
     expect($properties->get('options.category'))->toBe('linear');
 });
 
-test('resolveCancelOrdersResponse parses cancelled order ids', function () {
+test('resolveCancelOrdersResponse parses cancelled order ids', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -334,7 +334,7 @@ test('resolveCancelOrdersResponse parses cancelled order ids', function () {
 // MapsOrderModify Tests
 // =============================================================================
 
-test('prepareOrderModifyProperties sets correct properties', function () {
+test('prepareOrderModifyProperties sets correct properties', function (): void {
     $order = createBybitTestOrder('MODIFY');
     $mapper = new BybitApiDataMapper;
 
@@ -346,7 +346,7 @@ test('prepareOrderModifyProperties sets correct properties', function () {
     expect($properties->get('options.category'))->toBe('linear');
 });
 
-test('resolveOrderModifyResponse parses amended order correctly', function () {
+test('resolveOrderModifyResponse parses amended order correctly', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -364,7 +364,7 @@ test('resolveOrderModifyResponse parses amended order correctly', function () {
     expect($result['status'])->toBe('AMENDED');
 });
 
-test('resolveOrderModifyResponse handles failure response', function () {
+test('resolveOrderModifyResponse handles failure response', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 10001,
@@ -381,7 +381,7 @@ test('resolveOrderModifyResponse handles failure response', function () {
 // MapsAccountQueryTrades Tests
 // =============================================================================
 
-test('prepareQueryTokenTradesProperties sets correct properties', function () {
+test('prepareQueryTokenTradesProperties sets correct properties', function (): void {
     $position = createBybitTestPosition('TRADES');
     $mapper = new BybitApiDataMapper;
 
@@ -393,7 +393,7 @@ test('prepareQueryTokenTradesProperties sets correct properties', function () {
     expect($properties->get('options.limit'))->toBe(50);
 });
 
-test('prepareQueryTokenTradesProperties includes cursor when provided', function () {
+test('prepareQueryTokenTradesProperties includes cursor when provided', function (): void {
     $position = createBybitTestPosition('TRADES_CURSOR');
     $mapper = new BybitApiDataMapper;
 
@@ -402,7 +402,7 @@ test('prepareQueryTokenTradesProperties includes cursor when provided', function
     expect($properties->get('options.cursor'))->toBe('next-page-cursor');
 });
 
-test('resolveQueryTradeResponse parses executions correctly', function () {
+test('resolveQueryTradeResponse parses executions correctly', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -440,7 +440,7 @@ test('resolveQueryTradeResponse parses executions correctly', function () {
 // MapsMarkPriceQuery Tests
 // =============================================================================
 
-test('prepareQueryMarkPriceProperties sets correct properties', function () {
+test('prepareQueryMarkPriceProperties sets correct properties', function (): void {
     $position = createBybitTestPosition('MARK_PRICE');
     $exchangeSymbol = $position->exchangeSymbol;
     $mapper = new BybitApiDataMapper;
@@ -452,7 +452,7 @@ test('prepareQueryMarkPriceProperties sets correct properties', function () {
     expect($properties->get('options.category'))->toBe('linear');
 });
 
-test('resolveQueryMarkPriceResponse returns mark price value', function () {
+test('resolveQueryMarkPriceResponse returns mark price value', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -474,7 +474,7 @@ test('resolveQueryMarkPriceResponse returns mark price value', function () {
     expect($result)->toBe('40099.75');
 });
 
-test('resolveQueryMarkPriceResponse returns null when list is empty', function () {
+test('resolveQueryMarkPriceResponse returns null when list is empty', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -492,7 +492,7 @@ test('resolveQueryMarkPriceResponse returns null when list is empty', function (
 // MapsTokenLeverageRatios Tests
 // =============================================================================
 
-test('prepareUpdateLeverageRatioProperties sets correct properties', function () {
+test('prepareUpdateLeverageRatioProperties sets correct properties', function (): void {
     $position = createBybitTestPosition('LEVERAGE');
     $mapper = new BybitApiDataMapper;
 
@@ -505,7 +505,7 @@ test('prepareUpdateLeverageRatioProperties sets correct properties', function ()
     expect($properties->get('options.sellLeverage'))->toBe('25');
 });
 
-test('resolveUpdateLeverageRatioResponse parses success response', function () {
+test('resolveUpdateLeverageRatioResponse parses success response', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -519,7 +519,7 @@ test('resolveUpdateLeverageRatioResponse parses success response', function () {
     expect($result['success'])->toBeTrue();
 });
 
-test('resolveUpdateLeverageRatioResponse handles failure response', function () {
+test('resolveUpdateLeverageRatioResponse handles failure response', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 10001,
@@ -536,7 +536,7 @@ test('resolveUpdateLeverageRatioResponse handles failure response', function () 
 // MapsSymbolMarginType Tests
 // =============================================================================
 
-test('prepareUpdateMarginTypeProperties sets correct properties', function () {
+test('prepareUpdateMarginTypeProperties sets correct properties', function (): void {
     $position = createBybitTestPosition('MARGIN_TYPE');
     $mapper = new BybitApiDataMapper;
 
@@ -560,7 +560,7 @@ test('prepareUpdateMarginTypeProperties sets correct properties', function () {
     expect($properties->get('options.sellLeverage'))->toBe($expectedLeverage);
 });
 
-test('resolveUpdateMarginTypeResponse parses success response', function () {
+test('resolveUpdateMarginTypeResponse parses success response', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -578,7 +578,7 @@ test('resolveUpdateMarginTypeResponse parses success response', function () {
 // Core Mapping Functions Tests
 // =============================================================================
 
-test('canonicalOrderType maps Bybit order types correctly', function () {
+test('canonicalOrderType maps Bybit order types correctly', function (): void {
     $mapper = new BybitApiDataMapper;
 
     expect($mapper->canonicalOrderType(['orderType' => 'Market']))->toBe('MARKET');
@@ -588,7 +588,7 @@ test('canonicalOrderType maps Bybit order types correctly', function () {
     expect($mapper->canonicalOrderType(['orderType' => 'Unknown']))->toBe('UNKNOWN');
 });
 
-test('identifyBaseAndQuote parses Bybit symbols correctly', function () {
+test('identifyBaseAndQuote parses Bybit symbols correctly', function (): void {
     $mapper = new BybitApiDataMapper;
 
     $btcUsdt = $mapper->identifyBaseAndQuote('BTCUSDT');
@@ -605,7 +605,7 @@ test('identifyBaseAndQuote parses Bybit symbols correctly', function () {
     expect($bnbPerp['quote'])->toBe('USDC');
 });
 
-test('baseWithQuote formats Bybit symbols correctly', function () {
+test('baseWithQuote formats Bybit symbols correctly', function (): void {
     $mapper = new BybitApiDataMapper;
 
     expect($mapper->baseWithQuote('BTC', 'USDT'))->toBe('BTCUSDT');
@@ -614,27 +614,27 @@ test('baseWithQuote formats Bybit symbols correctly', function () {
     expect($mapper->baseWithQuote('BNB', 'USDC'))->toBe('BNBPERP');
 });
 
-test('sideType converts canonical sides to Bybit format', function () {
+test('sideType converts canonical sides to Bybit format', function (): void {
     $mapper = new BybitApiDataMapper;
 
     expect($mapper->sideType('BUY'))->toBe('Buy');
     expect($mapper->sideType('SELL'))->toBe('Sell');
 });
 
-test('directionType converts canonical directions to Bybit format', function () {
+test('directionType converts canonical directions to Bybit format', function (): void {
     $mapper = new BybitApiDataMapper;
 
     expect($mapper->directionType('LONG'))->toBe('LONG');
     expect($mapper->directionType('SHORT'))->toBe('SHORT');
 });
 
-test('long returns uppercase LONG', function () {
+test('long returns uppercase LONG', function (): void {
     $mapper = new BybitApiDataMapper;
 
     expect($mapper->long())->toBe('LONG');
 });
 
-test('short returns uppercase SHORT', function () {
+test('short returns uppercase SHORT', function (): void {
     $mapper = new BybitApiDataMapper;
 
     expect($mapper->short())->toBe('SHORT');
@@ -644,7 +644,7 @@ test('short returns uppercase SHORT', function () {
 // Edge Cases Tests
 // =============================================================================
 
-test('resolvers handle empty data gracefully', function () {
+test('resolvers handle empty data gracefully', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -661,7 +661,7 @@ test('resolvers handle empty data gracefully', function () {
     expect($tradesResult)->toBeEmpty();
 });
 
-test('resolvers handle missing result key gracefully', function () {
+test('resolvers handle missing result key gracefully', function (): void {
     $mapper = new BybitApiDataMapper;
     $response = createBybitMockResponse([
         'retCode' => 0,
@@ -671,26 +671,26 @@ test('resolvers handle missing result key gracefully', function () {
     expect($placeResult['orderId'])->toBeNull();
 });
 
-test('sideType throws exception for invalid side', function () {
+test('sideType throws exception for invalid side', function (): void {
     $mapper = new BybitApiDataMapper;
 
-    expect(function () use ($mapper) {
+    expect(function () use ($mapper): void {
         $mapper->sideType('INVALID');
     })->toThrow(InvalidArgumentException::class);
 });
 
-test('directionType throws exception for invalid direction', function () {
+test('directionType throws exception for invalid direction', function (): void {
     $mapper = new BybitApiDataMapper;
 
-    expect(function () use ($mapper) {
+    expect(function () use ($mapper): void {
         $mapper->directionType('INVALID');
     })->toThrow(InvalidArgumentException::class);
 });
 
-test('identifyBaseAndQuote throws exception for invalid symbol format', function () {
+test('identifyBaseAndQuote throws exception for invalid symbol format', function (): void {
     $mapper = new BybitApiDataMapper;
 
-    expect(function () use ($mapper) {
+    expect(function () use ($mapper): void {
         $mapper->identifyBaseAndQuote('INVALID');
     })->toThrow(InvalidArgumentException::class);
 });

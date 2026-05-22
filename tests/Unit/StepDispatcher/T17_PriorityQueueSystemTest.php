@@ -14,7 +14,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher', 'priority-queue');
 
-it('cleans laravel.log', function () {
+it('cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -24,7 +24,7 @@ it('cleans laravel.log', function () {
 // PRIORITY ESCALATION TESTS
 // ========================================================================
 
-it('escalates step to high priority when retries reach 50% threshold', function () {
+it('escalates step to high priority when retries reach 50% threshold', function (): void {
     $group = 'test-priority-escalation';
 
     // Create step with retries already at 5 (50% of max 10)
@@ -55,7 +55,7 @@ it('escalates step to high priority when retries reach 50% threshold', function 
         ->and($step->state)->toBeInstanceOf(Pending::class);
 });
 
-it('does not escalate step to high priority when retries below 50% threshold', function () {
+it('does not escalate step to high priority when retries below 50% threshold', function (): void {
     $block = (string) Str::uuid();
 
     // Create step with retries at 3 (30% of max 10)
@@ -82,7 +82,7 @@ it('does not escalate step to high priority when retries below 50% threshold', f
     expect($step->priority)->toBe('default');
 });
 
-it('preserves high priority on subsequent retries', function () {
+it('preserves high priority on subsequent retries', function (): void {
     $block = (string) Str::uuid();
 
     // Create step already at high priority
@@ -113,7 +113,7 @@ it('preserves high priority on subsequent retries', function () {
 // PRIORITY FILTERING TESTS
 // ========================================================================
 
-it('dispatches only high-priority steps when mixed priorities exist', function () {
+it('dispatches only high-priority steps when mixed priorities exist', function (): void {
     $group = 'test-mixed-priorities';
 
     // Create 3 default priority steps (no index - independent)
@@ -167,7 +167,7 @@ it('dispatches only high-priority steps when mixed priorities exist', function (
         ->and($defaultSteps[2]->state)->toBeInstanceOf(Pending::class);
 });
 
-it('dispatches default priority steps when no high-priority steps exist', function () {
+it('dispatches default priority steps when no high-priority steps exist', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -188,7 +188,7 @@ it('dispatches default priority steps when no high-priority steps exist', functi
         ->test();
 });
 
-it('processes high-priority steps first across multiple dispatch cycles', function () {
+it('processes high-priority steps first across multiple dispatch cycles', function (): void {
     $group = 'test-multi-dispatch';
 
     // Create 2 default priority steps (no index - independent)
@@ -272,7 +272,7 @@ it('processes high-priority steps first across multiple dispatch cycles', functi
 // EDGE CASES
 // ========================================================================
 
-it('always assigns a group via observer even when created with NULL group', function () {
+it('always assigns a group via observer even when created with NULL group', function (): void {
     // Create a dispatcher group first so getDispatchGroup() can return it
     StepsDispatcher::create(['group' => 'auto-test-group', 'can_dispatch' => true]);
 
@@ -312,7 +312,7 @@ it('always assigns a group via observer even when created with NULL group', func
     expect($step2->state)->toBeInstanceOf(Completed::class);
 });
 
-it('does not escalate priority on non-retry state transitions', function () {
+it('does not escalate priority on non-retry state transitions', function (): void {
     $group = 'test-skip-no-escalate';
 
     $step = Step::create([
@@ -340,7 +340,7 @@ it('does not escalate priority on non-retry state transitions', function () {
         ->and($step->priority)->toBe('default');
 });
 
-it('handles zero retries threshold correctly', function () {
+it('handles zero retries threshold correctly', function (): void {
     $block = (string) Str::uuid();
 
     // Create step with 0 retries
@@ -367,7 +367,7 @@ it('handles zero retries threshold correctly', function () {
     expect($step->priority)->toBe('default');
 });
 
-it('handles max retries threshold correctly', function () {
+it('handles max retries threshold correctly', function (): void {
     $group = 'test-max-retries';
 
     // Create step at max retries (10)

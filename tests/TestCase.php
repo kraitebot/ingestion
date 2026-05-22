@@ -30,7 +30,7 @@ abstract class TestCase extends BaseTestCase
             static::$parallelHooksRegistered = true;
 
             // Cleanup hook: drop parallel test databases after all tests complete
-            ParallelTesting::tearDownProcess(static function (#[\SensitiveParameter] int $token) {
+            ParallelTesting::tearDownProcess(static function (#[\SensitiveParameter] int $token): void {
                 $testDatabase = config('database.connections.mysql.database').'_test_'.$token;
 
                 try {

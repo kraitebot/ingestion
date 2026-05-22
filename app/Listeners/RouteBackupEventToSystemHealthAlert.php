@@ -23,7 +23,7 @@ use Throwable;
  */
 final class RouteBackupEventToSystemHealthAlert
 {
-    public const THROTTLE_SECONDS = 3600;
+    public const int THROTTLE_SECONDS = 3600;
 
     public function handleBackupHasFailed(BackupHasFailed $event): void
     {

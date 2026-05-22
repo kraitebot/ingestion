@@ -11,7 +11,7 @@ use Kraite\Core\Notifications\AlertNotification;
 
 uses(RefreshDatabase::class)->group('billing', 'cron');
 
-beforeEach(function () {
+beforeEach(function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 });
@@ -34,9 +34,9 @@ function tier(string $canonical, float $monthly, int $trialDays = 7): Subscripti
 function billable(
     float $balance,
     ?int $tierId = null,
-    ?\DateTimeInterface $trialStart = null,
-    ?\DateTimeInterface $renewsAt = null,
-    ?\DateTimeInterface $pausedAt = null,
+    ?DateTimeInterface $trialStart = null,
+    ?DateTimeInterface $renewsAt = null,
+    ?DateTimeInterface $pausedAt = null,
 ): User {
     return User::factory()->create([
         'is_active' => true,
@@ -48,7 +48,7 @@ function billable(
     ]);
 }
 
-it('renews a user whose anchor is due and writes the ledger row', function () {
+it('renews a user whose anchor is due and writes the ledger row', function (): void {
     $tier = tier('starter', 75);
     $user = billable(
         balance: 200,
@@ -69,7 +69,7 @@ it('renews a user whose anchor is due and writes the ledger row', function () {
     expect($tx->meta['subscription_canonical'])->toBe('starter');
 });
 
-it('pushes the renewal anchor forward by exactly one month after a successful renewal', function () {
+it('pushes the renewal anchor forward by exactly one month after a successful renewal', function (): void {
     $tier = tier('starter', 75);
     $anchor = now()->subDay();
     $user = billable(
@@ -86,7 +86,7 @@ it('pushes the renewal anchor forward by exactly one month after a successful re
         ->toBe($expected->toDateString());
 });
 
-it('skips users whose anchor is still in the future', function () {
+it('skips users whose anchor is still in the future', function (): void {
     $tier = tier('starter', 75);
     $anchor = now()->addDays(15);
     $user = billable(
@@ -102,7 +102,7 @@ it('skips users whose anchor is still in the future', function () {
     expect(WalletTransaction::where('user_id', $user->id)->count())->toBe(0);
 });
 
-it('skips users currently in their trial window', function () {
+it('skips users currently in their trial window', function (): void {
     $tier = tier('starter', 75, trialDays: 7);
     $user = billable(
         balance: 200,
@@ -117,7 +117,7 @@ it('skips users currently in their trial window', function () {
     expect(WalletTransaction::where('user_id', $user->id)->count())->toBe(0);
 });
 
-it('skips paused users', function () {
+it('skips paused users', function (): void {
     $tier = tier('starter', 75);
     $user = billable(
         balance: 200,
@@ -133,7 +133,7 @@ it('skips paused users', function () {
     expect(WalletTransaction::where('user_id', $user->id)->count())->toBe(0);
 });
 
-it('fires closing-mode notification when balance cannot cover the monthly rate', function () {
+it('fires closing-mode notification when balance cannot cover the monthly rate', function (): void {
     $tier = tier('starter', 75);
     $user = billable(
         balance: 30,
@@ -154,7 +154,7 @@ it('fires closing-mode notification when balance cannot cover the monthly rate',
     );
 });
 
-it('fires low-balance pre-warning 7 days before renewal when wallet is short', function () {
+it('fires low-balance pre-warning 7 days before renewal when wallet is short', function (): void {
     $tier = tier('starter', 75);
     $user = billable(
         balance: 30,
@@ -172,7 +172,7 @@ it('fires low-balance pre-warning 7 days before renewal when wallet is short', f
     );
 });
 
-it('does not fire low-balance pre-warning when wallet covers the next renewal', function () {
+it('does not fire low-balance pre-warning when wallet covers the next renewal', function (): void {
     $tier = tier('starter', 75);
     $user = billable(
         balance: 200,
@@ -186,7 +186,7 @@ it('does not fire low-balance pre-warning when wallet covers the next renewal', 
     Notification::assertNothingSent();
 });
 
-it('does not fire low-balance pre-warning outside the 7-day window', function () {
+it('does not fire low-balance pre-warning outside the 7-day window', function (): void {
     $tier = tier('starter', 75);
     $user = billable(
         balance: 30,
@@ -200,7 +200,7 @@ it('does not fire low-balance pre-warning outside the 7-day window', function ()
     Notification::assertNothingSent();
 });
 
-it('fires trial-ending pre-warning 2 days before trial expiry when wallet is short', function () {
+it('fires trial-ending pre-warning 2 days before trial expiry when wallet is short', function (): void {
     $tier = tier('starter', 75, trialDays: 7);
     $user = billable(
         balance: 30,
@@ -218,7 +218,7 @@ it('fires trial-ending pre-warning 2 days before trial expiry when wallet is sho
     );
 });
 
-it('does not fire trial-ending pre-warning when wallet already covers first renewal', function () {
+it('does not fire trial-ending pre-warning when wallet already covers first renewal', function (): void {
     $tier = tier('starter', 75, trialDays: 7);
     $user = billable(
         balance: 200,
@@ -232,7 +232,7 @@ it('does not fire trial-ending pre-warning when wallet already covers first rene
     Notification::assertNothingSent();
 });
 
-it('processes multiple billable users independently in one run', function () {
+it('processes multiple billable users independently in one run', function (): void {
     $tier = tier('starter', 75);
 
     $okUser = billable(
@@ -269,7 +269,7 @@ it('processes multiple billable users independently in one run', function () {
     );
 });
 
-it('skips inactive users entirely', function () {
+it('skips inactive users entirely', function (): void {
     $tier = tier('starter', 75);
     $user = User::factory()->create([
         'is_active' => false,
@@ -283,7 +283,7 @@ it('skips inactive users entirely', function () {
     expect((float) $user->refresh()->wallet_balance_usdt)->toEqual(200.0);
 });
 
-it('skips users with no subscription assigned', function () {
+it('skips users with no subscription assigned', function (): void {
     $user = User::factory()->create([
         'is_active' => true,
         'subscription_id' => null,
@@ -295,7 +295,7 @@ it('skips users with no subscription assigned', function () {
     expect((float) $user->refresh()->wallet_balance_usdt)->toEqual(200.0);
 });
 
-it('writes nothing in dry-run mode', function () {
+it('writes nothing in dry-run mode', function (): void {
     $tier = tier('starter', 75);
     $user = billable(
         balance: 200,
@@ -310,7 +310,7 @@ it('writes nothing in dry-run mode', function () {
     expect(WalletTransaction::where('user_id', $user->id)->count())->toBe(0);
 });
 
-it('reads the monthly rate live from the subscriptions table on each run', function () {
+it('reads the monthly rate live from the subscriptions table on each run', function (): void {
     $tier = tier('starter', 75);
     $user = billable(
         balance: 500,

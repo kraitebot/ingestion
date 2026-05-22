@@ -40,13 +40,11 @@ function fakeBackup(string $path, string $isoDateTime): object
 
 function buildStrategy(): TieredStrategy
 {
-    // The `Config` ctor arg is unused by `selectKeepPaths()`; pass
-    // a minimal stub so the abstract parent's typed property accepts
-    // construction.
-    return new class extends TieredStrategy
-    {
-        public function __construct() {}
-    };
+    // `selectKeepPaths()` does not read any constructor state, so the
+    // parent `CleanupStrategy` typed property is left uninitialised by
+    // bypassing the constructor entirely. Reflection keeps the test
+    // compatible with `final class TieredStrategy` (no subclass needed).
+    return (new ReflectionClass(TieredStrategy::class))->newInstanceWithoutConstructor();
 }
 
 it('keeps the newest N as the hourly tier', function (): void {

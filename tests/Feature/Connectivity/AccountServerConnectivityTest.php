@@ -63,7 +63,7 @@ function runConnectivityParentStep(Step $parent, Account $account): void
     $compute();
 }
 
-it('starts an account connectivity workflow with immediate server rows', function () {
+it('starts an account connectivity workflow with immediate server rows', function (): void {
     $account = createConnectivityAccount();
     createConnectivityServer(['hostname' => 'apollo', 'ip_address' => '203.0.113.10']);
     createConnectivityServer(['hostname' => 'ares', 'ip_address' => '203.0.113.11']);
@@ -83,7 +83,7 @@ it('starts an account connectivity workflow with immediate server rows', functio
     ]);
 });
 
-it('fans out child checks only to API execution servers that need whitelisting', function () {
+it('fans out child checks only to API execution servers that need whitelisting', function (): void {
     config(['step-dispatcher.queues.valid' => ['apollo', 'ares']]);
 
     $account = createConnectivityAccount();
@@ -106,7 +106,7 @@ it('fans out child checks only to API execution servers that need whitelisting',
         ->and($children->pluck('arguments.serverId')->sort()->values()->all())->toBe([$apollo->id, $ares->id]);
 });
 
-it('maps per-server step states into console connectivity statuses', function () {
+it('maps per-server step states into console connectivity statuses', function (): void {
     $account = createConnectivityAccount();
     $apollo = createConnectivityServer(['hostname' => 'apollo', 'ip_address' => '203.0.113.10']);
     $ares = createConnectivityServer(['hostname' => 'ares', 'ip_address' => '203.0.113.11']);
@@ -130,7 +130,7 @@ it('maps per-server step states into console connectivity statuses', function ()
         ->and($rows['ares']['can_notify_user'])->toBeTrue();
 });
 
-it('sends the existing whitelist notification for a failed server result', function () {
+it('sends the existing whitelist notification for a failed server result', function (): void {
     config(['kraite.notifications_enabled' => true]);
     NotificationFacade::fake();
 

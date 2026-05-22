@@ -14,7 +14,7 @@ use Tests\Support\TestBitgetApiableJob;
 
 uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'bitget', 'position-mode');
 
-beforeEach(function () {
+beforeEach(function (): void {
     Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
@@ -68,7 +68,7 @@ function buildBitgetOneWayAccount(): Account
     ]);
 }
 
-it('flips on_hedge_mode from true to false when Bitget returns 40774', function () {
+it('flips on_hedge_mode from true to false when Bitget returns 40774', function (): void {
     $account = buildBitgetHedgeAccount();
 
     expect($account->on_hedge_mode)->toBeTrue();
@@ -100,7 +100,7 @@ it('flips on_hedge_mode from true to false when Bitget returns 40774', function 
     expect($step->dispatch_after->isFuture())->toBeTrue();
 });
 
-it('flips on_hedge_mode from false to true when Bitget returns 40774', function () {
+it('flips on_hedge_mode from false to true when Bitget returns 40774', function (): void {
     $account = buildBitgetOneWayAccount();
 
     expect($account->on_hedge_mode)->toBeFalse();
@@ -126,7 +126,7 @@ it('flips on_hedge_mode from false to true when Bitget returns 40774', function 
     );
 });
 
-it('writes Log::warning AND Account::modelLog when flipping a Bitget account', function () {
+it('writes Log::warning AND Account::modelLog when flipping a Bitget account', function (): void {
     $account = buildBitgetHedgeAccount();
     Log::spy();
 
@@ -165,7 +165,7 @@ it('writes Log::warning AND Account::modelLog when flipping a Bitget account', f
     expect($logRow->metadata['new'] ?? null)->toBeFalse();
 });
 
-it('does NOT flip on an unrelated Bitget RequestException (rate-limited)', function () {
+it('does NOT flip on an unrelated Bitget RequestException (rate-limited)', function (): void {
     $account = buildBitgetHedgeAccount();
 
     $step = StepTester::createSteps([

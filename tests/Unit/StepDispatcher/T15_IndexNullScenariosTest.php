@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: Multiple steps with index=null in same block
 // All should dispatch in parallel (no dependency)
-it('dispatches all index null steps in parallel', function () {
+it('dispatches all index null steps in parallel', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -40,7 +40,7 @@ it('dispatches all index null steps in parallel', function () {
 
 // Schematic: Mixed index=null and index=1 in same block
 // index=null should dispatch immediately, index=1 waits for conclusion
-it('dispatches index null before index 1', function () {
+it('dispatches index null before index 1', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -62,7 +62,7 @@ it('dispatches index null before index 1', function () {
 
 // Schematic: index=null child step with running parent
 // index=null child can dispatch when parent is running
-it('dispatches index null child when parent is running', function () {
+it('dispatches index null child when parent is running', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -88,7 +88,7 @@ it('dispatches index null child when parent is running', function () {
 
 // Schematic: index=null with resolve-exception type
 // resolve-exception with null index should follow resolve-exception rules
-it('handles index null resolve-exception step', function () {
+it('handles index null resolve-exception step', function (): void {
     $block = (string) Str::uuid();
 
     $defaultStep = StepTester::createSteps([
@@ -116,7 +116,7 @@ it('handles index null resolve-exception step', function () {
 
 // Schematic: index=null in sequence with indexed steps
 // Null should dispatch first, then indexed steps follow
-it('dispatches index null first in mixed sequence', function () {
+it('dispatches index null first in mixed sequence', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -140,7 +140,7 @@ it('dispatches index null first in mixed sequence', function () {
 
 // Schematic: index=null step fails
 // index=null failure doesn't block other steps from executing
-it('does not block other steps when index null fails', function () {
+it('does not block other steps when index null fails', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -164,7 +164,7 @@ it('does not block other steps when index null fails', function () {
 
 // Schematic: index=null orphan step
 // Should dispatch immediately (no dependencies)
-it('dispatches index null orphan step immediately', function () {
+it('dispatches index null orphan step immediately', function (): void {
     $step = StepTester::createSteps([
         ['index' => null], // Orphan with null index
     ], TestQueueableJob::class)[0];
@@ -181,7 +181,7 @@ it('dispatches index null orphan step immediately', function () {
 
 // Schematic: Multiple index=null at different positions in block
 // All should dispatch together regardless of creation order
-it('dispatches all index null steps together regardless of position', function () {
+it('dispatches all index null steps together regardless of position', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([

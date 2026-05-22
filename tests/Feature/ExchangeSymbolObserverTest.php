@@ -8,7 +8,7 @@ use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\TokenMapper;
 use Kraite\Core\Observers\ExchangeSymbolObserver;
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Reset the cached Binance system ID between tests
     ExchangeSymbolObserver::resetBinanceSystemIdCache();
 });
@@ -59,7 +59,7 @@ function createBinanceTradeable(ApiSystem $binance, string $token): ExchangeSymb
 // overlaps_with_binance auto-assignment
 // =====================================
 
-test('sets overlaps_with_binance to true for Binance symbols on creation', function () {
+test('sets overlaps_with_binance to true for Binance symbols on creation', function (): void {
     $binance = createBinanceApiSystem();
 
     $exchangeSymbol = ExchangeSymbol::factory()->create([
@@ -70,7 +70,7 @@ test('sets overlaps_with_binance to true for Binance symbols on creation', funct
     expect($exchangeSymbol->overlaps_with_binance)->toBeTrue();
 });
 
-test('sets overlaps_with_binance to true for non-Binance symbols when token exists on Binance', function () {
+test('sets overlaps_with_binance to true for non-Binance symbols when token exists on Binance', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 
@@ -89,7 +89,7 @@ test('sets overlaps_with_binance to true for non-Binance symbols when token exis
     expect($kucoinSymbol->overlaps_with_binance)->toBeTrue();
 });
 
-test('sets overlaps_with_binance to false for non-Binance symbols when token does not exist on Binance', function () {
+test('sets overlaps_with_binance to false for non-Binance symbols when token does not exist on Binance', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 
@@ -102,7 +102,7 @@ test('sets overlaps_with_binance to false for non-Binance symbols when token doe
     expect($kucoinSymbol->overlaps_with_binance)->toBeFalse();
 });
 
-test('sets overlaps_with_binance via TokenMapper for different token names', function () {
+test('sets overlaps_with_binance via TokenMapper for different token names', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 
@@ -132,7 +132,7 @@ test('sets overlaps_with_binance via TokenMapper for different token names', fun
 // Tradeable field propagation
 // =====================================
 
-test('propagates direction change from Binance to overlapping symbols on other exchanges', function () {
+test('propagates direction change from Binance to overlapping symbols on other exchanges', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 
@@ -156,7 +156,7 @@ test('propagates direction change from Binance to overlapping symbols on other e
     expect($kucoinSymbol->direction)->toBe('SHORT');
 });
 
-test('propagates has_invalid_indicator_direction from Binance to overlapping symbols', function () {
+test('propagates has_invalid_indicator_direction from Binance to overlapping symbols', function (): void {
     $binance = createBinanceApiSystem();
     $bybit = createOtherExchangeApiSystem('bybit', 'Bybit');
 
@@ -182,7 +182,7 @@ test('propagates has_invalid_indicator_direction from Binance to overlapping sym
     expect($bybitSymbol->direction)->toBeNull();
 });
 
-test('propagates all tradeable fields from Binance to overlapping symbols', function () {
+test('propagates all tradeable fields from Binance to overlapping symbols', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 
@@ -230,7 +230,7 @@ test('propagates all tradeable fields from Binance to overlapping symbols', func
     expect($kucoinSymbol->has_invalid_indicator_direction)->toBeFalse();
 });
 
-test('propagates has_taapi_data status from Binance to overlapping symbols', function () {
+test('propagates has_taapi_data status from Binance to overlapping symbols', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 
@@ -265,7 +265,7 @@ test('propagates has_taapi_data status from Binance to overlapping symbols', fun
     expect($kucoinSymbol->api_statuses['has_taapi_data'])->toBeTrue();
 });
 
-test('does not propagate to symbols with overlaps_with_binance = false', function () {
+test('does not propagate to symbols with overlaps_with_binance = false', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 
@@ -293,7 +293,7 @@ test('does not propagate to symbols with overlaps_with_binance = false', functio
     expect($kucoinSymbol->direction)->toBe('LONG');
 });
 
-test('does not propagate from non-Binance symbols', function () {
+test('does not propagate from non-Binance symbols', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
     $bybit = createOtherExchangeApiSystem('bybit', 'Bybit');
@@ -334,7 +334,7 @@ test('does not propagate from non-Binance symbols', function () {
 // TokenMapper propagation
 // =====================================
 
-test('propagates tradeable fields via TokenMapper for different token names', function () {
+test('propagates tradeable fields via TokenMapper for different token names', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 
@@ -367,7 +367,7 @@ test('propagates tradeable fields via TokenMapper for different token names', fu
     expect($kucoinSymbol->has_invalid_indicator_direction)->toBeTrue();
 });
 
-test('propagates to multiple exchanges via TokenMapper', function () {
+test('propagates to multiple exchanges via TokenMapper', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem('kucoin', 'KuCoin');
     $bybit = createOtherExchangeApiSystem('bybit', 'Bybit');
@@ -418,7 +418,7 @@ test('propagates to multiple exchanges via TokenMapper', function () {
 // Default api_statuses on creation
 // =====================================
 
-test('sets default api_statuses on creation when symbol_id is null', function () {
+test('sets default api_statuses on creation when symbol_id is null', function (): void {
     $binance = createBinanceApiSystem();
 
     $symbol = ExchangeSymbol::factory()->create([
@@ -432,7 +432,7 @@ test('sets default api_statuses on creation when symbol_id is null', function ()
     expect($symbol->api_statuses['has_taapi_data'])->toBeFalse();
 });
 
-test('sets cmc_api_called to true when symbol_id is provided on creation', function () {
+test('sets cmc_api_called to true when symbol_id is provided on creation', function (): void {
     $binance = createBinanceApiSystem();
     $cmcSymbol = Symbol::factory()->create(['token' => 'BTC']);
 
@@ -449,7 +449,7 @@ test('sets cmc_api_called to true when symbol_id is provided on creation', funct
 // Edge cases
 // =====================================
 
-test('handles propagation when no overlapping symbols exist', function () {
+test('handles propagation when no overlapping symbols exist', function (): void {
     $binance = createBinanceApiSystem();
 
     // Create Binance symbol with no overlapping symbols on other exchanges
@@ -463,7 +463,7 @@ test('handles propagation when no overlapping symbols exist', function () {
     expect($binanceSymbol->direction)->toBe('SHORT');
 });
 
-test('only propagates when tradeable fields actually changed', function () {
+test('only propagates when tradeable fields actually changed', function (): void {
     $binance = createBinanceApiSystem();
     $kucoin = createOtherExchangeApiSystem();
 

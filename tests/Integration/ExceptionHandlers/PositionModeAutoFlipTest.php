@@ -14,7 +14,7 @@ use Tests\Support\TestBinanceApiableJob;
 
 uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'binance', 'position-mode');
 
-beforeEach(function () {
+beforeEach(function (): void {
     Kraite::create([
         'id' => 1,
         'email' => 'admin@test.com',
@@ -69,7 +69,7 @@ function buildOneWayAccount(): Account
     ]);
 }
 
-it('flips on_hedge_mode from true to false when Binance returns -4061', function () {
+it('flips on_hedge_mode from true to false when Binance returns -4061', function (): void {
     $account = buildHedgeAccount();
 
     expect($account->on_hedge_mode)->toBeTrue();
@@ -100,7 +100,7 @@ it('flips on_hedge_mode from true to false when Binance returns -4061', function
     expect($step->dispatch_after->isFuture())->toBeTrue();
 });
 
-it('flips on_hedge_mode from false to true when Binance returns -4061', function () {
+it('flips on_hedge_mode from false to true when Binance returns -4061', function (): void {
     $account = buildOneWayAccount();
 
     expect($account->on_hedge_mode)->toBeFalse();
@@ -126,7 +126,7 @@ it('flips on_hedge_mode from false to true when Binance returns -4061', function
     );
 });
 
-it('flips on -4060 (INVALID_POSITION_SIDE) — family-of-codes coverage', function () {
+it('flips on -4060 (INVALID_POSITION_SIDE) — family-of-codes coverage', function (): void {
     $account = buildHedgeAccount();
 
     $step = StepTester::createSteps([
@@ -144,7 +144,7 @@ it('flips on -4060 (INVALID_POSITION_SIDE) — family-of-codes coverage', functi
     expect($account->fresh()->on_hedge_mode)->toBeFalse();
 });
 
-it('flips on -4062 (REDUCE_ONLY_CONFLICT) — family-of-codes coverage', function () {
+it('flips on -4062 (REDUCE_ONLY_CONFLICT) — family-of-codes coverage', function (): void {
     $account = buildHedgeAccount();
 
     $step = StepTester::createSteps([
@@ -162,7 +162,7 @@ it('flips on -4062 (REDUCE_ONLY_CONFLICT) — family-of-codes coverage', functio
     expect($account->fresh()->on_hedge_mode)->toBeFalse();
 });
 
-it('writes Log::warning AND Account::modelLog when flipping', function () {
+it('writes Log::warning AND Account::modelLog when flipping', function (): void {
     $account = buildHedgeAccount();
     Log::spy();
 
@@ -201,7 +201,7 @@ it('writes Log::warning AND Account::modelLog when flipping', function () {
     expect($logRow->metadata['new'] ?? null)->toBeFalse();
 });
 
-it('does NOT flip on an unrelated RequestException (-2015 IP not whitelisted)', function () {
+it('does NOT flip on an unrelated RequestException (-2015 IP not whitelisted)', function (): void {
     $account = buildHedgeAccount();
 
     $step = StepTester::createSteps([

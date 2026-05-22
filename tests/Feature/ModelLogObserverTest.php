@@ -5,12 +5,12 @@ declare(strict_types=1);
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\ModelLog;
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Ensure ModelLog is enabled for all tests
     ModelLog::enable();
 });
 
-test('logs all initial attribute values when model is created', function () {
+test('logs all initial attribute values when model is created', function (): void {
     // Create a new ExchangeSymbol
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'has_no_indicator_data' => false,
@@ -34,7 +34,7 @@ test('logs all initial attribute values when model is created', function () {
     expect($hasNoIndicatorDataLog->new_value)->toBe('0');
 });
 
-test('does not create false positive log when boolean value does not actually change', function () {
+test('does not create false positive log when boolean value does not actually change', function (): void {
     // Create a new ExchangeSymbol with has_no_indicator_data = false (stored as 0 in DB)
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'has_no_indicator_data' => false,
@@ -63,7 +63,7 @@ test('does not create false positive log when boolean value does not actually ch
     expect($logCountAfter)->toBe($logCountBefore);
 });
 
-test('creates proper log when boolean value actually changes', function () {
+test('creates proper log when boolean value actually changes', function (): void {
     // Create a new ExchangeSymbol with has_no_indicator_data = false (stored as 0 in DB)
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'has_no_indicator_data' => false,
@@ -87,7 +87,7 @@ test('creates proper log when boolean value actually changes', function () {
     expect($log->new_value)->toBe('1');
 });
 
-test('stores RAW database values in logs, not casted values', function () {
+test('stores RAW database values in logs, not casted values', function (): void {
     // Create a new ExchangeSymbol
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'has_no_indicator_data' => false,
@@ -124,7 +124,7 @@ test('stores RAW database values in logs, not casted values', function () {
     expect($isManuallyEnabledLog->new_value)->not->toBe(false);     // Not boolean
 });
 
-test('does not log changes to globally blacklisted attributes', function () {
+test('does not log changes to globally blacklisted attributes', function (): void {
     // Create a new ExchangeSymbol
     $exchangeSymbol = ExchangeSymbol::factory()->create();
 
@@ -141,7 +141,7 @@ test('does not log changes to globally blacklisted attributes', function () {
     expect($log)->toBeNull();
 });
 
-test('correctly handles multiple consecutive updates without false positives', function () {
+test('correctly handles multiple consecutive updates without false positives', function (): void {
     // Create a new ExchangeSymbol
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'has_no_indicator_data' => false,
@@ -179,7 +179,7 @@ test('correctly handles multiple consecutive updates without false positives', f
     expect($logs[1]->new_value)->toBe('0');
 });
 
-test('properly JSON encodes array attributes for storage in LONGTEXT columns', function () {
+test('properly JSON encodes array attributes for storage in LONGTEXT columns', function (): void {
     // Create an ExchangeSymbol with array attributes
     $symbolInfo = [
         'pair' => 'BTCUSDT',
@@ -211,7 +211,7 @@ test('properly JSON encodes array attributes for storage in LONGTEXT columns', f
     expect($decodedValue['pricePrecision'])->toBe(2);
 });
 
-test('handles array attribute changes without array-to-string conversion errors', function () {
+test('handles array attribute changes without array-to-string conversion errors', function (): void {
     // Create an ExchangeSymbol with initial symbol_information
     $initialInfo = [
         'pair' => 'BTCUSDT',
@@ -256,7 +256,7 @@ test('handles array attribute changes without array-to-string conversion errors'
     expect($decodedNew['status'])->toBe('PAUSED');
 });
 
-test('stores large messages in LONGTEXT column without truncation errors', function () {
+test('stores large messages in LONGTEXT column without truncation errors', function (): void {
     // Create a large message by using a big array attribute
     $largeArray = [];
     for ($i = 0; $i < 1000; $i++) {
@@ -286,7 +286,7 @@ test('stores large messages in LONGTEXT column without truncation errors', funct
     expect(count($decoded))->toBe(1000);
 });
 
-test('does not log Step model changes to reduce high-frequency noise', function () {
+test('does not log Step model changes to reduce high-frequency noise', function (): void {
     $logCountBefore = ModelLog::count();
 
     // Create a Step
@@ -307,7 +307,7 @@ test('does not log Step model changes to reduce high-frequency noise', function 
     expect($stepLogs)->toBe(0);
 });
 
-test('does not log StepsDispatcherTicks model changes to reduce high-frequency noise', function () {
+test('does not log StepsDispatcherTicks model changes to reduce high-frequency noise', function (): void {
     $logCountBefore = ModelLog::count();
 
     // Create a StepsDispatcherTicks
@@ -331,7 +331,7 @@ test('does not log StepsDispatcherTicks model changes to reduce high-frequency n
     expect($tickLogs)->toBe(0);
 });
 
-test('does not log ApiRequestLog model changes to reduce high-frequency noise', function () {
+test('does not log ApiRequestLog model changes to reduce high-frequency noise', function (): void {
     // Create an ApiRequestLog (factory also creates ApiSystem which IS logged)
     $apiLog = Kraite\Core\Models\ApiRequestLog::factory()->create();
 
@@ -346,7 +346,7 @@ test('does not log ApiRequestLog model changes to reduce high-frequency noise', 
     expect($apiLogs)->toBe(0);
 });
 
-test('does not log AccountBalanceHistory model changes to reduce high-frequency noise', function () {
+test('does not log AccountBalanceHistory model changes to reduce high-frequency noise', function (): void {
     // Create an Account first (required for AccountBalanceHistory)
     $account = Kraite\Core\Models\Account::factory()->create();
 
@@ -370,7 +370,7 @@ test('does not log AccountBalanceHistory model changes to reduce high-frequency 
     expect($balanceLogs)->toBe(0);
 });
 
-test('does not log SlowQuery model changes to reduce high-frequency noise', function () {
+test('does not log SlowQuery model changes to reduce high-frequency noise', function (): void {
     $logCountBefore = ModelLog::count();
 
     // Create a SlowQuery
@@ -396,7 +396,7 @@ test('does not log SlowQuery model changes to reduce high-frequency noise', func
     expect($slowQueryLogs)->toBe(0);
 });
 
-test('DOES log Account model changes (allowlist)', function () {
+test('DOES log Account model changes (allowlist)', function (): void {
     // Create an Account
     $account = Kraite\Core\Models\Account::factory()->create();
 
@@ -408,7 +408,7 @@ test('DOES log Account model changes (allowlist)', function () {
     expect($accountLogs)->toBeGreaterThan(0);
 });
 
-test('DOES log Symbol model changes (allowlist)', function () {
+test('DOES log Symbol model changes (allowlist)', function (): void {
     // Create a Symbol
     $symbol = Kraite\Core\Models\Symbol::factory()->create();
 
@@ -420,7 +420,7 @@ test('DOES log Symbol model changes (allowlist)', function () {
     expect($symbolLogs)->toBeGreaterThan(0);
 });
 
-test('does not create false positive log when numeric string equals numeric value', function () {
+test('does not create false positive log when numeric string equals numeric value', function (): void {
     // Create ExchangeSymbol with min_notional as string "100.5"
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'min_notional' => '100.5',
@@ -448,7 +448,7 @@ test('does not create false positive log when numeric string equals numeric valu
     expect($logCountAfter)->toBe($logCountBefore);
 });
 
-test('does not create false positive log when numeric precision differs', function () {
+test('does not create false positive log when numeric precision differs', function (): void {
     // Create ExchangeSymbol with min_notional as 5.0
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'min_notional' => 5.0,
@@ -476,7 +476,7 @@ test('does not create false positive log when numeric precision differs', functi
     expect($logCountAfter)->toBe($logCountBefore);
 });
 
-test('does not create false positive log when integer equals float with .0', function () {
+test('does not create false positive log when integer equals float with .0', function (): void {
     // Create ExchangeSymbol with min_notional as integer 5
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'min_notional' => 5,
@@ -504,7 +504,7 @@ test('does not create false positive log when integer equals float with .0', fun
     expect($logCountAfter)->toBe($logCountBefore);
 });
 
-test('does not create false positive log when JSON key order differs', function () {
+test('does not create false positive log when JSON key order differs', function (): void {
     // Create ExchangeSymbol with symbol_information in one key order
     $initialData = [
         'pair' => 'BTCUSDT',

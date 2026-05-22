@@ -87,7 +87,7 @@ function makeOrder(int $positionId, array $overrides = []): Order
     ], $overrides)));
 }
 
-it('returns synced when DB and exchange agree on every field', function () {
+it('returns synced when DB and exchange agree on every field', function (): void {
     $f = makeDriftFixture();
     $position = $f['position']->fresh('orders');
 
@@ -141,7 +141,7 @@ it('returns synced when DB and exchange agree on every field', function () {
     expect($report->driftingPositions())->toHaveCount(0);
 });
 
-it('flags WAP price drift on a PROFIT-LIMIT order when exchange has the post-WAP price', function () {
+it('flags WAP price drift on a PROFIT-LIMIT order when exchange has the post-WAP price', function (): void {
     // Scenario: position got a DCA fill, WAP recomputed the TP and pushed
     // it to the exchange via apiModify, but the DB-side persist failed.
     // DB still holds the pre-WAP price (1.10), exchange now reports the
@@ -200,7 +200,7 @@ it('flags WAP price drift on a PROFIT-LIMIT order when exchange has the post-WAP
     expect($pair->driftedOrders()[0]->driftFields)->toContain('price');
 });
 
-it('treats sub-tolerance price differences as synced', function () {
+it('treats sub-tolerance price differences as synced', function (): void {
     // Same shape as the WAP test, but the price gap (0.05%) is inside
     // the 0.1% tolerance — exchange reports a few extra decimals from
     // its volume-weighted averaging. Must NOT raise drift.
@@ -236,7 +236,7 @@ it('treats sub-tolerance price differences as synced', function () {
     expect($report->positions[0]->status)->toBe(PositionDriftReport::STATUS_SYNCED);
 });
 
-it('flags db_only when a non-FILLED order is missing from exchange (the missed-fill regression)', function () {
+it('flags db_only when a non-FILLED order is missing from exchange (the missed-fill regression)', function (): void {
     // Bruno's exact original incident: a LIMIT order filled on the
     // exchange but the bot never caught it. From this snapshot's POV the
     // order is still NEW in DB but absent from the open-orders endpoint.
@@ -271,7 +271,7 @@ it('flags db_only when a non-FILLED order is missing from exchange (the missed-f
     expect($orders[0]->status)->toBe(OrderDriftReport::STATUS_DB_ONLY);
 });
 
-it('treats a FILLED order absent on the exchange as expected (synced, not drift)', function () {
+it('treats a FILLED order absent on the exchange as expected (synced, not drift)', function (): void {
     // FILLED orders no longer appear on the open-orders endpoint. We
     // must NOT raise drift purely on their absence — that would alarm
     // every healthy averaged position.
@@ -295,7 +295,7 @@ it('treats a FILLED order absent on the exchange as expected (synced, not drift)
     expect($report->positions[0]->status)->toBe(PositionDriftReport::STATUS_SYNCED);
 });
 
-it('flags position-level quantity drift when our DB qty disagrees with the exchange', function () {
+it('flags position-level quantity drift when our DB qty disagrees with the exchange', function (): void {
     // Position-level qty drift: e.g. a partial fill happened on exchange
     // and our DB never caught it. Exchange shows positionAmt=15 vs our 10.
     $f = makeDriftFixture();
@@ -319,7 +319,7 @@ it('flags position-level quantity drift when our DB qty disagrees with the excha
     expect($report->positions[0]->positionDriftFields)->toContain('quantity');
 });
 
-it('returns transient (no false drift) for a mid-flight DB position in syncing status', function () {
+it('returns transient (no false drift) for a mid-flight DB position in syncing status', function (): void {
     $f = makeDriftFixture(status: 'syncing');
     $position = $f['position']->fresh('orders');
 
@@ -354,7 +354,7 @@ it('returns transient (no false drift) for a mid-flight DB position in syncing s
     expect($report->driftingPositions())->toHaveCount(0);
 });
 
-it('suppresses qty drift on close-position types when the exchange reports qty=0', function () {
+it('suppresses qty drift on close-position types when the exchange reports qty=0', function (): void {
     // BitGet plan/algo TP/SL orders report qty=0 (they close whatever's
     // open at trigger time). Comparing against the DB's bound qty would
     // always look drifted. Service must skip qty for these types.
@@ -391,7 +391,7 @@ it('suppresses qty drift on close-position types when the exchange reports qty=0
     expect($report->positions[0]->status)->toBe(PositionDriftReport::STATUS_SYNCED);
 });
 
-it('treats PROFIT-LIMIT (DB) and LIMIT (exchange) as the same type via alias matching', function () {
+it('treats PROFIT-LIMIT (DB) and LIMIT (exchange) as the same type via alias matching', function (): void {
     // Post Dec-2025 Binance algo migration: our PROFIT-LIMIT lands on
     // Binance as a reduce-only LIMIT. The comparator must alias-match.
     $f = makeDriftFixture();
@@ -427,7 +427,7 @@ it('treats PROFIT-LIMIT (DB) and LIMIT (exchange) as the same type via alias mat
     expect($report->positions[0]->status)->toBe(PositionDriftReport::STATUS_SYNCED);
 });
 
-it('flags exchange_only when a position exists on the exchange but not in DB', function () {
+it('flags exchange_only when a position exists on the exchange but not in DB', function (): void {
     // Manual user activity or a DB write that never landed. The pair has
     // no DB side, only an exchange side. Status must surface this.
     $f = makeDriftFixture();

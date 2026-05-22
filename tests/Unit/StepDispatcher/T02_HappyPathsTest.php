@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: [∅]
 // A single unindexed step should immediately run and complete.
-it('runs a single step with no index or children', function () {
+it('runs a single step with no index or children', function (): void {
     $step = StepTester::createSteps([
         [/* no index or block */],
     ], TestQueueableJob::class)[0];
@@ -34,7 +34,7 @@ it('runs a single step with no index or children', function () {
 
 // Schematic: 1 -> 2
 // Two steps in sequence should run one after the other.
-it('runs two sequential steps (index 1 → 2)', function () {
+it('runs two sequential steps (index 1 → 2)', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -57,7 +57,7 @@ it('runs two sequential steps (index 1 → 2)', function () {
 
 // Schematic: 1,1
 // Two steps at the same index should run in parallel.
-it('runs two parallel steps at the same index', function () {
+it('runs two parallel steps at the same index', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -79,7 +79,7 @@ it('runs two parallel steps at the same index', function () {
 
 // Schematic: 1,1 -> 2
 // Two steps at the same index should run in parallel.
-it('runs two parallel steps at the same index and then a next index step', function () {
+it('runs two parallel steps at the same index and then a next index step', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -102,7 +102,7 @@ it('runs two parallel steps at the same index and then a next index step', funct
 
 // Schematic: 1 -> 2,2 -> 3
 // Mixed case: sequential step, then two parallel steps, then another sequential step.
-it('runs a sequence with parallel middle: 1 → (2 + 2) → 3', function () {
+it('runs a sequence with parallel middle: 1 → (2 + 2) → 3', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -131,7 +131,7 @@ it('runs a sequence with parallel middle: 1 → (2 + 2) → 3', function () {
 //             ↓
 // ChildBlock: 1 -> 2
 // A parent lifecycle step completes only after its child block completes.
-it('completes a lifecycle step after its children complete', function () {
+it('completes a lifecycle step after its children complete', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -166,7 +166,7 @@ it('completes a lifecycle step after its children complete', function () {
 //  ↓
 // G1a [2], G1b [2] → G2 [3]
 // A grandchild block with two parallel steps (index 2) followed by one step (index 3), in 3-level nesting.
-it('executes parallel + sequential grandchildren steps inside 3-level nesting', function () {
+it('executes parallel + sequential grandchildren steps inside 3-level nesting', function (): void {
     $block1 = (string) Str::uuid();
     $block2 = (string) Str::uuid();
     $block3 = (string) Str::uuid();

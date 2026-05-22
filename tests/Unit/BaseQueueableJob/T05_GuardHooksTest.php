@@ -8,14 +8,14 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'base-queueable-job');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
 // Test startOrStop hook
-it('stops when startOrStop returns false', function () {
+it('stops when startOrStop returns false', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['should_start_or_stop' => false]],
     ], TestQueueableJob::class)[0];
@@ -31,7 +31,7 @@ it('stops when startOrStop returns false', function () {
 });
 
 // Test startOrSkip hook
-it('skips when startOrSkip returns false', function () {
+it('skips when startOrSkip returns false', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['should_start_or_skip' => false]],
     ], TestQueueableJob::class)[0];
@@ -47,7 +47,7 @@ it('skips when startOrSkip returns false', function () {
 });
 
 // Test startOrFail hook
-it('fails when startOrFail returns false', function () {
+it('fails when startOrFail returns false', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['should_start_or_fail' => false]],
     ], TestQueueableJob::class)[0];
@@ -63,7 +63,7 @@ it('fails when startOrFail returns false', function () {
 });
 
 // Test startOrRetry hook
-it('retries when startOrRetry returns false', function () {
+it('retries when startOrRetry returns false', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['should_start_or_retry' => false]],
     ], TestQueueableJob::class)[0];

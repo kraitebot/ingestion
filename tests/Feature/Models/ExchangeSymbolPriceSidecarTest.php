@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\DB;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\ExchangeSymbolPrice;
@@ -121,7 +120,7 @@ it('the daemon write target is exchange_symbol_prices, not exchange_symbols', fu
     // 192s lock-wait class. Pin the SQL string explicitly so
     // any such regression fails this test loud.
     $source = file_get_contents(
-        (new ReflectionClass(\Kraite\Core\Commands\Daemons\StreamBinancePricesCommand::class))->getFileName()
+        (new ReflectionClass(Kraite\Core\Commands\Daemons\StreamBinancePricesCommand::class))->getFileName()
     );
 
     expect($source)->toContain('UPDATE exchange_symbol_prices');
@@ -146,7 +145,7 @@ it('the freshness check (CheckSystemHealthCommand #0) reads from the sidecar', f
     // exchange_symbols (which after the soak migration won't
     // receive fresh writes any more).
     $source = file_get_contents(
-        (new ReflectionClass(\Kraite\Core\Commands\Cronjobs\CheckSystemHealthCommand::class))->getFileName()
+        (new ReflectionClass(Kraite\Core\Commands\Cronjobs\CheckSystemHealthCommand::class))->getFileName()
     );
 
     expect($source)->toContain('exchange_symbol_prices.mark_price_synced_at');

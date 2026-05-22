@@ -10,7 +10,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -18,7 +18,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: Concurrent dispatch prevention
 // When dispatcher is already running, second dispatch should be skipped
-it('skips dispatch when lock is already held', function () {
+it('skips dispatch when lock is already held', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -49,7 +49,7 @@ it('skips dispatch when lock is already held', function () {
 
 // Schematic: Lock release on exception
 // Even if dispatcher fails, lock should be released
-it('releases lock even when dispatcher throws exception', function () {
+it('releases lock even when dispatcher throws exception', function (): void {
     $block = (string) Str::uuid();
 
     // Create a step with invalid class that will cause dispatch to fail
@@ -74,7 +74,7 @@ it('releases lock even when dispatcher throws exception', function () {
 
 // Schematic: Multiple groups can run simultaneously
 // Alpha and beta groups should not block each other
-it('allows concurrent dispatch for different groups', function () {
+it('allows concurrent dispatch for different groups', function (): void {
     $blockA = (string) Str::uuid();
     $blockB = (string) Str::uuid();
 
@@ -103,7 +103,7 @@ it('allows concurrent dispatch for different groups', function () {
 
 // Schematic: Lock tracking per group
 // Each group maintains its own lock state
-it('tracks lock state independently per group', function () {
+it('tracks lock state independently per group', function (): void {
     // Acquire alpha lock
     expect(StepsDispatcher::startDispatch('alpha'))->toBe(true);
 
@@ -126,7 +126,7 @@ it('tracks lock state independently per group', function () {
 
 // Schematic: Null group lock behavior
 // Null group (global dispatch) should have its own lock
-it('handles null group lock independently', function () {
+it('handles null group lock independently', function (): void {
     // Acquire null group lock
     expect(StepsDispatcher::startDispatch(null))->toBe(true);
 
@@ -143,7 +143,7 @@ it('handles null group lock independently', function () {
 
 // Schematic: Progress tracking in lock
 // endDispatch receives progress parameter indicating how far dispatch got
-it('tracks dispatch progress through lock lifecycle', function () {
+it('tracks dispatch progress through lock lifecycle', function (): void {
     $block = (string) Str::uuid();
 
     $step = StepTester::createSteps([
@@ -166,7 +166,7 @@ it('tracks dispatch progress through lock lifecycle', function () {
 
 // Schematic: Idempotent dispatch
 // Running dispatch multiple times for same group should be safe
-it('handles idempotent dispatch calls safely', function () {
+it('handles idempotent dispatch calls safely', function (): void {
     $block = (string) Str::uuid();
 
     $step = StepTester::createSteps([

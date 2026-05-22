@@ -47,11 +47,11 @@ function buildResponse(string $body): Response
     return new Response(200, ['Content-Type' => 'application/json'], $body);
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->mapper = new BinanceApiDataMapper;
 });
 
-test('LIMIT order returns the price field unchanged', function () {
+test('LIMIT order returns the price field unchanged', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'LIMIT',
         'price' => '60000.50',
@@ -62,7 +62,7 @@ test('LIMIT order returns the price field unchanged', function () {
     expect($result['_price'])->toBe('60000.50');
 });
 
-test('MARKET with positive avgPrice returns avgPrice', function () {
+test('MARKET with positive avgPrice returns avgPrice', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'MARKET',
         'avgPrice' => '60123.45',
@@ -73,7 +73,7 @@ test('MARKET with positive avgPrice returns avgPrice', function () {
     expect($result['_price'])->toBe('60123.45');
 });
 
-test('MARKET with zero avgPrice returns string zero', function () {
+test('MARKET with zero avgPrice returns string zero', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'MARKET',
         'avgPrice' => '0',
@@ -84,7 +84,7 @@ test('MARKET with zero avgPrice returns string zero', function () {
     expect($result['_price'])->toBe('0');
 });
 
-test('STOP_MARKET returns stopPrice', function () {
+test('STOP_MARKET returns stopPrice', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'STOP_MARKET',
         'price' => '0',
@@ -96,7 +96,7 @@ test('STOP_MARKET returns stopPrice', function () {
     expect($result['_price'])->toBe('59000.00');
 });
 
-test('TRAILING_STOP_MARKET prefers activatePrice when positive', function () {
+test('TRAILING_STOP_MARKET prefers activatePrice when positive', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'TRAILING_STOP_MARKET',
         'activatePrice' => '60500.00',
@@ -108,7 +108,7 @@ test('TRAILING_STOP_MARKET prefers activatePrice when positive', function () {
     expect($result['_price'])->toBe('60500.00');
 });
 
-test('TRAILING_STOP_MARKET falls back to stopPrice when activatePrice is zero', function () {
+test('TRAILING_STOP_MARKET falls back to stopPrice when activatePrice is zero', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'TRAILING_STOP_MARKET',
         'activatePrice' => '0',
@@ -120,7 +120,7 @@ test('TRAILING_STOP_MARKET falls back to stopPrice when activatePrice is zero', 
     expect($result['_price'])->toBe('59000.00');
 });
 
-test('default branch with positive price returns price', function () {
+test('default branch with positive price returns price', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'EXOTIC_TYPE',
         'price' => '60100.00',
@@ -132,7 +132,7 @@ test('default branch with positive price returns price', function () {
     expect($result['_price'])->toBe('60100.00');
 });
 
-test('default branch with zero price falls back to stopPrice', function () {
+test('default branch with zero price falls back to stopPrice', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'EXOTIC_TYPE',
         'price' => '0',
@@ -144,7 +144,7 @@ test('default branch with zero price falls back to stopPrice', function () {
     expect($result['_price'])->toBe('59000.00');
 });
 
-test('MapsPlaceOrder:: matches MapsOrderCancel for MARKET avgPrice positive', function () {
+test('MapsPlaceOrder:: matches MapsOrderCancel for MARKET avgPrice positive', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'MARKET',
         'avgPrice' => '60123.45',
@@ -155,7 +155,7 @@ test('MapsPlaceOrder:: matches MapsOrderCancel for MARKET avgPrice positive', fu
     expect($result['_price'])->toBe('60123.45');
 });
 
-test('MapsPlaceOrder:: matches MapsOrderCancel for TRAILING_STOP_MARKET activatePrice zero', function () {
+test('MapsPlaceOrder:: matches MapsOrderCancel for TRAILING_STOP_MARKET activatePrice zero', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'TRAILING_STOP_MARKET',
         'activatePrice' => '0',
@@ -167,7 +167,7 @@ test('MapsPlaceOrder:: matches MapsOrderCancel for TRAILING_STOP_MARKET activate
     expect($result['_price'])->toBe('59000.00');
 });
 
-test('MapsPlaceOrder:: default branch with zero price returns stopPrice', function () {
+test('MapsPlaceOrder:: default branch with zero price returns stopPrice', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'EXOTIC_TYPE',
         'price' => '0',
@@ -179,7 +179,7 @@ test('MapsPlaceOrder:: default branch with zero price returns stopPrice', functi
     expect($result['_price'])->toBe('59000.00');
 });
 
-test('MapsOrderModify resolves MARKET avgPrice positive', function () {
+test('MapsOrderModify resolves MARKET avgPrice positive', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'MARKET',
         'avgPrice' => '60123.45',
@@ -190,7 +190,7 @@ test('MapsOrderModify resolves MARKET avgPrice positive', function () {
     expect($result['_price'])->toBe('60123.45');
 });
 
-test('MapsOrderModify resolves TRAILING_STOP_MARKET activatePrice zero fallback', function () {
+test('MapsOrderModify resolves TRAILING_STOP_MARKET activatePrice zero fallback', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'TRAILING_STOP_MARKET',
         'activatePrice' => '0',
@@ -202,7 +202,7 @@ test('MapsOrderModify resolves TRAILING_STOP_MARKET activatePrice zero fallback'
     expect($result['_price'])->toBe('59000.00');
 });
 
-test('MapsOrderModify default branch zero price returns stopPrice', function () {
+test('MapsOrderModify default branch zero price returns stopPrice', function (): void {
     $response = buildResponse(buildOrderResponseBody([
         'type' => 'EXOTIC_TYPE',
         'price' => '0',
@@ -214,7 +214,7 @@ test('MapsOrderModify default branch zero price returns stopPrice', function () 
     expect($result['_price'])->toBe('59000.00');
 });
 
-test('precision preserved across high-decimal values (integer-string boundary check)', function () {
+test('precision preserved across high-decimal values (integer-string boundary check)', function (): void {
     // Sanity test for the BCMath migration target — make sure
     // 0.00000001 (the smallest Binance tick) doesn't get rounded
     // to 0 by any future intermediate float cast.

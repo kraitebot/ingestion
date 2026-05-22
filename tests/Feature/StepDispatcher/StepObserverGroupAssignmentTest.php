@@ -394,7 +394,7 @@ test('steps created inside collection each() distribute correctly', function ():
         return Str::uuid()->toString();
     });
 
-    $blockUuids->each(function (string $blockUuid) {
+    $blockUuids->each(function (string $blockUuid): void {
         Step::factory()->create([
             'block_uuid' => $blockUuid,
             'group' => null,
@@ -427,7 +427,7 @@ test('nested transaction with savepoints breaks round-robin distribution', funct
     // IMPORTANT: Commands that create multiple Steps must NOT wrap Step::create()
     // calls in a transaction.
 
-    Illuminate\Support\Facades\DB::transaction(function () {
+    Illuminate\Support\Facades\DB::transaction(function (): void {
         for ($i = 0; $i < 10; $i++) {
             Step::factory()->create([
                 'block_uuid' => Str::uuid()->toString(),

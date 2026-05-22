@@ -186,7 +186,7 @@ function storeOpenOrders(Account $account, array $orders): void
     ApiSnapshot::storeFor($account, 'account-open-orders', $formattedOrders);
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     StepsDispatcher::updateOrCreate(['group' => 'alpha'], ['can_dispatch' => true]);
     StepsDispatcher::updateOrCreate(['group' => 'beta'], ['can_dispatch' => true]);
 
@@ -206,7 +206,7 @@ beforeEach(function () {
 |
 */
 
-test('creates no SHORT slots when exchange already has max SHORT positions', function () {
+test('creates no SHORT slots when exchange already has max SHORT positions', function (): void {
     // Account with max 2 LONGs, 1 SHORT
     $account = createAccountForSlotTest('short-max', maxLongs: 2, maxShorts: 1);
 
@@ -239,7 +239,7 @@ test('creates no SHORT slots when exchange already has max SHORT positions', fun
     expect($createdDirections)->toContain('LONG');
 });
 
-test('creates no LONG slots when exchange already has max LONG positions', function () {
+test('creates no LONG slots when exchange already has max LONG positions', function (): void {
     // Account with max 1 LONG, 2 SHORTs
     $account = createAccountForSlotTest('long-max', maxLongs: 1, maxShorts: 2);
 
@@ -270,7 +270,7 @@ test('creates no LONG slots when exchange already has max LONG positions', funct
     expect($createdDirections)->not->toContain('LONG');
 });
 
-test('reduces available LONG slots based on exchange positions', function () {
+test('reduces available LONG slots based on exchange positions', function (): void {
     // Account with max 3 LONGs
     $account = createAccountForSlotTest('long-partial', maxLongs: 3, maxShorts: 0);
 
@@ -298,7 +298,7 @@ test('reduces available LONG slots based on exchange positions', function () {
     expect($result['total_created'])->toBe(1);
 });
 
-test('reduces available SHORT slots based on exchange positions', function () {
+test('reduces available SHORT slots based on exchange positions', function (): void {
     // Account with max 3 SHORTs
     $account = createAccountForSlotTest('short-partial', maxLongs: 0, maxShorts: 3);
 
@@ -325,7 +325,7 @@ test('reduces available SHORT slots based on exchange positions', function () {
     expect($result['total_created'])->toBe(2);
 });
 
-test('creates no slots when exchange has all positions filled', function () {
+test('creates no slots when exchange has all positions filled', function (): void {
     // Account with max 1 LONG, 1 SHORT
     $account = createAccountForSlotTest('all-filled', maxLongs: 1, maxShorts: 1);
 
@@ -361,7 +361,7 @@ test('creates no slots when exchange has all positions filled', function () {
 |
 */
 
-test('excludes token with open order from assignment', function () {
+test('excludes token with open order from assignment', function (): void {
     $account = createAccountForSlotTest('order-exclude', maxLongs: 1, maxShorts: 0);
 
     createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
@@ -400,7 +400,7 @@ test('excludes token with open order from assignment', function () {
     expect($position->exchange_symbol_id)->toBe($availableToken->id);
 });
 
-test('excludes multiple tokens with open orders', function () {
+test('excludes multiple tokens with open orders', function (): void {
     $account = createAccountForSlotTest('multi-order', maxLongs: 1, maxShorts: 0);
 
     createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
@@ -431,7 +431,7 @@ test('excludes multiple tokens with open orders', function () {
     expect($result['assigned_tokens'])->not->toContain('ORDER2');
 });
 
-test('allows token assignment when no open orders exist', function () {
+test('allows token assignment when no open orders exist', function (): void {
     $account = createAccountForSlotTest('no-orders', maxLongs: 1, maxShorts: 0);
 
     createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
@@ -461,7 +461,7 @@ test('allows token assignment when no open orders exist', function () {
 |
 */
 
-test('handles combination of open position and open order', function () {
+test('handles combination of open position and open order', function (): void {
     // Account with max 2 LONGs, 1 SHORT
     $account = createAccountForSlotTest('combined', maxLongs: 2, maxShorts: 1);
 
@@ -504,7 +504,7 @@ test('handles combination of open position and open order', function () {
     expect($result['assigned_tokens'])->not->toContain('SHORT1');
 });
 
-test('real scenario: SWARM LONG open, PIEVERSEUSDT limit order, CVC SHORT open', function () {
+test('real scenario: SWARM LONG open, PIEVERSEUSDT limit order, CVC SHORT open', function (): void {
     // This replicates the exact scenario tested manually
     $account = createAccountForSlotTest('real-scenario', maxLongs: 2, maxShorts: 1);
 
@@ -555,7 +555,7 @@ test('real scenario: SWARM LONG open, PIEVERSEUSDT limit order, CVC SHORT open',
 |--------------------------------------------------------------------------
 */
 
-test('handles empty api_snapshots gracefully', function () {
+test('handles empty api_snapshots gracefully', function (): void {
     $account = createAccountForSlotTest('empty-snapshots', maxLongs: 1, maxShorts: 1);
 
     createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
@@ -575,7 +575,7 @@ test('handles empty api_snapshots gracefully', function () {
     expect($result['available_slots']['shorts'])->toBe(1);
 });
 
-test('uses MAX of exchange and DB positions for conservative calculation', function () {
+test('uses MAX of exchange and DB positions for conservative calculation', function (): void {
     // Account with max 3 LONGs
     $account = createAccountForSlotTest('max-calc', maxLongs: 3, maxShorts: 0);
 
@@ -607,7 +607,7 @@ test('uses MAX of exchange and DB positions for conservative calculation', funct
     expect($result['available_slots']['longs'])->toBe(1);
 });
 
-test('deletes position slots that could not be assigned a token', function () {
+test('deletes position slots that could not be assigned a token', function (): void {
     // Use btc_biased_restriction=false to avoid needing BTC direction
     Config::set('kraite.token_discovery.btc_biased_restriction', false);
 
@@ -656,7 +656,7 @@ test('deletes position slots that could not be assigned a token', function () {
     expect($position->exchange_symbol_id)->not->toBeNull();
 });
 
-test('stops workflow when no slots created', function () {
+test('stops workflow when no slots created', function (): void {
     $account = createAccountForSlotTest('no-slots', maxLongs: 1, maxShorts: 1);
 
     createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
@@ -679,7 +679,7 @@ test('stops workflow when no slots created', function () {
     expect($job->totalCreated)->toBe(0);
 });
 
-test('stops workflow when no tokens assigned', function () {
+test('stops workflow when no tokens assigned', function (): void {
     $account = createAccountForSlotTest('no-tokens', maxLongs: 1, maxShorts: 0);
 
     createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
@@ -708,7 +708,7 @@ test('stops workflow when no tokens assigned', function () {
 |
 */
 
-test('counts Bybit format positions correctly (Buy = LONG)', function () {
+test('counts Bybit format positions correctly (Buy = LONG)', function (): void {
     $account = createAccountForSlotTest('bybit-long', maxLongs: 2, maxShorts: 0);
 
     createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
@@ -734,7 +734,7 @@ test('counts Bybit format positions correctly (Buy = LONG)', function () {
     expect($result['available_slots']['longs'])->toBe(1);
 });
 
-test('counts Bybit format positions correctly (Sell = SHORT)', function () {
+test('counts Bybit format positions correctly (Sell = SHORT)', function (): void {
     $account = createAccountForSlotTest('bybit-short', maxLongs: 0, maxShorts: 2);
 
     createBtcForSlotTest('SHORT', $account->api_system_id, $account->trading_quote);

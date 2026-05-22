@@ -43,7 +43,7 @@ function createProfitOrder(Position $position, string $status, string $type = 'P
     ]));
 }
 
-it('returns the latest active PROFIT-LIMIT by id (skipping earlier CANCELLED history)', function () {
+it('returns the latest active PROFIT-LIMIT by id (skipping earlier CANCELLED history)', function (): void {
     // Two active PROFIT-LIMIT rows cannot coexist — OrderObserver enforces
     // that invariant. The real-world "multiple rows" scenario is the
     // correction workflow's cancel-and-recreate: a CANCELLED historical
@@ -57,7 +57,7 @@ it('returns the latest active PROFIT-LIMIT by id (skipping earlier CANCELLED his
         ->and($position->profitOrder()->id)->not->toBe($historical->id);
 });
 
-it('skips CANCELLED profit orders even when they are the latest row', function () {
+it('skips CANCELLED profit orders even when they are the latest row', function (): void {
     $position = Position::factory()->long()->create();
 
     $live = createProfitOrder($position, 'NEW');
@@ -66,7 +66,7 @@ it('skips CANCELLED profit orders even when they are the latest row', function (
     expect($position->profitOrder()->id)->toBe($live->id);
 });
 
-it('skips EXPIRED profit orders even when they are the latest row', function () {
+it('skips EXPIRED profit orders even when they are the latest row', function (): void {
     $position = Position::factory()->long()->create();
 
     $live = createProfitOrder($position, 'NEW');
@@ -75,7 +75,7 @@ it('skips EXPIRED profit orders even when they are the latest row', function () 
     expect($position->profitOrder()->id)->toBe($live->id);
 });
 
-it('returns null when every profit order is CANCELLED or EXPIRED', function () {
+it('returns null when every profit order is CANCELLED or EXPIRED', function (): void {
     $position = Position::factory()->long()->create();
 
     createProfitOrder($position, 'CANCELLED');
@@ -84,7 +84,7 @@ it('returns null when every profit order is CANCELLED or EXPIRED', function () {
     expect($position->profitOrder())->toBeNull();
 });
 
-it('keeps FILLED profit orders so VerifyIfTPIsFilledJob can still find them', function () {
+it('keeps FILLED profit orders so VerifyIfTPIsFilledJob can still find them', function (): void {
     $position = Position::factory()->long()->create();
 
     $filled = createProfitOrder($position, 'FILLED');
@@ -92,7 +92,7 @@ it('keeps FILLED profit orders so VerifyIfTPIsFilledJob can still find them', fu
     expect($position->profitOrder()?->id)->toBe($filled->id);
 });
 
-it('accepts PROFIT-MARKET alongside PROFIT-LIMIT', function () {
+it('accepts PROFIT-MARKET alongside PROFIT-LIMIT', function (): void {
     $position = Position::factory()->long()->create();
 
     $market = createProfitOrder($position, 'NEW', type: 'PROFIT-MARKET');

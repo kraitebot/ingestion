@@ -45,7 +45,6 @@ return [
         'token' => env('TELEGRAM_BOT_TOKEN'),
     ],
 
-
     'github' => [
         'token' => env('GITHUB_TOKEN'),
     ],

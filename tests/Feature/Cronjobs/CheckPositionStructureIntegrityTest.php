@@ -20,7 +20,7 @@ use Mockery as M;
 
 uses(RefreshDatabase::class)->group('feature', 'drift', 'cron', 'structure');
 
-beforeEach(function () {
+beforeEach(function (): void {
     Kraite::updateOrCreate(
         ['id' => 1],
         [
@@ -52,7 +52,7 @@ beforeEach(function () {
     Notification::fake();
 });
 
-afterEach(function () {
+afterEach(function (): void {
     M::close();
 });
 
@@ -151,7 +151,7 @@ function seedHealthyStructure(int $positionId, int $totalLimits): void
     ]);
 }
 
-it('does not notify when the active position has its full structure intact', function () {
+it('does not notify when the active position has its full structure intact', function (): void {
     $f = makeStructureFixture(totalLimitOrders: 4);
     seedHealthyStructure($f['position']->id, 4);
 
@@ -162,7 +162,7 @@ it('does not notify when the active position has its full structure intact', fun
     expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue();
 });
 
-it('notifies and halts opens when the take profit is missing on an active position', function () {
+it('notifies and halts opens when the take profit is missing on an active position', function (): void {
     $f = makeStructureFixture(totalLimitOrders: 4);
     $position = $f['position'];
 
@@ -184,7 +184,7 @@ it('notifies and halts opens when the take profit is missing on an active positi
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
 
-it('treats a CANCELLED stop-loss as missing and halts opens', function () {
+it('treats a CANCELLED stop-loss as missing and halts opens', function (): void {
     $f = makeStructureFixture(totalLimitOrders: 4);
     $position = $f['position'];
 
@@ -208,7 +208,7 @@ it('treats a CANCELLED stop-loss as missing and halts opens', function () {
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
 
-it('flags incomplete limit-order count when fewer live limits exist than total_limit_orders promised', function () {
+it('flags incomplete limit-order count when fewer live limits exist than total_limit_orders promised', function (): void {
     $f = makeStructureFixture(totalLimitOrders: 4);
     $position = $f['position'];
 
@@ -234,7 +234,7 @@ it('flags incomplete limit-order count when fewer live limits exist than total_l
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
 
-it('skips positions that are not in active status', function () {
+it('skips positions that are not in active status', function (): void {
     $f = makeStructureFixture(totalLimitOrders: 4);
     $f['position']->update(['status' => 'opening']);
 
@@ -246,7 +246,7 @@ it('skips positions that are not in active status', function () {
     expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue();
 });
 
-it('throttles repeated detections of the same broken position to a single notification', function () {
+it('throttles repeated detections of the same broken position to a single notification', function (): void {
     $f = makeStructureFixture(totalLimitOrders: 4);
     $position = $f['position'];
 
@@ -267,7 +267,7 @@ it('throttles repeated detections of the same broken position to a single notifi
     Notification::assertCount(1);
 });
 
-it('emits one notification per broken position when several break at once', function () {
+it('emits one notification per broken position when several break at once', function (): void {
     $a = makeStructureFixture(totalLimitOrders: 4, token: 'AAA');
     $b = makeStructureFixture(totalLimitOrders: 4, token: 'BBB');
 

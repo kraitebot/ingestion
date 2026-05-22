@@ -19,7 +19,7 @@ use Kraite\Core\Trading\Kraite;
 // Equal Multipliers [2,2,2,2] - Classic martingale doubling
 // ============================================================================
 
-test('distributes budget correctly with equal multipliers [2,2,2,2] and 4 limit orders', function () {
+test('distributes budget correctly with equal multipliers [2,2,2,2] and 4 limit orders', function (): void {
     $budget = '1500';
     $multipliers = [2, 2, 2, 2];
     $N = 4;
@@ -61,7 +61,7 @@ test('distributes budget correctly with equal multipliers [2,2,2,2] and 4 limit 
     expect($lastLimitPct)->toBeGreaterThan(48)->toBeLessThan(53);
 });
 
-test('distributes budget correctly with equal multipliers [2,2,2,2] and 2 limit orders', function () {
+test('distributes budget correctly with equal multipliers [2,2,2,2] and 2 limit orders', function (): void {
     $budget = '1000';
     $multipliers = [2, 2, 2, 2];
     $N = 2;
@@ -85,7 +85,7 @@ test('distributes budget correctly with equal multipliers [2,2,2,2] and 2 limit 
     expect($lastLimitPct)->toBeGreaterThan(55)->toBeLessThan(60);
 });
 
-test('distributes budget correctly with equal multipliers [3,3,3,3] - higher ratio', function () {
+test('distributes budget correctly with equal multipliers [3,3,3,3] - higher ratio', function (): void {
     $budget = '3000';
     $multipliers = [3, 3, 3, 3];
     $N = 4;
@@ -112,7 +112,7 @@ test('distributes budget correctly with equal multipliers [3,3,3,3] - higher rat
 // Variable Multipliers [2, 1.5, 2.5, 2] - Mixed ratios
 // ============================================================================
 
-test('distributes budget correctly with variable multipliers [2, 1.5, 2.5, 2]', function () {
+test('distributes budget correctly with variable multipliers [2, 1.5, 2.5, 2]', function (): void {
     $budget = '1500';
     $multipliers = [2, 1.5, 2.5, 2];
     $N = 4;
@@ -140,7 +140,7 @@ test('distributes budget correctly with variable multipliers [2, 1.5, 2.5, 2]', 
     expect((float) $ratio3)->toEqualWithDelta(2.0, 0.01);
 });
 
-test('distributes budget correctly with aggressive multipliers [4, 3, 2, 1.5]', function () {
+test('distributes budget correctly with aggressive multipliers [4, 3, 2, 1.5]', function (): void {
     $budget = '5000';
     $multipliers = [4, 3, 2, 1.5];
     $N = 4;
@@ -157,7 +157,7 @@ test('distributes budget correctly with aggressive multipliers [4, 3, 2, 1.5]', 
     expect((float) Math::div($result['limits'][3], $result['limits'][2], 8))->toEqualWithDelta(1.5, 0.01);
 });
 
-test('distributes budget correctly with conservative multipliers [1.2, 1.3, 1.4, 1.5]', function () {
+test('distributes budget correctly with conservative multipliers [1.2, 1.3, 1.4, 1.5]', function (): void {
     $budget = '2000';
     $multipliers = [1.2, 1.3, 1.4, 1.5];
     $N = 4;
@@ -183,7 +183,7 @@ test('distributes budget correctly with conservative multipliers [1.2, 1.3, 1.4,
 // Single Limit Order (N=1)
 // ============================================================================
 
-test('distributes budget correctly with single limit order (N=1)', function () {
+test('distributes budget correctly with single limit order (N=1)', function (): void {
     $budget = '1000';
     $multipliers = [2];
     $N = 1;
@@ -208,7 +208,7 @@ test('distributes budget correctly with single limit order (N=1)', function () {
     expect($ratio)->toEqualWithDelta(2.0, 0.01);
 });
 
-test('distributes budget correctly with single limit order and high multiplier', function () {
+test('distributes budget correctly with single limit order and high multiplier', function (): void {
     $budget = '1000';
     $multipliers = [5];
     $N = 1;
@@ -230,7 +230,7 @@ test('distributes budget correctly with single limit order and high multiplier',
 // Zero Limit Orders (N=0) - All budget to market
 // ============================================================================
 
-test('allocates all budget to market when N=0', function () {
+test('allocates all budget to market when N=0', function (): void {
     $budget = '1000';
     $multipliers = [2, 2, 2, 2];
     $N = 0;
@@ -250,7 +250,7 @@ test('allocates all budget to market when N=0', function () {
 // Edge Cases - Budget Values
 // ============================================================================
 
-test('handles very small budget correctly', function () {
+test('handles very small budget correctly', function (): void {
     $budget = '10';
     $multipliers = [2, 2, 2, 2];
     $N = 4;
@@ -265,7 +265,7 @@ test('handles very small budget correctly', function () {
     expect((float) $ratio0)->toEqualWithDelta(2.0, 0.01);
 });
 
-test('handles very large budget correctly', function () {
+test('handles very large budget correctly', function (): void {
     $budget = '1000000';
     $multipliers = [2, 2, 2, 2];
     $N = 4;
@@ -280,7 +280,7 @@ test('handles very large budget correctly', function () {
     expect((float) $ratio0)->toEqualWithDelta(2.0, 0.001);
 });
 
-test('handles decimal budget correctly', function () {
+test('handles decimal budget correctly', function (): void {
     $budget = '1234.56789';
     $multipliers = [2, 2, 2, 2];
     $N = 4;
@@ -291,7 +291,7 @@ test('handles decimal budget correctly', function () {
     expect((float) $result['total'])->toEqualWithDelta(1234.56789, 0.001);
 });
 
-test('handles string numeric budget', function () {
+test('handles string numeric budget', function (): void {
     $budget = '1500.00';
     $multipliers = [2, 2, 2, 2];
     $N = 4;
@@ -301,7 +301,7 @@ test('handles string numeric budget', function () {
     expect((float) $result['total'])->toEqualWithDelta(1500.0, 0.01);
 });
 
-test('handles integer budget', function () {
+test('handles integer budget', function (): void {
     $budget = 1500;
     $multipliers = [2, 2, 2, 2];
     $N = 4;
@@ -311,7 +311,7 @@ test('handles integer budget', function () {
     expect((float) $result['total'])->toEqualWithDelta(1500.0, 0.01);
 });
 
-test('handles float budget', function () {
+test('handles float budget', function (): void {
     $budget = 1500.50;
     $multipliers = [2, 2, 2, 2];
     $N = 4;
@@ -325,7 +325,7 @@ test('handles float budget', function () {
 // Edge Cases - Multipliers with more entries than N
 // ============================================================================
 
-test('uses only needed multipliers when array is longer than N', function () {
+test('uses only needed multipliers when array is longer than N', function (): void {
     $budget = '1000';
     $multipliers = [2, 3, 4, 5, 6, 7, 8]; // More than needed
     $N = 3;
@@ -341,7 +341,7 @@ test('uses only needed multipliers when array is longer than N', function () {
     expect((float) Math::div($result['limits'][2], $result['limits'][1], 8))->toEqualWithDelta(4.0, 0.01);
 });
 
-test('repeats last multiplier when array is shorter than N', function () {
+test('repeats last multiplier when array is shorter than N', function (): void {
     $budget = '1000';
     $multipliers = [2, 3]; // Shorter than N
     $N = 4;
@@ -362,7 +362,7 @@ test('repeats last multiplier when array is shorter than N', function () {
 // Weights Calculation
 // ============================================================================
 
-test('weights sum to 1.0', function () {
+test('weights sum to 1.0', function (): void {
     $budget = '1500';
     $multipliers = [2, 2, 2, 2];
     $N = 4;
@@ -377,7 +377,7 @@ test('weights sum to 1.0', function () {
     expect((float) $weightSum)->toEqualWithDelta(1.0, 0.0001);
 });
 
-test('weights reflect correct proportions', function () {
+test('weights reflect correct proportions', function (): void {
     $budget = '1000';
     $multipliers = [2];
     $N = 1;
@@ -393,35 +393,35 @@ test('weights reflect correct proportions', function () {
 // Error Cases - Invalid Inputs
 // ============================================================================
 
-test('throws exception for zero budget', function () {
+test('throws exception for zero budget', function (): void {
     Kraite::calculateBudgetDistribution('0', [2, 2, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Budget must be numeric and > 0');
 
-test('throws exception for negative budget', function () {
+test('throws exception for negative budget', function (): void {
     Kraite::calculateBudgetDistribution('-100', [2, 2, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Budget must be numeric and > 0');
 
-test('throws exception for non-numeric budget', function () {
+test('throws exception for non-numeric budget', function (): void {
     Kraite::calculateBudgetDistribution('invalid', [2, 2, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Budget must be numeric and > 0');
 
-test('throws exception for empty multipliers array', function () {
+test('throws exception for empty multipliers array', function (): void {
     Kraite::calculateBudgetDistribution('1000', [], 4);
 })->throws(InvalidArgumentException::class, 'Multipliers array cannot be empty');
 
-test('throws exception for negative total limit orders', function () {
+test('throws exception for negative total limit orders', function (): void {
     Kraite::calculateBudgetDistribution('1000', [2, 2, 2, 2], -1);
 })->throws(InvalidArgumentException::class, 'Total limit orders must be >= 0');
 
-test('throws exception for zero multiplier', function () {
+test('throws exception for zero multiplier', function (): void {
     Kraite::calculateBudgetDistribution('1000', [2, 0, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Multiplier at index 1 must be a positive number');
 
-test('throws exception for negative multiplier', function () {
+test('throws exception for negative multiplier', function (): void {
     Kraite::calculateBudgetDistribution('1000', [2, -1.5, 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Multiplier at index 1 must be a positive number');
 
-test('throws exception for non-numeric multiplier', function () {
+test('throws exception for non-numeric multiplier', function (): void {
     Kraite::calculateBudgetDistribution('1000', [2, 'invalid', 2, 2], 4);
 })->throws(InvalidArgumentException::class, 'Multiplier at index 1 must be a positive number');
 
@@ -429,7 +429,7 @@ test('throws exception for non-numeric multiplier', function () {
 // Real-World Scenario Tests
 // ============================================================================
 
-test('simulates 5% max position on 30000 balance with 4 limit orders', function () {
+test('simulates 5% max position on 30000 balance with 4 limit orders', function (): void {
     // balance = 30000, max_position_pct = 5%
     // budget = 30000 * 5 / 100 = 1500
     $budget = '1500';
@@ -451,7 +451,7 @@ test('simulates 5% max position on 30000 balance with 4 limit orders', function 
     expect($lastLimit)->toBeGreaterThan(750)->toBeLessThan(800);
 });
 
-test('simulates 10% max position on 50000 balance with 6 limit orders', function () {
+test('simulates 10% max position on 50000 balance with 6 limit orders', function (): void {
     // balance = 50000, max_position_pct = 10%
     // budget = 50000 * 10 / 100 = 5000
     $budget = '5000';
@@ -474,7 +474,7 @@ test('simulates 10% max position on 50000 balance with 6 limit orders', function
     }
 });
 
-test('simulates 3% max position on 100000 balance with variable multipliers', function () {
+test('simulates 3% max position on 100000 balance with variable multipliers', function (): void {
     // balance = 100000, max_position_pct = 3%
     // budget = 100000 * 3 / 100 = 3000
     $budget = '3000';
@@ -497,7 +497,7 @@ test('simulates 3% max position on 100000 balance with variable multipliers', fu
 // Mathematical Verification
 // ============================================================================
 
-test('verifies S formula calculation for [2,2,2,2] with N=4', function () {
+test('verifies S formula calculation for [2,2,2,2] with N=4', function (): void {
     // S = 1 + 1/2 + 1/(2*2) + 1/(2*2*2) + 1/(2*2*2*2)
     // S = 1 + 0.5 + 0.25 + 0.125 + 0.0625 = 1.9375
     $budget = '1000';
@@ -515,7 +515,7 @@ test('verifies S formula calculation for [2,2,2,2] with N=4', function () {
     expect($market)->toEqualWithDelta(32.258, 0.1);
 });
 
-test('verifies all positions sum to budget exactly regardless of multipliers', function () {
+test('verifies all positions sum to budget exactly regardless of multipliers', function (): void {
     // Test multiple configurations
     $configs = [
         ['budget' => '1000', 'multipliers' => [2, 2, 2, 2], 'N' => 4],

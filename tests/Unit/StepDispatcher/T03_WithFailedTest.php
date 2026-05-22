@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -18,7 +18,7 @@ it('Cleans laravel.log', function () {
 // Schematic: [∅]
 // A single unindexed step should immediately run and complete.
 // Fail the step to check cancellation.
-it('fails a single step with no index or children', function () {
+it('fails a single step with no index or children', function (): void {
     $step = StepTester::createSteps([
         [/* no index or block, fail argument added */ 'arguments' => ['fail' => true]],
     ], TestQueueableJob::class)[0];
@@ -36,7 +36,7 @@ it('fails a single step with no index or children', function () {
 // Schematic: 1 -> 2
 // Two steps in sequence should run one after the other.
 // Fail step 1 to ensure step 2 gets cancelled.
-it('fails two sequential steps (index 1 → 2)', function () {
+it('fails two sequential steps (index 1 → 2)', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -59,7 +59,7 @@ it('fails two sequential steps (index 1 → 2)', function () {
 
 // Schematic: 1,1
 // Two steps at the same index should run in parallel. Fail one step.
-it('fails one parallel step at the same index', function () {
+it('fails one parallel step at the same index', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -82,7 +82,7 @@ it('fails one parallel step at the same index', function () {
 // Schematic: 1 -> 2,2 -> 3
 // Mixed case: sequential step, then two parallel steps, then another sequential step.
 // Fail step 2 in block 2 to test the cancellation of subsequent steps.
-it('fails a sequence with parallel middle: 1 → (2 + 2) → 3', function () {
+it('fails a sequence with parallel middle: 1 → (2 + 2) → 3', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -112,7 +112,7 @@ it('fails a sequence with parallel middle: 1 → (2 + 2) → 3', function () {
 // ChildBlock: 1 -> 2
 // A parent lifecycle step completes only after its child block completes.
 // Fail child step 1 to check parent failure and cancellation of step 2.
-it('fails a lifecycle step after its children complete', function () {
+it('fails a lifecycle step after its children complete', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -148,7 +148,7 @@ it('fails a lifecycle step after its children complete', function () {
 // G1a [2], G1b [2] → G2 [3]
 // A grandchild block with two parallel steps (index 2) followed by one step (index 3), in 3-level nesting.
 // Fail the grandchild step G1a and check cancellation of G1b and G2.
-it('fails parallel + sequential grandchildren steps inside 3-level nesting', function () {
+it('fails parallel + sequential grandchildren steps inside 3-level nesting', function (): void {
     $block1 = (string) Str::uuid();
     $block2 = (string) Str::uuid();
     $block3 = (string) Str::uuid();
@@ -224,7 +224,7 @@ it('fails parallel + sequential grandchildren steps inside 3-level nesting', fun
 // ChildBlock: 1
 // When a child step fails, the parent step should receive an error_message
 // indicating which child step failed.
-it('sets error_message on parent when child step fails', function () {
+it('sets error_message on parent when child step fails', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -263,7 +263,7 @@ it('sets error_message on parent when child step fails', function () {
 // When a child step is stopped (via shouldStartOrStop), the parent step should
 // receive an error_message indicating which child step was stopped.
 // NOTE: Parent becomes 'stopped' (not 'failed') when child is stopped.
-it('sets error_message on parent when child step is stopped', function () {
+it('sets error_message on parent when child step is stopped', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 

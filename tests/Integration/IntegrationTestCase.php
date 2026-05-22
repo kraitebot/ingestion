@@ -148,7 +148,7 @@ abstract class IntegrationTestCase extends TestCase
     protected function assertPositionCreated(\Kraite\Core\Models\Account $account, string $symbol): void
     {
         $position = \Kraite\Core\Models\Position::where('account_id', $account->id)
-            ->whereHas('exchangeSymbol', static function ($query) use ($symbol) {
+            ->whereHas('exchangeSymbol', static function ($query) use ($symbol): void {
                 $query->where('symbol', $symbol);
             })
             ->first();

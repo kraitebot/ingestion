@@ -16,7 +16,7 @@ use Tests\Support\TestBybitApiableJob;
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class)->group('integration', 'notifications', 'forbidden-hostname');
 
-beforeEach(function () {
+beforeEach(function (): void {
     config(['kraite.notifications_enabled' => true]);
 
     // Clear the once() cache for Kraite::admin() to prevent test pollution
@@ -39,8 +39,8 @@ beforeEach(function () {
     ]);
 });
 
-describe('User Notifications (Account-Specific Issues)', function () {
-    it('sends server_ip_not_whitelisted notification to USER when IP not whitelisted', function () {
+describe('User Notifications (Account-Specific Issues)', function (): void {
+    it('sends server_ip_not_whitelisted notification to USER when IP not whitelisted', function (): void {
         Notification::fake();
 
         // Arrange: Create Binance account with user
@@ -86,7 +86,7 @@ describe('User Notifications (Account-Specific Issues)', function () {
         );
     });
 
-    it('sends server_account_blocked notification to USER when account blocked', function () {
+    it('sends server_account_blocked notification to USER when account blocked', function (): void {
         Notification::fake();
 
         // Arrange: Create Bybit account with user
@@ -133,8 +133,8 @@ describe('User Notifications (Account-Specific Issues)', function () {
     });
 });
 
-describe('Admin Notifications (System-Wide Issues)', function () {
-    it('sends server_ip_rate_limited notification to ADMIN when IP rate limited', function () {
+describe('Admin Notifications (System-Wide Issues)', function (): void {
+    it('sends server_ip_rate_limited notification to ADMIN when IP rate limited', function (): void {
         Notification::fake();
 
         // Arrange: Create Bybit account
@@ -180,7 +180,7 @@ describe('Admin Notifications (System-Wide Issues)', function () {
         );
     });
 
-    it('sends server_ip_banned notification to ADMIN when IP banned', function () {
+    it('sends server_ip_banned notification to ADMIN when IP banned', function (): void {
         Notification::fake();
 
         // Arrange: Create Binance account
@@ -227,8 +227,8 @@ describe('Admin Notifications (System-Wide Issues)', function () {
     });
 });
 
-describe('Notification Data', function () {
-    it('includes correct reference data in notification', function () {
+describe('Notification Data', function (): void {
+    it('includes correct reference data in notification', function (): void {
         Notification::fake();
 
         // Arrange: Create Binance account
@@ -274,8 +274,8 @@ describe('Notification Data', function () {
     });
 });
 
-describe('Notification Deduplication', function () {
-    it('does not send duplicate notification for same forbidden hostname', function () {
+describe('Notification Deduplication', function (): void {
+    it('does not send duplicate notification for same forbidden hostname', function (): void {
         Notification::fake();
 
         // Arrange: Create Binance account

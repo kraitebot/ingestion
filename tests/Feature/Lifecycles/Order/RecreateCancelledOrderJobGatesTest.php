@@ -159,7 +159,7 @@ it('calculateRemainingQuantity returns reference_quantity when filled_quantity i
     ]);
 
     $job = new RecreateCancelledOrderJob($position->id, $order->id);
-    expect(rtrim(rtrim($job->calculateRemainingQuantity(), '0'), '.'))->toBe('100');
+    expect(mb_rtrim(mb_rtrim($job->calculateRemainingQuantity(), '0'), '.'))->toBe('100');
 });
 
 it('calculateRemainingQuantity falls back to quantity when reference_quantity is null', function (): void {
@@ -169,5 +169,5 @@ it('calculateRemainingQuantity falls back to quantity when reference_quantity is
     ]);
 
     $job = new RecreateCancelledOrderJob($position->id, $order->id);
-    expect(rtrim(rtrim($job->calculateRemainingQuantity(), '0'), '.'))->toBe('120');
+    expect(mb_rtrim(mb_rtrim($job->calculateRemainingQuantity(), '0'), '.'))->toBe('120');
 });

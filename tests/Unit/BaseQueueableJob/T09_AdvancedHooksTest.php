@@ -9,14 +9,14 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'base-queueable-job');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
 // Test getRetryDiagnostics hook
-it('includes diagnostics when max retries reached', function () {
+it('includes diagnostics when max retries reached', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => [
             'throw_exception' => true,
@@ -39,7 +39,7 @@ it('includes diagnostics when max retries reached', function () {
 });
 
 // Test relatable hook
-it('associates a model with the step via relatable hook', function () {
+it('associates a model with the step via relatable hook', function (): void {
     $account = Account::factory()->create();
 
     // Store account ID in arguments, then fetch in relatable hook
@@ -67,7 +67,7 @@ it('associates a model with the step via relatable hook', function () {
 });
 
 // Test shouldChangeToHighPriority hook
-it('escalates to high priority when shouldChangeToHighPriority returns true', function () {
+it('escalates to high priority when shouldChangeToHighPriority returns true', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => [
             'should_start_or_retry' => false, // Trigger retry
@@ -90,7 +90,7 @@ it('escalates to high priority when shouldChangeToHighPriority returns true', fu
 });
 
 // Test reportAndFail action
-it('fails immediately with error logging via reportAndFail', function () {
+it('fails immediately with error logging via reportAndFail', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => [
             'report_and_fail' => true,

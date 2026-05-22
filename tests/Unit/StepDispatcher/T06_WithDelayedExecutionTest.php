@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: [∅] with dispatch_after in future
 // A step with dispatch_after in the future should NOT dispatch yet
-it('does not dispatch a step with dispatch_after in future', function () {
+it('does not dispatch a step with dispatch_after in future', function (): void {
     $step = StepTester::createSteps([
         ['dispatch_after' => now()->addMinutes(5)],
     ], TestQueueableJob::class)[0];
@@ -35,7 +35,7 @@ it('does not dispatch a step with dispatch_after in future', function () {
 
 // Schematic: [∅] with dispatch_after in past
 // A step with dispatch_after in the past should dispatch immediately
-it('dispatches a step with dispatch_after in past', function () {
+it('dispatches a step with dispatch_after in past', function (): void {
     $step = StepTester::createSteps([
         ['dispatch_after' => now()->subMinutes(5)],
     ], TestQueueableJob::class)[0];
@@ -52,7 +52,7 @@ it('dispatches a step with dispatch_after in past', function () {
 
 // Schematic: [∅] with dispatch_after = null
 // A step with null dispatch_after should dispatch immediately (default behavior)
-it('dispatches a step with null dispatch_after immediately', function () {
+it('dispatches a step with null dispatch_after immediately', function (): void {
     $step = StepTester::createSteps([
         ['dispatch_after' => null],
     ], TestQueueableJob::class)[0];
@@ -69,7 +69,7 @@ it('dispatches a step with null dispatch_after immediately', function () {
 
 // Schematic: 1 (ready) + 2 (delayed)
 // In a sequential workflow, if step 1 completes but step 2 is delayed, step 2 waits
-it('respects dispatch_after for sequential steps', function () {
+it('respects dispatch_after for sequential steps', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -92,7 +92,7 @@ it('respects dispatch_after for sequential steps', function () {
 
 // Schematic: 1,1 (one ready, one delayed)
 // Parallel steps at same index: ready one dispatches, delayed one waits
-it('dispatches only ready parallel steps at same index', function () {
+it('dispatches only ready parallel steps at same index', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -115,7 +115,7 @@ it('dispatches only ready parallel steps at same index', function () {
 
 // Schematic: Parent (delayed) -> Children (ready)
 // Delayed parent should not dispatch, children cannot run until parent runs
-it('delays parent and children wait', function () {
+it('delays parent and children wait', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -148,7 +148,7 @@ it('delays parent and children wait', function () {
 
 // Schematic: Parent (ready) -> Child (delayed)
 // Parent runs and transitions to Running, but delayed child doesn't dispatch yet
-it('runs parent but delays child', function () {
+it('runs parent but delays child', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -173,7 +173,7 @@ it('runs parent but delays child', function () {
 
 // Schematic: 1,1 (all delayed by different amounts)
 // Multiple delayed steps at same index - none should dispatch until time passes
-it('handles multiple delayed parallel steps', function () {
+it('handles multiple delayed parallel steps', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([

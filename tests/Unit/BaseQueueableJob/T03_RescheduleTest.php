@@ -8,14 +8,14 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'base-queueable-job');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
 // Test that rescheduleWithoutRetry sets dispatch_after and prevents immediate execution
-it('reschedules without retry and sets dispatch_after', function () {
+it('reschedules without retry and sets dispatch_after', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => [
             'reschedule_without_retry' => true,

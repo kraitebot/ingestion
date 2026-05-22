@@ -8,7 +8,7 @@ use StepDispatcher\States\Dispatched;
 use StepDispatcher\States\Pending;
 use StepDispatcher\States\Running;
 
-test('sets started_at when step transitions from Pending to Running', function () {
+test('sets started_at when step transitions from Pending to Running', function (): void {
     // Create a step in Pending state with no started_at
     $step = Step::factory()->create([
         'state' => Pending::class,
@@ -29,7 +29,7 @@ test('sets started_at when step transitions from Pending to Running', function (
     expect($step->state)->toBeInstanceOf(Running::class);
 });
 
-test('sets started_at when step transitions from Dispatched to Running', function () {
+test('sets started_at when step transitions from Dispatched to Running', function (): void {
     // Create a step in Dispatched state with no started_at
     $step = Step::factory()->create([
         'state' => Dispatched::class,
@@ -50,7 +50,7 @@ test('sets started_at when step transitions from Dispatched to Running', functio
     expect($step->state)->toBeInstanceOf(Running::class);
 });
 
-test('does not overwrite started_at if already set when transitioning to Running', function () {
+test('does not overwrite started_at if already set when transitioning to Running', function (): void {
     $existingStartedAt = now()->subMinutes(5);
 
     // Create a step in Pending state with started_at already set
@@ -72,7 +72,7 @@ test('does not overwrite started_at if already set when transitioning to Running
     expect($step->started_at->timestamp)->toBe($existingStartedAt->timestamp);
 });
 
-test('does not change started_at when step is already Running and saves again', function () {
+test('does not change started_at when step is already Running and saves again', function (): void {
     $existingStartedAt = now()->subMinutes(5);
 
     // Create a step already in Running state with started_at set
@@ -94,7 +94,7 @@ test('does not change started_at when step is already Running and saves again', 
     expect($step->started_at->timestamp)->toBe($existingStartedAt->timestamp);
 });
 
-test('sets started_at via state machine transition PendingToRunning', function () {
+test('sets started_at via state machine transition PendingToRunning', function (): void {
     // Create a step in Pending state
     $step = Step::factory()->create([
         'state' => Pending::class,
@@ -114,7 +114,7 @@ test('sets started_at via state machine transition PendingToRunning', function (
     expect($step->state)->toBeInstanceOf(Running::class);
 });
 
-test('clears is_throttled when step transitions to Completed', function () {
+test('clears is_throttled when step transitions to Completed', function (): void {
     // Create a step in Running state with is_throttled = true
     $step = Step::factory()->create([
         'state' => Running::class,
@@ -137,7 +137,7 @@ test('clears is_throttled when step transitions to Completed', function () {
     expect($step->state)->toBeInstanceOf(Completed::class);
 });
 
-test('clears is_throttled via state machine transition RunningToCompleted', function () {
+test('clears is_throttled via state machine transition RunningToCompleted', function (): void {
     // Create a step in Running state with is_throttled = true
     $step = Step::factory()->create([
         'state' => Running::class,
@@ -158,7 +158,7 @@ test('clears is_throttled via state machine transition RunningToCompleted', func
     expect($step->state)->toBeInstanceOf(Completed::class);
 });
 
-test('clears is_throttled even if it was set after completion attempt', function () {
+test('clears is_throttled even if it was set after completion attempt', function (): void {
     // Create a step in Running state
     $step = Step::factory()->create([
         'state' => Running::class,

@@ -8,14 +8,14 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'base-queueable-job');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
 // Test retryException hook
-it('retries when retryException returns true', function () {
+it('retries when retryException returns true', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => [
             'throw_exception' => true,
@@ -39,7 +39,7 @@ it('retries when retryException returns true', function () {
 });
 
 // Test ignoreException hook
-it('completes when ignoreException returns true', function () {
+it('completes when ignoreException returns true', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => [
             'throw_exception' => true,
@@ -59,7 +59,7 @@ it('completes when ignoreException returns true', function () {
 });
 
 // Test resolveException hook
-it('resolves exception with custom logic', function () {
+it('resolves exception with custom logic', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => [
             'throw_exception' => true,

@@ -15,7 +15,7 @@ use Mockery as M;
 
 uses(RefreshDatabase::class)->group('unit', 'cancel-order', 'drift');
 
-afterEach(function () {
+afterEach(function (): void {
     M::close();
 });
 
@@ -80,7 +80,7 @@ function buildCancelGuardFixture(string $exchange, string $positionStatus, ?stri
     return ['account' => $account, 'position' => $position, 'order' => $order];
 }
 
-it('binance: passes the guard for an active position with a valid exchange_order_id', function () {
+it('binance: passes the guard for an active position with a valid exchange_order_id', function (): void {
     $f = buildCancelGuardFixture('binance', 'active', '1234567890');
 
     $job = new CancelSingleAlgoOrderJob($f['position']->id, $f['order']->id);
@@ -88,7 +88,7 @@ it('binance: passes the guard for an active position with a valid exchange_order
     expect($job->startOrFail())->toBeTrue();
 });
 
-it('binance: passes the guard for a non-active position carrying an orphan algo order', function () {
+it('binance: passes the guard for a non-active position carrying an orphan algo order', function (): void {
     // Drift spotter use case: position transitioned to closed but a
     // STOP-MARKET it placed earlier is still alive on Binance.
     $f = buildCancelGuardFixture('binance', 'closed', '1234567890');
@@ -98,7 +98,7 @@ it('binance: passes the guard for a non-active position carrying an orphan algo 
     expect($job->startOrFail())->toBeTrue();
 });
 
-it('binance: rejects the guard when the algo order has no exchange_order_id (ghost row)', function () {
+it('binance: rejects the guard when the algo order has no exchange_order_id (ghost row)', function (): void {
     // The exact production failure mode: orphan position carries an
     // algo order our DB created but Binance never registered. Cancel
     // would land on Binance's algo mapper, which validates `algo_id`
@@ -110,7 +110,7 @@ it('binance: rejects the guard when the algo order has no exchange_order_id (gho
     expect($job->startOrFail())->toBeFalse();
 });
 
-it('binance: rejects the guard when the position is mid-flight (closing)', function () {
+it('binance: rejects the guard when the position is mid-flight (closing)', function (): void {
     // A concurrent cancel during the close workflow's own cancel pass
     // could race the active write — guard refuses to start.
     $f = buildCancelGuardFixture('binance', 'closing', '1234567890');
@@ -120,7 +120,7 @@ it('binance: rejects the guard when the position is mid-flight (closing)', funct
     expect($job->startOrFail())->toBeFalse();
 });
 
-it('binance: rejects the guard when the order is already CANCELLED', function () {
+it('binance: rejects the guard when the order is already CANCELLED', function (): void {
     $f = buildCancelGuardFixture('binance', 'closed', '1234567890');
     $f['order']->updateQuietly(['status' => 'CANCELLED']);
 
@@ -129,7 +129,7 @@ it('binance: rejects the guard when the order is already CANCELLED', function ()
     expect($job->startOrFail())->toBeFalse();
 });
 
-it('bitget: passes the guard for an active position with a valid exchange_order_id', function () {
+it('bitget: passes the guard for an active position with a valid exchange_order_id', function (): void {
     $f = buildCancelGuardFixture('bitget', 'active', '987654321');
 
     $job = new CancelSingleAlgoOrderJob($f['position']->id, $f['order']->id);
@@ -137,7 +137,7 @@ it('bitget: passes the guard for an active position with a valid exchange_order_
     expect($job->startOrFail())->toBeTrue();
 });
 
-it('bitget: passes the guard for a closed position carrying an orphan algo order', function () {
+it('bitget: passes the guard for a closed position carrying an orphan algo order', function (): void {
     $f = buildCancelGuardFixture('bitget', 'closed', '987654321');
 
     $job = new CancelSingleAlgoOrderJob($f['position']->id, $f['order']->id);
@@ -145,7 +145,7 @@ it('bitget: passes the guard for a closed position carrying an orphan algo order
     expect($job->startOrFail())->toBeTrue();
 });
 
-it('bitget: rejects the guard when the algo order has no exchange_order_id (ghost row)', function () {
+it('bitget: rejects the guard when the algo order has no exchange_order_id (ghost row)', function (): void {
     $f = buildCancelGuardFixture('bitget', 'failed', null);
 
     $job = new CancelSingleAlgoOrderJob($f['position']->id, $f['order']->id);
@@ -153,7 +153,7 @@ it('bitget: rejects the guard when the algo order has no exchange_order_id (ghos
     expect($job->startOrFail())->toBeFalse();
 });
 
-it('rejects non-algo orders on either exchange', function () {
+it('rejects non-algo orders on either exchange', function (): void {
     $f = buildCancelGuardFixture('binance', 'closed', '1234567890');
     $f['order']->updateQuietly(['is_algo' => false]);
 
@@ -162,7 +162,7 @@ it('rejects non-algo orders on either exchange', function () {
     expect($job->startOrFail())->toBeFalse();
 });
 
-it('rejects when the order belongs to a different position than the one passed in', function () {
+it('rejects when the order belongs to a different position than the one passed in', function (): void {
     $first = buildCancelGuardFixture('binance', 'closed', '1234567890');
     $second = buildCancelGuardFixture('binance', 'closed', '2222222222');
 
@@ -173,7 +173,7 @@ it('rejects when the order belongs to a different position than the one passed i
     expect($job->startOrFail())->toBeFalse();
 });
 
-it('binance idempotent: when -2011 is classified as ignorable, doubleCheck accepts the DB CANCELLED state without calling apiSync', function () {
+it('binance idempotent: when -2011 is classified as ignorable, doubleCheck accepts the DB CANCELLED state without calling apiSync', function (): void {
     // Phase 2 has two halves:
     //
     //   1. computeApiable's catch branch — fires when apiCancel throws
@@ -210,7 +210,7 @@ it('binance idempotent: when -2011 is classified as ignorable, doubleCheck accep
     expect($job->doubleCheck())->toBeTrue();
 });
 
-it('binance non-idempotent: doubleCheck still calls apiSync when no idempotent resolution happened', function () {
+it('binance non-idempotent: doubleCheck still calls apiSync when no idempotent resolution happened', function (): void {
     // Negative twin of the above. Without the flag, doubleCheck must
     // fall through to the original apiSync-based verification path —
     // the contract change for Phase 2 only kicks in on the explicit

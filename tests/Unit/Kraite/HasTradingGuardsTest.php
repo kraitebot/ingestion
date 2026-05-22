@@ -6,7 +6,7 @@ use Kraite\Core\Models\Account;
 use Kraite\Core\Models\Kraite as KraiteModel;
 use Kraite\Core\Trading\Kraite;
 
-test('canOpenPositions returns true when allow_opening_positions is true', function () {
+test('canOpenPositions returns true when allow_opening_positions is true', function (): void {
     KraiteModel::query()->update(['allow_opening_positions' => true]);
 
     $account = Account::factory()->create();
@@ -15,7 +15,7 @@ test('canOpenPositions returns true when allow_opening_positions is true', funct
     expect($engine->canOpenPositions())->toBeTrue();
 });
 
-test('canOpenPositions returns false when allow_opening_positions is false', function () {
+test('canOpenPositions returns false when allow_opening_positions is false', function (): void {
     KraiteModel::query()->update(['allow_opening_positions' => false]);
 
     $account = Account::factory()->create();
@@ -24,7 +24,7 @@ test('canOpenPositions returns false when allow_opening_positions is false', fun
     expect($engine->canOpenPositions())->toBeFalse();
 });
 
-test('canOpenPositions returns false when no engine record exists', function () {
+test('canOpenPositions returns false when no engine record exists', function (): void {
     KraiteModel::query()->delete();
 
     $account = Account::factory()->create();
@@ -33,21 +33,21 @@ test('canOpenPositions returns false when no engine record exists', function () 
     expect($engine->canOpenPositions())->toBeFalse();
 });
 
-test('canOpenShorts returns true by default', function () {
+test('canOpenShorts returns true by default', function (): void {
     $account = Account::factory()->create();
     $engine = Kraite::withAccount($account);
 
     expect($engine->canOpenShorts())->toBeTrue();
 });
 
-test('canOpenLongs returns true by default', function () {
+test('canOpenLongs returns true by default', function (): void {
     $account = Account::factory()->create();
     $engine = Kraite::withAccount($account);
 
     expect($engine->canOpenLongs())->toBeTrue();
 });
 
-test('withAccount creates an instance with the given account', function () {
+test('withAccount creates an instance with the given account', function (): void {
     $account = Account::factory()->create();
 
     $engine = Kraite::withAccount($account);

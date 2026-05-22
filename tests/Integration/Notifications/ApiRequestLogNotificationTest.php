@@ -11,7 +11,7 @@ use Kraite\Core\Notifications\AlertNotification;
 // Test case and RefreshDatabase configured in Pest.php for Integration folder
 
 // Test server_rate_limit_exceeded notification
-it('sends server_rate_limit_exceeded notification when API returns 429', function () {
+it('sends server_rate_limit_exceeded notification when API returns 429', function (): void {
     // Enable notifications globally for this test
     config(['kraite.notifications_enabled' => true]);
 
@@ -69,7 +69,7 @@ it('sends server_rate_limit_exceeded notification when API returns 429', functio
 // 418 and writes a ForbiddenHostname row. Pin that contract: a bare
 // ApiRequestLog with status 418 (no exception path running) MUST NOT fire
 // any broad notification.
-it('does NOT send broad server_ip_forbidden notification when API returns 418 (specific notification comes from ForbiddenHostnameObserver via the exception path)', function () {
+it('does NOT send broad server_ip_forbidden notification when API returns 418 (specific notification comes from ForbiddenHostnameObserver via the exception path)', function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
@@ -108,7 +108,7 @@ it('does NOT send broad server_ip_forbidden notification when API returns 418 (s
 });
 
 // Test exchange_symbol_no_taapi_data notification
-it('sends exchange_symbol_no_taapi_data notification when TAAPI consistently returns no data error', function () {
+it('sends exchange_symbol_no_taapi_data notification when TAAPI consistently returns no data error', function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
@@ -209,7 +209,7 @@ it('sends exchange_symbol_no_taapi_data notification when TAAPI consistently ret
 });
 
 // Test token_delisting notification
-it('sends token_delisting notification when token is delisted', function () {
+it('sends token_delisting notification when token is delisted', function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 

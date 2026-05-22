@@ -7,7 +7,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use Kraite\Core\Support\ApiExceptionHandlers\TaapiExceptionHandler;
 
-test('ignores regular 400 bad request errors', function () {
+test('ignores regular 400 bad request errors', function (): void {
     $handler = new TaapiExceptionHandler();
 
     // TAAPI returns {"errors": [...]} format
@@ -26,7 +26,7 @@ test('ignores regular 400 bad request errors', function () {
     expect($handler->ignoreException($exception))->toBeTrue();
 });
 
-test('does NOT ignore 400 construct limit exceeded errors', function () {
+test('does NOT ignore 400 construct limit exceeded errors', function (): void {
     $handler = new TaapiExceptionHandler();
 
     // TAAPI returns this when you exceed your plan's construct limit
@@ -45,7 +45,7 @@ test('does NOT ignore 400 construct limit exceeded errors', function () {
     expect($handler->ignoreException($exception))->toBeFalse();
 });
 
-test('does NOT ignore 400 calculations limit exceeded errors', function () {
+test('does NOT ignore 400 calculations limit exceeded errors', function (): void {
     $handler = new TaapiExceptionHandler();
 
     // Alternate wording for plan limit
@@ -64,7 +64,7 @@ test('does NOT ignore 400 calculations limit exceeded errors', function () {
     expect($handler->ignoreException($exception))->toBeFalse();
 });
 
-test('does not ignore non-400 errors', function () {
+test('does not ignore non-400 errors', function (): void {
     $handler = new TaapiExceptionHandler();
 
     $response = new Response(

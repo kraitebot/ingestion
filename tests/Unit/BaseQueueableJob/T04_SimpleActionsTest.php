@@ -8,14 +8,14 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'base-queueable-job');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
 // Test stop action
-it('stops when stopJob is called', function () {
+it('stops when stopJob is called', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['stop' => true]],
     ], TestQueueableJob::class)[0];
@@ -31,7 +31,7 @@ it('stops when stopJob is called', function () {
 });
 
 // Test skip action
-it('skips when skipJob is called', function () {
+it('skips when skipJob is called', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['skip' => true]],
     ], TestQueueableJob::class)[0];
@@ -47,7 +47,7 @@ it('skips when skipJob is called', function () {
 });
 
 // Test fail action
-it('fails when transitioning to Failed state', function () {
+it('fails when transitioning to Failed state', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['fail' => true]],
     ], TestQueueableJob::class)[0];

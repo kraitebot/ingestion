@@ -9,7 +9,7 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite as KraiteSettings;
 use StepDispatcher\Models\Step;
 
-beforeEach(function () {
+beforeEach(function (): void {
     Step::query()->delete();
 
     $this->apiSystem = ApiSystem::firstOrCreate(
@@ -53,7 +53,7 @@ beforeEach(function () {
     ]);
 });
 
-test('bulk path creates shared BTC block with orchestrator at index 2', function () {
+test('bulk path creates shared BTC block with orchestrator at index 2', function (): void {
     $this->artisan('kraite:cron-fetch-klines', ['--canonical' => 'binance'])
         ->assertExitCode(0);
 
@@ -84,7 +84,7 @@ test('bulk path creates shared BTC block with orchestrator at index 2', function
     expect($orchestrator->arguments['timeframes'])->toBe(['1h', '4h']);
 });
 
-test('bulk path does not create per-symbol correlation steps upfront — they are spawned lazily by the orchestrator', function () {
+test('bulk path does not create per-symbol correlation steps upfront — they are spawned lazily by the orchestrator', function (): void {
     $this->artisan('kraite:cron-fetch-klines', ['--canonical' => 'binance'])
         ->assertExitCode(0);
 
@@ -94,7 +94,7 @@ test('bulk path does not create per-symbol correlation steps upfront — they ar
 
     // Non-BTC symbol klines also live in per-symbol blocks, not the shared block
     $nonBtcKlines = Step::where('class', FetchKlinesJob::class)
-        ->where(function ($q) {
+        ->where(function ($q): void {
             $q->whereJsonContains('arguments->exchangeSymbolId', $this->link->id)
                 ->orWhereJsonContains('arguments->exchangeSymbolId', $this->eth->id)
                 ->orWhereJsonContains('arguments->exchangeSymbolId', $this->sol->id);
@@ -105,7 +105,7 @@ test('bulk path does not create per-symbol correlation steps upfront — they ar
     expect($nonBtcKlines)->toBe(0);
 });
 
-test('orchestrator execution materializes one block per symbol with full klines+correlation pipeline', function () {
+test('orchestrator execution materializes one block per symbol with full klines+correlation pipeline', function (): void {
     $this->artisan('kraite:cron-fetch-klines', ['--canonical' => 'binance'])
         ->assertExitCode(0);
 

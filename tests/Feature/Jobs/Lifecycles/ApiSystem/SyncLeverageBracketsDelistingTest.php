@@ -46,7 +46,7 @@ function createExchangeSymbolForLifecycle(ApiSystem $apiSystem, string $token, b
     ]);
 }
 
-test('Bitget SyncLeverageBracketsJob skips symbols marked for delisting', function () {
+test('Bitget SyncLeverageBracketsJob skips symbols marked for delisting', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'bitget',
         'name' => 'Bitget',
@@ -67,7 +67,7 @@ test('Bitget SyncLeverageBracketsJob skips symbols marked for delisting', functi
     expect($childIds)->toHaveCount(1);
 });
 
-test('Bybit SyncLeverageBracketsJob skips symbols marked for delisting', function () {
+test('Bybit SyncLeverageBracketsJob skips symbols marked for delisting', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'bybit',
         'name' => 'Bybit',
@@ -88,7 +88,7 @@ test('Bybit SyncLeverageBracketsJob skips symbols marked for delisting', functio
     expect($childIds)->toHaveCount(1);
 });
 
-test('KuCoin SyncLeverageBracketsJob skips symbols marked for delisting', function () {
+test('KuCoin SyncLeverageBracketsJob skips symbols marked for delisting', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'kucoin',
         'name' => 'KuCoin',

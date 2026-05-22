@@ -23,7 +23,7 @@ use StepDispatcher\Models\StepsDispatcher;
  * one resolver call per slot, before the fast-tracked / BTC-bias paths.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     StepsDispatcher::updateOrCreate(['group' => 'alpha'], ['can_dispatch' => true]);
     StepsDispatcher::updateOrCreate(['group' => 'beta'], ['can_dispatch' => true]);
 
@@ -36,7 +36,7 @@ beforeEach(function () {
     Config::set('kraite.position_creation.symbol_override', null);
 });
 
-test('override forces a specific symbol when account_id matches and symbol resolves', function () {
+test('override forces a specific symbol when account_id matches and symbol resolves', function (): void {
     $account = createAccountForTokenDiscoveryTest();
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
 
@@ -81,7 +81,7 @@ test('override forces a specific symbol when account_id matches and symbol resol
     expect($position->exchange_symbol_id)->toBe($override->id);
 });
 
-test('override falls back to normal scoring when config is null', function () {
+test('override falls back to normal scoring when config is null', function (): void {
     $account = createAccountForTokenDiscoveryTest();
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
 
@@ -117,7 +117,7 @@ test('override falls back to normal scoring when config is null', function () {
     expect($position->exchange_symbol_id)->toBe($best->id);
 });
 
-test('override falls back to normal scoring when account_id does not match', function () {
+test('override falls back to normal scoring when account_id does not match', function (): void {
     $account = createAccountForTokenDiscoveryTest();
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
 
@@ -156,7 +156,7 @@ test('override falls back to normal scoring when account_id does not match', fun
     expect($position->exchange_symbol_id)->toBe($best->id);
 });
 
-test('override falls back silently when symbol cannot be resolved on the account exchange', function () {
+test('override falls back silently when symbol cannot be resolved on the account exchange', function (): void {
     $account = createAccountForTokenDiscoveryTest();
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
 
@@ -186,7 +186,7 @@ test('override falls back silently when symbol cannot be resolved on the account
     expect($position->exchange_symbol_id)->toBe($best->id);
 });
 
-test('override falls back silently when symbol already has an active position on the account', function () {
+test('override falls back silently when symbol already has an active position on the account', function (): void {
     $account = createAccountForTokenDiscoveryTest();
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
 
@@ -239,7 +239,7 @@ test('override falls back silently when symbol already has an active position on
     expect($newSlotPosition->exchange_symbol_id)->toBe($alternative->id);
 });
 
-test('override falls back silently when symbol direction does not match the slot direction', function () {
+test('override falls back silently when symbol direction does not match the slot direction', function (): void {
     $account = createAccountForTokenDiscoveryTest();
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
 

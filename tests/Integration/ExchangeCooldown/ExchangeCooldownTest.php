@@ -20,7 +20,7 @@ use Kraite\Core\Models\Kraite;
 
 uses()->group('integration', 'exchange-cooldown');
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Engine record needed by observer (notification routing calls Kraite::admin())
     Kraite::firstOrCreate(
         ['id' => 1],
@@ -37,8 +37,8 @@ beforeEach(function () {
 // ApiSystem::inCooldown() / activateCooldown()
 // ========================================================================
 
-describe('ApiSystem Cooldown State', function () {
-    it('returns false when cooldown_until is null', function () {
+describe('ApiSystem Cooldown State', function (): void {
+    it('returns false when cooldown_until is null', function (): void {
         $apiSystem = ApiSystem::factory()->exchange()->create([
             'canonical' => 'binance',
             'cooldown_until' => null,
@@ -47,7 +47,7 @@ describe('ApiSystem Cooldown State', function () {
         expect($apiSystem->inCooldown())->toBeFalse();
     });
 
-    it('returns true when cooldown_until is in the future', function () {
+    it('returns true when cooldown_until is in the future', function (): void {
         $apiSystem = ApiSystem::factory()->exchange()->create([
             'canonical' => 'binance',
             'cooldown_until' => now()->addMinutes(15),
@@ -56,7 +56,7 @@ describe('ApiSystem Cooldown State', function () {
         expect($apiSystem->inCooldown())->toBeTrue();
     });
 
-    it('returns false when cooldown_until is in the past', function () {
+    it('returns false when cooldown_until is in the past', function (): void {
         $apiSystem = ApiSystem::factory()->exchange()->create([
             'canonical' => 'binance',
             'cooldown_until' => now()->subMinutes(1),
@@ -65,7 +65,7 @@ describe('ApiSystem Cooldown State', function () {
         expect($apiSystem->inCooldown())->toBeFalse();
     });
 
-    it('activates cooldown with configured duration', function () {
+    it('activates cooldown with configured duration', function (): void {
         config(['kraite.cooldown_duration_minutes' => 30]);
 
         $apiSystem = ApiSystem::factory()->exchange()->create([
@@ -80,7 +80,7 @@ describe('ApiSystem Cooldown State', function () {
             ->and((int) $apiSystem->cooldown_until->diffInSeconds(now()->addMinutes(30)))->toBe(0);
     });
 
-    it('resets cooldown duration on new trigger (sliding window)', function () {
+    it('resets cooldown duration on new trigger (sliding window)', function (): void {
         config(['kraite.cooldown_duration_minutes' => 30]);
 
         $apiSystem = ApiSystem::factory()->exchange()->create([
@@ -100,92 +100,92 @@ describe('ApiSystem Cooldown State', function () {
 // shouldTriggerCooldown() per exchange handler
 // ========================================================================
 
-describe('Exception Handler Cooldown Classification', function () {
-    it('Binance: triggers cooldown on 503', function () {
+describe('Exception Handler Cooldown Classification', function (): void {
+    it('Binance: triggers cooldown on 503', function (): void {
         $handler = BaseExceptionHandler::make('binance');
 
         expect($handler->shouldTriggerCooldown(503))->toBeTrue();
     });
 
-    it('Binance: triggers cooldown on 504', function () {
+    it('Binance: triggers cooldown on 504', function (): void {
         $handler = BaseExceptionHandler::make('binance');
 
         expect($handler->shouldTriggerCooldown(504))->toBeTrue();
     });
 
-    it('Binance: does not trigger cooldown on 429 (rate limit)', function () {
+    it('Binance: does not trigger cooldown on 429 (rate limit)', function (): void {
         $handler = BaseExceptionHandler::make('binance');
 
         expect($handler->shouldTriggerCooldown(429))->toBeFalse();
     });
 
-    it('Binance: does not trigger cooldown on 200 (success)', function () {
+    it('Binance: does not trigger cooldown on 200 (success)', function (): void {
         $handler = BaseExceptionHandler::make('binance');
 
         expect($handler->shouldTriggerCooldown(200))->toBeFalse();
     });
 
-    it('Binance: does not trigger cooldown on 408 (request timeout)', function () {
+    it('Binance: does not trigger cooldown on 408 (request timeout)', function (): void {
         $handler = BaseExceptionHandler::make('binance');
 
         expect($handler->shouldTriggerCooldown(408))->toBeFalse();
     });
 
-    it('Bybit: triggers cooldown on 503', function () {
+    it('Bybit: triggers cooldown on 503', function (): void {
         $handler = BaseExceptionHandler::make('bybit');
 
         expect($handler->shouldTriggerCooldown(503))->toBeTrue();
     });
 
-    it('Bybit: triggers cooldown on 500', function () {
+    it('Bybit: triggers cooldown on 500', function (): void {
         $handler = BaseExceptionHandler::make('bybit');
 
         expect($handler->shouldTriggerCooldown(500))->toBeTrue();
     });
 
-    it('Bybit: triggers cooldown on HTTP 200 with retCode 10000 (Server Timeout)', function () {
+    it('Bybit: triggers cooldown on HTTP 200 with retCode 10000 (Server Timeout)', function (): void {
         $handler = BaseExceptionHandler::make('bybit');
 
         expect($handler->shouldTriggerCooldown(200, 10000))->toBeTrue();
     });
 
-    it('Bybit: triggers cooldown on HTTP 200 with retCode 10016 (Service Restarting)', function () {
+    it('Bybit: triggers cooldown on HTTP 200 with retCode 10016 (Service Restarting)', function (): void {
         $handler = BaseExceptionHandler::make('bybit');
 
         expect($handler->shouldTriggerCooldown(200, 10016))->toBeTrue();
     });
 
-    it('Bybit: does not trigger cooldown on HTTP 200 with retCode 0 (success)', function () {
+    it('Bybit: does not trigger cooldown on HTTP 200 with retCode 0 (success)', function (): void {
         $handler = BaseExceptionHandler::make('bybit');
 
         expect($handler->shouldTriggerCooldown(200, 0))->toBeFalse();
     });
 
-    it('Bybit: does not trigger cooldown on 429 (rate limit)', function () {
+    it('Bybit: does not trigger cooldown on 429 (rate limit)', function (): void {
         $handler = BaseExceptionHandler::make('bybit');
 
         expect($handler->shouldTriggerCooldown(429))->toBeFalse();
     });
 
-    it('KuCoin: triggers cooldown on 503', function () {
+    it('KuCoin: triggers cooldown on 503', function (): void {
         $handler = BaseExceptionHandler::make('kucoin');
 
         expect($handler->shouldTriggerCooldown(503))->toBeTrue();
     });
 
-    it('KuCoin: triggers cooldown on 502', function () {
+    it('KuCoin: triggers cooldown on 502', function (): void {
         $handler = BaseExceptionHandler::make('kucoin');
 
         expect($handler->shouldTriggerCooldown(502))->toBeTrue();
     });
 
-    it('Bitget: triggers cooldown on 504', function () {
+    it('Bitget: triggers cooldown on 504', function (): void {
         $handler = BaseExceptionHandler::make('bitget');
 
         expect($handler->shouldTriggerCooldown(504))->toBeTrue();
     });
 
-    it('non-exchange handlers have empty instability codes', function () {
+    it('non-exchange handlers have empty instability codes', function (): void {
         $handler = BaseExceptionHandler::make('taapi');
 
         expect($handler->shouldTriggerCooldown(503))->toBeFalse();
@@ -197,28 +197,28 @@ describe('Exception Handler Cooldown Classification', function () {
 // extractVendorCodeFromResponse()
 // ========================================================================
 
-describe('Vendor Code Extraction from Response', function () {
-    it('Binance: extracts vendor code from code field', function () {
+describe('Vendor Code Extraction from Response', function (): void {
+    it('Binance: extracts vendor code from code field', function (): void {
         $handler = BaseExceptionHandler::make('binance');
 
         expect($handler->extractVendorCodeFromResponse(['code' => -1021, 'msg' => 'Timestamp error']))
             ->toBe(-1021);
     });
 
-    it('Binance: returns null for null response', function () {
+    it('Binance: returns null for null response', function (): void {
         $handler = BaseExceptionHandler::make('binance');
 
         expect($handler->extractVendorCodeFromResponse(null))->toBeNull();
     });
 
-    it('Bybit: extracts vendor code from retCode field', function () {
+    it('Bybit: extracts vendor code from retCode field', function (): void {
         $handler = BaseExceptionHandler::make('bybit');
 
         expect($handler->extractVendorCodeFromResponse(['retCode' => 10000, 'retMsg' => 'Server Timeout']))
             ->toBe(10000);
     });
 
-    it('Bybit: returns null for retCode 0 (success)', function () {
+    it('Bybit: returns null for retCode 0 (success)', function (): void {
         $handler = BaseExceptionHandler::make('bybit');
 
         expect($handler->extractVendorCodeFromResponse(['retCode' => 0, 'retMsg' => 'OK']))
@@ -230,8 +230,8 @@ describe('Vendor Code Extraction from Response', function () {
 // Observer triggers cooldown
 // ========================================================================
 
-describe('ApiRequestLog Observer Cooldown Trigger', function () {
-    it('activates cooldown when exchange returns 503', function () {
+describe('ApiRequestLog Observer Cooldown Trigger', function (): void {
+    it('activates cooldown when exchange returns 503', function (): void {
         config(['kraite.cooldown_duration_minutes' => 30]);
 
         $apiSystem = ApiSystem::factory()->exchange()->create([
@@ -252,7 +252,7 @@ describe('ApiRequestLog Observer Cooldown Trigger', function () {
             ->and((int) $apiSystem->cooldown_until->diffInSeconds(now()->addMinutes(30)))->toBe(0);
     });
 
-    it('activates cooldown when exchange returns 504', function () {
+    it('activates cooldown when exchange returns 504', function (): void {
         config(['kraite.cooldown_duration_minutes' => 30]);
 
         $apiSystem = ApiSystem::factory()->exchange()->create([
@@ -269,7 +269,7 @@ describe('ApiRequestLog Observer Cooldown Trigger', function () {
         expect($apiSystem->inCooldown())->toBeTrue();
     });
 
-    it('does not activate cooldown for non-exchange API systems', function () {
+    it('does not activate cooldown for non-exchange API systems', function (): void {
         $apiSystem = ApiSystem::factory()->taapi()->create();
 
         ApiRequestLog::factory()->create([
@@ -281,7 +281,7 @@ describe('ApiRequestLog Observer Cooldown Trigger', function () {
         expect($apiSystem->inCooldown())->toBeFalse();
     });
 
-    it('does not activate cooldown on successful requests', function () {
+    it('does not activate cooldown on successful requests', function (): void {
         $apiSystem = ApiSystem::factory()->exchange()->create([
             'canonical' => 'binance',
             'cooldown_until' => null,
@@ -295,7 +295,7 @@ describe('ApiRequestLog Observer Cooldown Trigger', function () {
         expect($apiSystem->inCooldown())->toBeFalse();
     });
 
-    it('does not activate cooldown on 429 (rate limit)', function () {
+    it('does not activate cooldown on 429 (rate limit)', function (): void {
         $apiSystem = ApiSystem::factory()->exchange()->create([
             'canonical' => 'binance',
             'cooldown_until' => null,
@@ -309,7 +309,7 @@ describe('ApiRequestLog Observer Cooldown Trigger', function () {
         expect($apiSystem->inCooldown())->toBeFalse();
     });
 
-    it('resets sliding window on new server instability trigger', function () {
+    it('resets sliding window on new server instability trigger', function (): void {
         config(['kraite.cooldown_duration_minutes' => 30]);
 
         $apiSystem = ApiSystem::factory()->exchange()->create([
@@ -327,7 +327,7 @@ describe('ApiRequestLog Observer Cooldown Trigger', function () {
         expect((int) $apiSystem->cooldown_until->diffInSeconds(now()->addMinutes(30)))->toBe(0);
     });
 
-    it('activates cooldown for Bybit on HTTP 200 with retCode 10000', function () {
+    it('activates cooldown for Bybit on HTTP 200 with retCode 10000', function (): void {
         config(['kraite.cooldown_duration_minutes' => 30]);
 
         $apiSystem = ApiSystem::factory()->exchange()->create([

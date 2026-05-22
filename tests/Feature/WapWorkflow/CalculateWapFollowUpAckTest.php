@@ -67,7 +67,7 @@ function runCompleteFor(Position $position, Order $profitOrder): void
     $job->complete();
 }
 
-it('bumps reference_* on the profit order after a successful WAP', function () {
+it('bumps reference_* on the profit order after a successful WAP', function (): void {
     $position = makeWapScenarioPosition();
     $profitOrder = makeProfitOrderFor($position);
 
@@ -80,7 +80,7 @@ it('bumps reference_* on the profit order after a successful WAP', function () {
         ->and((float) $fresh->reference_quantity)->toBe((float) $fresh->quantity);
 });
 
-it('flags the position as waped and mirrors profit order qty onto it', function () {
+it('flags the position as waped and mirrors profit order qty onto it', function (): void {
     $position = makeWapScenarioPosition();
     $profitOrder = makeProfitOrderFor($position);
 
@@ -92,7 +92,7 @@ it('flags the position as waped and mirrors profit order qty onto it', function 
         ->and((float) $fresh->quantity)->toBe((float) $profitOrder->fresh()->quantity);
 });
 
-it('does nothing extra when every filled LIMIT is already acked', function () {
+it('does nothing extra when every filled LIMIT is already acked', function (): void {
     $position = makeWapScenarioPosition();
     $profitOrder = makeProfitOrderFor($position);
     makeFilledLimit($position, referenceStatus: 'FILLED');
@@ -104,7 +104,7 @@ it('does nothing extra when every filled LIMIT is already acked', function () {
     expect(Steps::usingPrefix('trading', fn () => Step::where('class', ApplyWapJob::class)->count()))->toBe(0);
 });
 
-it('claims unacked filled LIMITs and enqueues a follow-up WAP', function () {
+it('claims unacked filled LIMITs and enqueues a follow-up WAP', function (): void {
     $position = makeWapScenarioPosition();
     $profitOrder = makeProfitOrderFor($position);
 
@@ -128,7 +128,7 @@ it('claims unacked filled LIMITs and enqueues a follow-up WAP', function () {
         ->and($followUp->dispatch_after->greaterThan(now()))->toBeTrue();
 });
 
-it('only claims LIMIT rows — ignores unacked non-LIMIT orders', function () {
+it('only claims LIMIT rows — ignores unacked non-LIMIT orders', function (): void {
     $position = makeWapScenarioPosition();
     $profitOrder = makeProfitOrderFor($position);
 

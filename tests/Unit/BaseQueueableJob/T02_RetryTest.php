@@ -8,14 +8,14 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'base-queueable-job');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
 // Test that a step retries when retryJob() is called
-it('transitions to pending when retryJob is called', function () {
+it('transitions to pending when retryJob is called', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['retry' => true]],
     ], TestQueueableJob::class)[0];

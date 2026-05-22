@@ -13,7 +13,7 @@ use Tests\Support\TestBybitApiableJob;
 
 uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'bybit');
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Create Engine admin record (required for forbidden hostname notifications)
     Kraite::create([
         'id' => 1,
@@ -24,12 +24,12 @@ beforeEach(function () {
     ]);
 });
 
-it('cleans laravel.log', function () {
+it('cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
     expect(true)->toBe(true);
 });
 
-it('handles 403 rate limit by setting dispatch_after', function () {
+it('handles 403 rate limit by setting dispatch_after', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -66,7 +66,7 @@ it('handles 403 rate limit by setting dispatch_after', function () {
     expect($events)->toContain('handleApiException:handled');
 });
 
-it('handles 429 system-level rate limit by setting dispatch_after', function () {
+it('handles 429 system-level rate limit by setting dispatch_after', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -98,7 +98,7 @@ it('handles 429 system-level rate limit by setting dispatch_after', function () 
     expect($step->dispatch_after->isFuture())->toBeTrue();
 });
 
-it('handles 200/10006 rate limit by setting dispatch_after', function () {
+it('handles 200/10006 rate limit by setting dispatch_after', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -130,7 +130,7 @@ it('handles 200/10006 rate limit by setting dispatch_after', function () {
     expect($step->dispatch_after->isFuture())->toBeTrue();
 });
 
-it('handles 200/10018 exceeded IP rate limit by creating forbidden_hostname with forbidden_until', function () {
+it('handles 200/10018 exceeded IP rate limit by creating forbidden_hostname with forbidden_until', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -171,7 +171,7 @@ it('handles 200/10018 exceeded IP rate limit by creating forbidden_hostname with
     expect($forbiddenHostname->forbidden_until)->not->toBeNull(); // Has expiry
 });
 
-it('handles 200/10010 IP not whitelisted by creating account-specific forbidden_hostname', function () {
+it('handles 200/10010 IP not whitelisted by creating account-specific forbidden_hostname', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -210,7 +210,7 @@ it('handles 200/10010 IP not whitelisted by creating account-specific forbidden_
     expect($forbiddenHostname->account_id)->toBe($account->id); // Account-specific
 });
 
-it('handles 200/10009 IP banned by creating forbidden_hostname', function () {
+it('handles 200/10009 IP banned by creating forbidden_hostname', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -249,7 +249,7 @@ it('handles 200/10009 IP banned by creating forbidden_hostname', function () {
     expect($forbiddenHostname->forbidden_until)->toBeNull(); // Permanent
 });
 
-it('handles 401 authentication failure by creating forbidden_hostname', function () {
+it('handles 401 authentication failure by creating forbidden_hostname', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -288,7 +288,7 @@ it('handles 401 authentication failure by creating forbidden_hostname', function
     expect($forbiddenHostname->account_id)->toBe($account->id);
 });
 
-it('handles 200/10003 account blocked by creating forbidden_hostname', function () {
+it('handles 200/10003 account blocked by creating forbidden_hostname', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -327,7 +327,7 @@ it('handles 200/10003 account blocked by creating forbidden_hostname', function 
     expect($forbiddenHostname->account_id)->toBe($account->id);
 });
 
-it('ignores 200/34040 exception and completes step', function () {
+it('ignores 200/34040 exception and completes step', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -363,7 +363,7 @@ it('ignores 200/34040 exception and completes step', function () {
     expect($events)->not->toContain('handleApiException:rethrow');
 });
 
-it('ignores 200/110025 exception and completes step', function () {
+it('ignores 200/110025 exception and completes step', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -393,7 +393,7 @@ it('ignores 200/110025 exception and completes step', function () {
     expect($step->state->value())->toBe('completed');
 });
 
-it('retries 503 exception with backoff in dispatch_after', function () {
+it('retries 503 exception with backoff in dispatch_after', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -430,7 +430,7 @@ it('retries 503 exception with backoff in dispatch_after', function () {
     expect($events)->toContain('handleApiException:rethrow');
 });
 
-it('retries 200/10019 exception with backoff in dispatch_after', function () {
+it('retries 200/10019 exception with backoff in dispatch_after', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -463,7 +463,7 @@ it('retries 200/10019 exception with backoff in dispatch_after', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('retries 200/170007 backend timeout exception with backoff', function () {
+it('retries 200/170007 backend timeout exception with backoff', function (): void {
     // Arrange: Create Bybit account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bybit']);
     $user = User::factory()->create();
@@ -496,7 +496,7 @@ it('retries 200/170007 backend timeout exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('handles 200/10002 recvWindow mismatch by retrying with backoff', function () {
+it('handles 200/10002 recvWindow mismatch by retrying with backoff', function (): void {
     // Fake notifications to prevent actual sending
     Illuminate\Support\Facades\Notification::fake();
 

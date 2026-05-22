@@ -7,16 +7,16 @@ use Kraite\Core\Support\MaintenanceMode;
 
 uses()->group('feature', 'support', 'maintenance');
 
-beforeEach(function () {
+beforeEach(function (): void {
     Cache::forget(MaintenanceMode::STEPS_DISPATCH_KEY);
 });
 
-it('reports dispatch as not paused by default', function () {
+it('reports dispatch as not paused by default', function (): void {
     expect(MaintenanceMode::isStepsDispatchPaused())->toBeFalse()
         ->and(MaintenanceMode::stepsDispatchPauseInfo())->toBeNull();
 });
 
-it('engages the pause and reports the reason', function () {
+it('engages the pause and reports the reason', function (): void {
     MaintenanceMode::pauseStepsDispatch(reason: 'OPTIMIZE TABLE breadcrumb rebuild');
 
     expect(MaintenanceMode::isStepsDispatchPaused())->toBeTrue();
@@ -28,7 +28,7 @@ it('engages the pause and reports the reason', function () {
         ->and($info['paused_at'])->not->toBe('');
 });
 
-it('clears the pause when resume is called', function () {
+it('clears the pause when resume is called', function (): void {
     MaintenanceMode::pauseStepsDispatch(reason: 'test');
 
     expect(MaintenanceMode::isStepsDispatchPaused())->toBeTrue();
@@ -39,7 +39,7 @@ it('clears the pause when resume is called', function () {
         ->and(MaintenanceMode::stepsDispatchPauseInfo())->toBeNull();
 });
 
-it('honours a custom TTL', function () {
+it('honours a custom TTL', function (): void {
     MaintenanceMode::pauseStepsDispatch(reason: 'custom-ttl', ttlSeconds: 90);
 
     $info = MaintenanceMode::stepsDispatchPauseInfo();

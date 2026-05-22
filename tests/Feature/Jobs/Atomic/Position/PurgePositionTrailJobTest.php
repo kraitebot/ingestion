@@ -158,7 +158,7 @@ function seedPurgeTrail(Position $position, int $orderCount = 3): array
     return $orderIds;
 }
 
-it('dispatches the trail purge step when a position transitions to closed', function () {
+it('dispatches the trail purge step when a position transitions to closed', function (): void {
     $position = buildClosablePosition();
 
     $position->update(['status' => 'closed']);
@@ -175,7 +175,7 @@ it('dispatches the trail purge step when a position transitions to closed', func
         ->and($steps->first()->queue)->toBe('cronjobs');
 });
 
-it('does not dispatch the trail purge step when a position is cancelled', function () {
+it('does not dispatch the trail purge step when a position is cancelled', function (): void {
     $position = buildClosablePosition();
 
     $position->update(['status' => 'cancelled']);
@@ -184,7 +184,7 @@ it('does not dispatch the trail purge step when a position is cancelled', functi
     expect($count)->toBe(0);
 });
 
-it('does not dispatch the trail purge step when a position fails', function () {
+it('does not dispatch the trail purge step when a position fails', function (): void {
     $position = buildClosablePosition();
 
     $position->update(['status' => 'failed']);
@@ -193,7 +193,7 @@ it('does not dispatch the trail purge step when a position fails', function () {
     expect($count)->toBe(0);
 });
 
-it('does not dispatch the trail purge step when an unrelated attribute changes on a closed position', function () {
+it('does not dispatch the trail purge step when an unrelated attribute changes on a closed position', function (): void {
     $position = buildClosablePosition();
     $position->update(['status' => 'closed']);
     Steps::usingPrefix('trading', fn () => Step::where('class', PurgePositionTrailJob::class)->delete());
@@ -206,7 +206,7 @@ it('does not dispatch the trail purge step when an unrelated attribute changes o
     expect($count)->toBe(0);
 });
 
-it('purges every breadcrumb tied to the position and its orders without touching the position row or orders', function () {
+it('purges every breadcrumb tied to the position and its orders without touching the position row or orders', function (): void {
     $position = buildClosablePosition();
     $orderIds = seedPurgeTrail($position);
 
@@ -261,7 +261,7 @@ it('purges every breadcrumb tied to the position and its orders without touching
         ->and(Order::whereIn('id', $orderIds)->count())->toBe(count($orderIds));
 });
 
-it('preserves its own running step row so the janitor can complete and be archived normally', function () {
+it('preserves its own running step row so the janitor can complete and be archived normally', function (): void {
     $position = buildClosablePosition();
 
     $runningStepId = (int) DB::table('steps')->insertGetId([

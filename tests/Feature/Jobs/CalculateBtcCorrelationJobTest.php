@@ -11,7 +11,7 @@ use Kraite\Core\Models\Kraite as KraiteSettings;
 use Kraite\Core\Models\Symbol;
 use StepDispatcher\Models\Step;
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Ensure correlation is on for the tests
     config()->set('kraite.correlation.enabled', true);
     config()->set('kraite.correlation.btc_token', 'BTC');
@@ -49,8 +49,8 @@ beforeEach(function () {
  * Each call advances the UNIX base so subsequent calls inside the same test
  * don't collide on the (symbol, timeframe, timestamp) unique constraint.
  *
- * @param  array<int, float>  $btcCloses   Ordered oldest → newest
- * @param  array<int, float>  $tokenCloses Same length as $btcCloses
+ * @param  array<int, float>  $btcCloses  Ordered oldest → newest
+ * @param  array<int, float>  $tokenCloses  Same length as $btcCloses
  */
 function seedPairedCandles(ExchangeSymbol $btc, ExchangeSymbol $token, array $btcCloses, array $tokenCloses, string $timeframe = '1h'): void
 {
@@ -101,7 +101,7 @@ function runCorrelationJob(int $exchangeSymbolId): array
     return $job->compute();
 }
 
-test('perfect positive correlation produces pearson near +1', function () {
+test('perfect positive correlation produces pearson near +1', function (): void {
     $token = ExchangeSymbol::factory()->create([
         'api_system_id' => $this->apiSystem->id,
         'token' => 'LINK',
@@ -119,7 +119,7 @@ test('perfect positive correlation produces pearson near +1', function () {
         ->and($result['timeframes']['1h']['pearson'])->toBeLessThanOrEqual(1.0);
 });
 
-test('perfect negative correlation produces pearson near -1', function () {
+test('perfect negative correlation produces pearson near -1', function (): void {
     $token = ExchangeSymbol::factory()->create([
         'api_system_id' => $this->apiSystem->id,
         'token' => 'INV',
@@ -136,7 +136,7 @@ test('perfect negative correlation produces pearson near -1', function () {
     expect($result['timeframes']['1h']['pearson'])->toBeLessThan(-0.99);
 });
 
-test('different kline sets yield different correlation values on the same symbol', function () {
+test('different kline sets yield different correlation values on the same symbol', function (): void {
     $token = ExchangeSymbol::factory()->create([
         'api_system_id' => $this->apiSystem->id,
         'token' => 'TKA',
@@ -151,9 +151,9 @@ test('different kline sets yield different correlation values on the same symbol
     // Clear the token's candles AND the BTC cache, then reseed with inverted
     // movement. BTC baseline stays untouched so the cache behaviour remains
     // exercised under realistic conditions.
-    \Illuminate\Support\Facades\DB::table('candles')
+    Illuminate\Support\Facades\DB::table('candles')
         ->where('exchange_symbol_id', $token->id)->delete();
-    \Illuminate\Support\Facades\DB::table('candles')
+    Illuminate\Support\Facades\DB::table('candles')
         ->where('exchange_symbol_id', $this->btc->id)->delete();
     Cache::flush();
 
@@ -172,7 +172,7 @@ test('different kline sets yield different correlation values on the same symbol
     expect($token->btc_correlation_pearson['1h'])->toBeLessThan(-0.99);
 });
 
-test('btc candles are cached so a second symbol does not hit the DB again', function () {
+test('btc candles are cached so a second symbol does not hit the DB again', function (): void {
     $tokenA = ExchangeSymbol::factory()->create([
         'api_system_id' => $this->apiSystem->id,
         'token' => 'TKA',

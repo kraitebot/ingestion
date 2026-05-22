@@ -10,7 +10,7 @@ use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use StepDispatcher\Models\Step;
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->apiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
         ['is_exchange' => true, 'name' => 'Binance', 'recvwindow_margin' => 1000]
@@ -36,7 +36,7 @@ function arrangeDispatchPerSymbolStep(array $exchangeSymbolIds, array $timeframe
     ]);
 }
 
-test('creates one independent block per symbol with klines at index 1 and correlation+elasticity at index 2', function () {
+test('creates one independent block per symbol with klines at index 1 and correlation+elasticity at index 2', function (): void {
     $symbolA = ExchangeSymbol::factory()->create(['api_system_id' => $this->apiSystem->id, 'token' => 'LINK', 'quote' => 'USDT']);
     $symbolB = ExchangeSymbol::factory()->create(['api_system_id' => $this->apiSystem->id, 'token' => 'ETH', 'quote' => 'USDT']);
 
@@ -82,7 +82,7 @@ test('creates one independent block per symbol with klines at index 1 and correl
     }
 });
 
-test('produces zero child blocks when exchangeSymbolIds list is empty', function () {
+test('produces zero child blocks when exchangeSymbolIds list is empty', function (): void {
     $step = arrangeDispatchPerSymbolStep([], ['1h'], 5);
 
     $job = new DispatchPerSymbolKlineBlocksJob([], ['1h'], 5);

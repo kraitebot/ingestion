@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: P1 -> C1 (child fails)
 // When a child fails, the parent should transition to Failed
-it('fails parent when child fails', function () {
+it('fails parent when child fails', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -43,7 +43,7 @@ it('fails parent when child fails', function () {
 
 // Schematic: P1 -> C1 -> G1 (grandchild fails)
 // When a grandchild fails, both child and parent should fail
-it('fails grandparent and parent when grandchild fails', function () {
+it('fails grandparent and parent when grandchild fails', function (): void {
     $block1 = (string) Str::uuid();
     $block2 = (string) Str::uuid();
     $block3 = (string) Str::uuid();
@@ -76,7 +76,7 @@ it('fails grandparent and parent when grandchild fails', function () {
 
 // Schematic: P1 -> C1, C2 (one child fails, other is pending)
 // When one child fails, parent should fail, and pending sibling should be cancelled
-it('cancels pending sibling when one child fails', function () {
+it('cancels pending sibling when one child fails', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -106,7 +106,7 @@ it('cancels pending sibling when one child fails', function () {
 
 // Schematic: P1 -> C1,C1 (parallel children, one fails)
 // Both parallel children at same index, one fails - parent should fail
-it('fails parent when one of parallel children fails', function () {
+it('fails parent when one of parallel children fails', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -135,7 +135,7 @@ it('fails parent when one of parallel children fails', function () {
 
 // Schematic: P1 -> C1 (child stops)
 // Stopped child should cause parent to stop (not fail)
-it('stops parent when child stops', function () {
+it('stops parent when child stops', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -161,7 +161,7 @@ it('stops parent when child stops', function () {
 
 // Schematic: 1 (fails) -> 2, 3, 4 (all should be cancelled)
 // Downstream cancellation should cancel all subsequent steps
-it('cancels all downstream steps when one step fails', function () {
+it('cancels all downstream steps when one step fails', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -186,7 +186,7 @@ it('cancels all downstream steps when one step fails', function () {
 
 // Schematic: 1 -> 2 (fails) -> 3 (should be cancelled, not 1)
 // Only downstream steps should be cancelled, not upstream
-it('cancels only downstream steps not upstream', function () {
+it('cancels only downstream steps not upstream', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -211,7 +211,7 @@ it('cancels only downstream steps not upstream', function () {
 
 // Schematic: P1 (fails) -> C1, C2 (both should be cancelled due to parent failure cascade)
 // When parent fails directly, all non-terminal children should be cancelled (not failed)
-it('cancels all children when parent fails', function () {
+it('cancels all children when parent fails', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -239,7 +239,7 @@ it('cancels all children when parent fails', function () {
 
 // Schematic: P1 -> C1 (running) -> G1 (fails)
 // When grandchild fails while child is still running, propagation should happen correctly
-it('propagates failure through running intermediaries', function () {
+it('propagates failure through running intermediaries', function (): void {
     $block1 = (string) Str::uuid();
     $block2 = (string) Str::uuid();
     $block3 = (string) Str::uuid();
@@ -306,7 +306,7 @@ it('propagates failure through running intermediaries', function () {
 
 // Schematic: 1,1,1 (parallel, middle one fails) -> 2 (should be cancelled)
 // When one of parallel steps fails, downstream should still be cancelled
-it('cancels downstream when parallel step fails', function () {
+it('cancels downstream when parallel step fails', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -347,7 +347,7 @@ it('cancels downstream when parallel step fails', function () {
 // - C1 fails immediately
 // - C2 is a parent step with grandchildren, so it stays in Running while grandchildren execute
 // - Parent should NOT fail until C2 also reaches terminal state
-it('waits for all parallel children before failing parent', function () {
+it('waits for all parallel children before failing parent', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
     $grandchildBlock = (string) Str::uuid();
@@ -394,7 +394,7 @@ it('waits for all parallel children before failing parent', function () {
 
 // Schematic: 1 -> 2 -> 3 (fails) -> 4 -> 5 (parent with children) -> 6
 // When step 3 fails, downstream parent (step 5) and its children should all be cancelled
-it('cancels downstream parent and its children when upstream step fails', function () {
+it('cancels downstream parent and its children when upstream step fails', function (): void {
     $mainBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 

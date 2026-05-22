@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Kraite\Core\Models\Symbol;
 
-it('creates a symbol with cmc_ranking', function () {
+it('creates a symbol with cmc_ranking', function (): void {
     $symbol = Symbol::factory()->create([
         'token' => 'TESTBTC'.uniqid(),
         'cmc_id' => 1,
@@ -15,7 +15,7 @@ it('creates a symbol with cmc_ranking', function () {
     expect($symbol->cmc_id)->toBe(1);
 });
 
-it('creates a symbol with null cmc_ranking', function () {
+it('creates a symbol with null cmc_ranking', function (): void {
     $symbol = Symbol::factory()->create([
         'token' => 'NEWTOKEN'.uniqid(),
         'cmc_ranking' => null,
@@ -24,7 +24,7 @@ it('creates a symbol with null cmc_ranking', function () {
     expect($symbol->cmc_ranking)->toBeNull();
 });
 
-it('creates a symbol with is_stable_coin flag', function () {
+it('creates a symbol with is_stable_coin flag', function (): void {
     $symbol = Symbol::factory()->create([
         'token' => 'TESTUSDT'.uniqid(),
         'is_stable_coin' => true,
@@ -33,7 +33,7 @@ it('creates a symbol with is_stable_coin flag', function () {
     expect($symbol->is_stable_coin)->toBeTrue();
 });
 
-it('defaults is_stable_coin to false', function () {
+it('defaults is_stable_coin to false', function (): void {
     $symbol = Symbol::factory()->create([
         'is_stable_coin' => false,
     ]);
@@ -41,13 +41,13 @@ it('defaults is_stable_coin to false', function () {
     expect($symbol->is_stable_coin)->toBeFalse();
 });
 
-it('can use stablecoin factory state', function () {
+it('can use stablecoin factory state', function (): void {
     $symbol = Symbol::factory()->stablecoin()->create();
 
     expect($symbol->is_stable_coin)->toBeTrue();
 });
 
-it('casts is_stable_coin to boolean', function () {
+it('casts is_stable_coin to boolean', function (): void {
     $symbol = Symbol::factory()->create([
         'is_stable_coin' => 1,
     ]);
@@ -56,7 +56,7 @@ it('casts is_stable_coin to boolean', function () {
     expect($symbol->is_stable_coin)->toBeTrue();
 });
 
-it('stores cmc_ranking correctly from factory', function () {
+it('stores cmc_ranking correctly from factory', function (): void {
     $symbol = Symbol::factory()->create([
         'token' => 'RANKEDTOKEN'.uniqid(),
         'cmc_ranking' => 42,
@@ -65,7 +65,7 @@ it('stores cmc_ranking correctly from factory', function () {
     expect($symbol->cmc_ranking)->toBe(42);
 });
 
-it('stores stablecoin data correctly', function () {
+it('stores stablecoin data correctly', function (): void {
     $symbol = Symbol::factory()->stablecoin()->create([
         'token' => 'STABLETEST'.uniqid(),
         'cmc_ranking' => 5,

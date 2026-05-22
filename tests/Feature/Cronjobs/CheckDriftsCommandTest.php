@@ -22,7 +22,7 @@ use StepDispatcher\Models\Step;
 
 uses(RefreshDatabase::class)->group('feature', 'drift', 'cron');
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Engine admin row required by Kraite::admin() inside NotificationService.
     // Some migrations pre-seed id=1, so updateOrCreate keeps both paths safe.
     Kraite::updateOrCreate(
@@ -42,7 +42,7 @@ beforeEach(function () {
     Notification::fake();
 });
 
-afterEach(function () {
+afterEach(function (): void {
     M::close();
 });
 
@@ -129,7 +129,7 @@ function bindDriftReport(\Kraite\Core\Support\Drift\AccountDriftReport $report):
     app()->instance(DriftChecker::class, $mock);
 }
 
-it('dispatches PrepareSyncOrdersJob and notifies on a quiet drifted active position', function () {
+it('dispatches PrepareSyncOrdersJob and notifies on a quiet drifted active position', function (): void {
     $f = makeSpotterFixture();
     $position = $f['position'];
 
@@ -183,7 +183,7 @@ it('dispatches PrepareSyncOrdersJob and notifies on a quiet drifted active posit
     Notification::assertSentTo(Kraite::admin(), AlertNotification::class);
 });
 
-it('catches the WAP scenario end-to-end: PROFIT-LIMIT price drift on a quiet position', function () {
+it('catches the WAP scenario end-to-end: PROFIT-LIMIT price drift on a quiet position', function (): void {
     // Bruno's flagship test. Most-feared incident: a DCA fill triggers a
     // WAP recalc, the new TP price hits the exchange but the DB write
     // never lands. The spotter must catch the price disagreement, fire
@@ -244,7 +244,7 @@ it('catches the WAP scenario end-to-end: PROFIT-LIMIT price drift on a quiet pos
     Notification::assertSentTo(Kraite::admin(), AlertNotification::class);
 });
 
-it('skips an active position when one of its orders was touched within the quiet window', function () {
+it('skips an active position when one of its orders was touched within the quiet window', function (): void {
     $f = makeSpotterFixture(token: 'QUIET');
     $position = $f['position'];
 
@@ -275,7 +275,7 @@ it('skips an active position when one of its orders was touched within the quiet
     Notification::assertNothingSent();
 });
 
-it('never audits positions in mid-flight statuses (syncing, waping, closing, opening, new)', function () {
+it('never audits positions in mid-flight statuses (syncing, waping, closing, opening, new)', function (): void {
     foreach (['syncing', 'waping', 'closing', 'opening', 'new'] as $status) {
         $f = makeSpotterFixture(token: 'MID', status: $status);
         makeSpotterOrder($f['position']->id, [
@@ -295,7 +295,7 @@ it('never audits positions in mid-flight statuses (syncing, waping, closing, ope
     Notification::assertNothingSent();
 });
 
-it('alerts but does not dispatch the cancel-lifecycle when orphans survive the silent self-heal', function () {
+it('alerts but does not dispatch the cancel-lifecycle when orphans survive the silent self-heal', function (): void {
     // Alert-only mode (2026-05-03): the spotter no longer dispatches
     // PrepareCancelOrphanOrdersJob. Per orphan with an
     // `exchange_order_id`, it attempts a silent `apiSync` first.
@@ -331,7 +331,7 @@ it('alerts but does not dispatch the cancel-lifecycle when orphans survive the s
     Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
 });
 
-it('skips orphan cancellation when one of the orphan orders was touched recently', function () {
+it('skips orphan cancellation when one of the orphan orders was touched recently', function (): void {
     $f = makeSpotterFixture(token: 'RACE', status: 'cancelled');
     $position = $f['position'];
 
@@ -354,7 +354,7 @@ it('skips orphan cancellation when one of the orphan orders was touched recently
     Notification::assertNothingSent();
 });
 
-it('does not touch ghost orphan rows but still alerts the operator', function () {
+it('does not touch ghost orphan rows but still alerts the operator', function (): void {
     // Alert-only mode (2026-05-03): the spotter never writes to
     // local Order rows directly. Ghost orphans (no
     // `exchange_order_id`, never reached the exchange) are skipped
@@ -383,7 +383,7 @@ it('does not touch ghost orphan rows but still alerts the operator', function ()
     Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
 });
 
-it('on a mixed orphan position (ghost + real): no DB writes, no dispatch, one notification', function () {
+it('on a mixed orphan position (ghost + real): no DB writes, no dispatch, one notification', function (): void {
     // Alert-only mode (2026-05-03): the spotter never writes Order
     // rows and never dispatches a cancel lifecycle. Real orphans
     // (with an `exchange_order_id`) get a silent `apiSync` attempt
@@ -421,7 +421,7 @@ it('on a mixed orphan position (ghost + real): no DB writes, no dispatch, one no
     Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
 });
 
-it('treats failed positions the same as closed for orphan detection', function () {
+it('treats failed positions the same as closed for orphan detection', function (): void {
     // Alert-only mode (2026-05-03): same alert path, no dispatch.
     $f = makeSpotterFixture(token: 'FAIL', status: 'failed');
     $position = $f['position'];

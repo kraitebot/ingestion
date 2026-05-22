@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: Skipped parent → skip all children recursively
 // When parent is skipped, all children in child block should be skipped
-it('skips all children when parent is skipped', function () {
+it('skips all children when parent is skipped', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -46,7 +46,7 @@ it('skips all children when parent is skipped', function () {
 
 // Schematic: Skipped grandparent → skip all descendants
 // When grandparent is skipped, children and grandchildren should all be skipped
-it('skips all descendants when grandparent is skipped', function () {
+it('skips all descendants when grandparent is skipped', function (): void {
     $block1 = (string) Str::uuid();
     $block2 = (string) Str::uuid();
     $block3 = (string) Str::uuid();
@@ -89,7 +89,7 @@ it('skips all descendants when grandparent is skipped', function () {
 
 // Schematic: Skipped child → parent and siblings NOT skipped
 // Skipping a child should not affect parent or siblings
-it('does not skip parent or siblings when child is skipped', function () {
+it('does not skip parent or siblings when child is skipped', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -119,7 +119,7 @@ it('does not skip parent or siblings when child is skipped', function () {
 
 // Schematic: Multiple skipped parents at same index IN SAME BLOCK
 // Multiple parallel parents skipped should skip all their respective children
-it('skips children for all skipped parallel parents', function () {
+it('skips children for all skipped parallel parents', function (): void {
     $parentBlock = (string) Str::uuid(); // SAME block for both parents
     $child1Block = (string) Str::uuid();
     $child2Block = (string) Str::uuid();
@@ -157,7 +157,7 @@ it('skips children for all skipped parallel parents', function () {
 
 // Schematic: Skipped parent with parallel children
 // All parallel children should be skipped
-it('skips all parallel children when parent is skipped', function () {
+it('skips all parallel children when parent is skipped', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -186,7 +186,7 @@ it('skips all parallel children when parent is skipped', function () {
 
 // Schematic: Skip does not cascade to next index
 // Skipping a step at index 1 should not prevent index 2 from executing
-it('skips children only for skipped parents in mixed scenario', function () {
+it('skips children only for skipped parents in mixed scenario', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -209,7 +209,7 @@ it('skips children only for skipped parents in mixed scenario', function () {
 
 // Schematic: Skipped parent with nested children (3 levels)
 // All 3 levels should be skipped
-it('skips nested children across multiple levels', function () {
+it('skips nested children across multiple levels', function (): void {
     $blocks = [
         (string) Str::uuid(), // Grandparent
         (string) Str::uuid(), // Parent
@@ -244,7 +244,7 @@ it('skips nested children across multiple levels', function () {
 
 // Schematic: Skip does NOT cascade to subsequent indexes
 // Skipping index 1 should not skip index 2
-it('does not skip subsequent indexes when one is skipped', function () {
+it('does not skip subsequent indexes when one is skipped', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([

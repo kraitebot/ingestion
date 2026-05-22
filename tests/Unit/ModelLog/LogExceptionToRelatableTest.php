@@ -7,12 +7,12 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\ModelLog;
 use StepDispatcher\Models\Step;
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Re-enable logging before each test
     ModelLog::enable();
 });
 
-it('logs exceptions to relatable model when step fails', function () {
+it('logs exceptions to relatable model when step fails', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
     $step = Step::factory()->create();
 
@@ -56,7 +56,7 @@ it('logs exceptions to relatable model when step fails', function () {
     expect($log->message)->toContain('Test exception for relatable logging');
 });
 
-it('does not log to relatable when step has no relatable', function () {
+it('does not log to relatable when step has no relatable', function (): void {
     $step = Step::factory()->create();
 
     // Create a mock job that will throw an exception (no relatable)
@@ -86,7 +86,7 @@ it('does not log to relatable when step has no relatable', function () {
     expect($logs->count())->toBe(0);
 });
 
-it('does not log to relatable when logging is globally disabled', function () {
+it('does not log to relatable when logging is globally disabled', function (): void {
     ModelLog::disable();
 
     $exchangeSymbol = ExchangeSymbol::factory()->create();
@@ -126,7 +126,7 @@ it('does not log to relatable when logging is globally disabled', function () {
     ModelLog::enable();
 });
 
-it('logs correct exception class and message in metadata', function () {
+it('logs correct exception class and message in metadata', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
     $step = Step::factory()->create();
 
@@ -165,7 +165,7 @@ it('logs correct exception class and message in metadata', function () {
     expect($log->message)->toContain('Invalid symbol ID provided');
 });
 
-it('associates step as relatable in the application log', function () {
+it('associates step as relatable in the application log', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
     $step = Step::factory()->create();
 

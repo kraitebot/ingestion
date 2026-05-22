@@ -13,7 +13,7 @@ use Tests\Support\TestKucoinApiableJob;
 
 uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'kucoin');
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Create Engine admin record (required for forbidden hostname notifications)
     Kraite::create([
         'id' => 1,
@@ -24,12 +24,12 @@ beforeEach(function () {
     ]);
 });
 
-it('cleans laravel.log', function () {
+it('cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
     expect(true)->toBe(true);
 });
 
-it('handles 429 rate limit by setting dispatch_after', function () {
+it('handles 429 rate limit by setting dispatch_after', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -66,7 +66,7 @@ it('handles 429 rate limit by setting dispatch_after', function () {
     expect($events)->toContain('handleApiException:handled');
 });
 
-it('handles 429000 KuCoin rate limit code by setting dispatch_after', function () {
+it('handles 429000 KuCoin rate limit code by setting dispatch_after', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -102,7 +102,7 @@ it('handles 429000 KuCoin rate limit code by setting dispatch_after', function (
     expect($events)->toContain('handleApiException:handled');
 });
 
-it('handles 429 rate limit with Retry-After header', function () {
+it('handles 429 rate limit with Retry-After header', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -135,7 +135,7 @@ it('handles 429 rate limit with Retry-After header', function () {
     expect($step->dispatch_after->isFuture())->toBeTrue();
 });
 
-it('handles 401 authentication failure by creating forbidden_hostname', function () {
+it('handles 401 authentication failure by creating forbidden_hostname', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -174,7 +174,7 @@ it('handles 401 authentication failure by creating forbidden_hostname', function
     expect($forbiddenHostname->account_id)->toBe($account->id);
 });
 
-it('handles 400100 invalid API key by creating forbidden_hostname', function () {
+it('handles 400100 invalid API key by creating forbidden_hostname', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -212,7 +212,7 @@ it('handles 400100 invalid API key by creating forbidden_hostname', function () 
     expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
 });
 
-it('handles 411100 user frozen by creating forbidden_hostname', function () {
+it('handles 411100 user frozen by creating forbidden_hostname', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -250,7 +250,7 @@ it('handles 411100 user frozen by creating forbidden_hostname', function () {
     expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
 });
 
-it('handles 403 forbidden by failing step', function () {
+it('handles 403 forbidden by failing step', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -287,7 +287,7 @@ it('handles 403 forbidden by failing step', function () {
     expect($events)->toContain('handleApiException:rethrow');
 });
 
-it('retries 300000 internal error with backoff', function () {
+it('retries 300000 internal error with backoff', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -324,7 +324,7 @@ it('retries 300000 internal error with backoff', function () {
     expect($events)->toContain('handleApiException:rethrow');
 });
 
-it('retries 408 request timeout exception with backoff', function () {
+it('retries 408 request timeout exception with backoff', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -361,7 +361,7 @@ it('retries 408 request timeout exception with backoff', function () {
     expect($events)->toContain('handleApiException:rethrow');
 });
 
-it('retries 500 server error exception with backoff', function () {
+it('retries 500 server error exception with backoff', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -394,7 +394,7 @@ it('retries 500 server error exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('retries 502 bad gateway exception with backoff', function () {
+it('retries 502 bad gateway exception with backoff', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -427,7 +427,7 @@ it('retries 502 bad gateway exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('retries 503 service unavailable exception with backoff', function () {
+it('retries 503 service unavailable exception with backoff', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -460,7 +460,7 @@ it('retries 503 service unavailable exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('retries 504 gateway timeout exception with backoff', function () {
+it('retries 504 gateway timeout exception with backoff', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -493,7 +493,7 @@ it('retries 504 gateway timeout exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('retries step for 200004 order not exist error (eventual consistency)', function () {
+it('retries step for 200004 order not exist error (eventual consistency)', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -527,7 +527,7 @@ it('retries step for 200004 order not exist error (eventual consistency)', funct
     expect($step->retries)->toBe(1);
 });
 
-it('fails step for 200003 insufficient balance error', function () {
+it('fails step for 200003 insufficient balance error', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -557,7 +557,7 @@ it('fails step for 200003 insufficient balance error', function () {
     expect($step->state->value())->toBe('failed');
 });
 
-it('fails step for 400001 invalid parameter error', function () {
+it('fails step for 400001 invalid parameter error', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();
@@ -587,7 +587,7 @@ it('fails step for 400001 invalid parameter error', function () {
     expect($step->state->value())->toBe('failed');
 });
 
-it('completes step successfully when no exception is thrown', function () {
+it('completes step successfully when no exception is thrown', function (): void {
     // Arrange: Create KuCoin account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'kucoin']);
     $user = User::factory()->create();

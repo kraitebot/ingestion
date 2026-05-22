@@ -13,7 +13,7 @@ use Tests\Support\TestBinanceApiableJob;
 
 uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'binance');
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Create Engine admin record (required for forbidden hostname notifications)
     Kraite::create([
         'id' => 1,
@@ -24,12 +24,12 @@ beforeEach(function () {
     ]);
 });
 
-it('cleans laravel.log', function () {
+it('cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
     expect(true)->toBe(true);
 });
 
-it('handles 429 rate limit by setting dispatch_after', function () {
+it('handles 429 rate limit by setting dispatch_after', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -66,7 +66,7 @@ it('handles 429 rate limit by setting dispatch_after', function () {
     expect($events)->toContain('handleApiException:handled');
 });
 
-it('handles 400/-1003 rate limit by setting dispatch_after', function () {
+it('handles 400/-1003 rate limit by setting dispatch_after', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -98,7 +98,7 @@ it('handles 400/-1003 rate limit by setting dispatch_after', function () {
     expect($step->dispatch_after->isFuture())->toBeTrue();
 });
 
-it('handles 418 IP ban (permanent) by creating forbidden_hostname', function () {
+it('handles 418 IP ban (permanent) by creating forbidden_hostname', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -137,7 +137,7 @@ it('handles 418 IP ban (permanent) by creating forbidden_hostname', function () 
     expect($forbiddenHostname->forbidden_until)->toBeNull(); // Permanent
 });
 
-it('handles 418 IP rate limit (temporary) by creating forbidden_hostname with forbidden_until', function () {
+it('handles 418 IP rate limit (temporary) by creating forbidden_hostname with forbidden_until', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -178,7 +178,7 @@ it('handles 418 IP rate limit (temporary) by creating forbidden_hostname with fo
     expect($forbiddenHostname->forbidden_until->isFuture())->toBeTrue();
 });
 
-it('handles 401/-2015 IP not whitelisted by creating account-specific forbidden_hostname', function () {
+it('handles 401/-2015 IP not whitelisted by creating account-specific forbidden_hostname', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -217,7 +217,7 @@ it('handles 401/-2015 IP not whitelisted by creating account-specific forbidden_
     expect($forbiddenHostname->account_id)->toBe($account->id); // Account-specific
 });
 
-it('handles 401/-2015 account blocked by creating account-specific forbidden_hostname', function () {
+it('handles 401/-2015 account blocked by creating account-specific forbidden_hostname', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -256,7 +256,7 @@ it('handles 401/-2015 account blocked by creating account-specific forbidden_hos
     expect($forbiddenHostname->account_id)->toBe($account->id); // Account-specific
 });
 
-it('ignores 400/-4046 exception and completes step', function () {
+it('ignores 400/-4046 exception and completes step', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -292,7 +292,7 @@ it('ignores 400/-4046 exception and completes step', function () {
     expect($events)->not->toContain('handleApiException:rethrow');
 });
 
-it('ignores 400/-5027 exception and completes step', function () {
+it('ignores 400/-5027 exception and completes step', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -322,7 +322,7 @@ it('ignores 400/-5027 exception and completes step', function () {
     expect($step->state->value())->toBe('completed');
 });
 
-it('retries 503 exception with backoff in dispatch_after', function () {
+it('retries 503 exception with backoff in dispatch_after', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -359,7 +359,7 @@ it('retries 503 exception with backoff in dispatch_after', function () {
     expect($events)->toContain('handleApiException:rethrow');
 });
 
-it('retries 400/-2013 exception with backoff in dispatch_after', function () {
+it('retries 400/-2013 exception with backoff in dispatch_after', function (): void {
     // Arrange: Create Binance account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
     $user = User::factory()->create();
@@ -392,7 +392,7 @@ it('retries 400/-2013 exception with backoff in dispatch_after', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('handles 400/-1021 recvWindow mismatch by updating recvwindow_margin', function () {
+it('handles 400/-1021 recvWindow mismatch by updating recvwindow_margin', function (): void {
     // Fake notifications to prevent actual sending
     Illuminate\Support\Facades\Notification::fake();
 

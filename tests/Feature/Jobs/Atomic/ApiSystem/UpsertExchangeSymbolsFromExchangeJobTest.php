@@ -8,7 +8,7 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Symbol;
 
-test('does not run for non-exchange API systems', function () {
+test('does not run for non-exchange API systems', function (): void {
     $apiSystem = ApiSystem::factory()->create([
         'canonical' => 'taapi',
         'name' => 'TAAPI',
@@ -20,7 +20,7 @@ test('does not run for non-exchange API systems', function () {
     expect($job->startOrFail())->toBeFalsy();
 });
 
-test('runs for exchange API systems', function () {
+test('runs for exchange API systems', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -31,7 +31,7 @@ test('runs for exchange API systems', function () {
     expect($job->startOrFail())->toBeTruthy();
 });
 
-test('assigns correct exception handler', function () {
+test('assigns correct exception handler', function (): void {
     Kraite::first()->update([
         'binance_api_key' => 'test-key',
         'binance_api_secret' => 'test-secret',
@@ -48,7 +48,7 @@ test('assigns correct exception handler', function () {
     expect($job->exceptionHandler)->not->toBeNull();
 });
 
-test('returns correct relatable model', function () {
+test('returns correct relatable model', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -60,7 +60,7 @@ test('returns correct relatable model', function () {
     expect($job->relatable()->id)->toBe($apiSystem->id);
 });
 
-test('preserves existing symbol_id when updating exchange symbol metadata', function () {
+test('preserves existing symbol_id when updating exchange symbol metadata', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -101,7 +101,7 @@ test('preserves existing symbol_id when updating exchange symbol metadata', func
     expect($exchangeSymbol->price_precision)->toBe(4);
 });
 
-test('links new exchange symbol to existing symbol by token', function () {
+test('links new exchange symbol to existing symbol by token', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -129,7 +129,7 @@ test('links new exchange symbol to existing symbol by token', function () {
     expect($exchangeSymbol->symbol_id)->toBe($btcSymbol->id);
 });
 
-test('creates orphaned exchange symbol when token not in symbols table', function () {
+test('creates orphaned exchange symbol when token not in symbols table', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -161,7 +161,7 @@ test('creates orphaned exchange symbol when token not in symbols table', functio
     expect($exchangeSymbol->api_statuses['cmc_api_called'])->toBeFalse();
 });
 
-test('does not overwrite symbol_id when record exists with link', function () {
+test('does not overwrite symbol_id when record exists with link', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -209,7 +209,7 @@ test('does not overwrite symbol_id when record exists with link', function () {
     expect($existing->price_precision)->toBe(4);
 });
 
-test('deleted exchange symbol is recreated fresh on next upsert', function () {
+test('deleted exchange symbol is recreated fresh on next upsert', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -262,7 +262,7 @@ test('deleted exchange symbol is recreated fresh on next upsert', function () {
     expect($recreated->api_statuses['cmc_api_called'])->toBeTrue();
 });
 
-test('handles negative precision values correctly', function () {
+test('handles negative precision values correctly', function (): void {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -291,7 +291,7 @@ test('handles negative precision values correctly', function () {
     expect($exchangeSymbol->quantity_precision)->toBe(0);
 });
 
-test('flags DB symbols that are missing from the fresh API response as delisted', function () {
+test('flags DB symbols that are missing from the fresh API response as delisted', function (): void {
     $binance = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -352,7 +352,7 @@ test('flags DB symbols that are missing from the fresh API response as delisted'
     expect($dentBybit->fresh()->is_marked_for_delisting)->toBeFalse();
 });
 
-test('flagMissingSymbolsForDelisting is idempotent on rows already flagged', function () {
+test('flagMissingSymbolsForDelisting is idempotent on rows already flagged', function (): void {
     $binance = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -385,7 +385,7 @@ test('flagMissingSymbolsForDelisting is idempotent on rows already flagged', fun
     expect($alreadyFlagged->fresh()->updated_at->eq($originalUpdatedAt))->toBeTrue();
 });
 
-test('flagMissingSymbolsForDelisting is a no-op when the API response is empty', function () {
+test('flagMissingSymbolsForDelisting is a no-op when the API response is empty', function (): void {
     // Empty responses are treated as an API anomaly (e.g. partial outage),
     // not as mass delisting — do not flag anything.
     $binance = ApiSystem::factory()->exchange()->create([

@@ -55,8 +55,8 @@ function setupNotificationPrerequisites(): void
 // BINANCE DELISTING DETECTION TESTS
 // =============================================================================
 
-describe('Binance delisting detection', function () {
-    it('does NOT trigger notification when delivery_ts_ms is set to perpetual default (4133404800000)', function () {
+describe('Binance delisting detection', function (): void {
+    it('does NOT trigger notification when delivery_ts_ms is set to perpetual default (4133404800000)', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -69,7 +69,7 @@ describe('Binance delisting detection', function () {
         Notification::assertNothingSent();
     });
 
-    it('TRIGGERS notification on first sync when symbol comes already delisted (null to real value)', function () {
+    it('TRIGGERS notification on first sync when symbol comes already delisted (null to real value)', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -90,7 +90,7 @@ describe('Binance delisting detection', function () {
         );
     });
 
-    it('TRIGGERS notification when delivery_ts_ms changes from perpetual default to real date (delisting)', function () {
+    it('TRIGGERS notification when delivery_ts_ms changes from perpetual default to real date (delisting)', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -115,7 +115,7 @@ describe('Binance delisting detection', function () {
         );
     });
 
-    it('TRIGGERS notification when delivery_ts_ms changes from one real date to another', function () {
+    it('TRIGGERS notification when delivery_ts_ms changes from one real date to another', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -139,7 +139,7 @@ describe('Binance delisting detection', function () {
         );
     });
 
-    it('does NOT trigger notification when delivery_ts_ms is unchanged', function () {
+    it('does NOT trigger notification when delivery_ts_ms is unchanged', function (): void {
         setupNotificationPrerequisites();
 
         // Fake BEFORE the row is created so the discovery-time
@@ -173,8 +173,8 @@ describe('Binance delisting detection', function () {
 // BYBIT DELISTING DETECTION TESTS
 // =============================================================================
 
-describe('Bybit delisting detection', function () {
-    it('TRIGGERS notification when delivery_ts_ms changes from null to real date (perpetual delisting)', function () {
+describe('Bybit delisting detection', function (): void {
+    it('TRIGGERS notification when delivery_ts_ms changes from null to real date (perpetual delisting)', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -195,7 +195,7 @@ describe('Bybit delisting detection', function () {
         );
     });
 
-    it('TRIGGERS notification when delivery_ts_ms changes from one date to another', function () {
+    it('TRIGGERS notification when delivery_ts_ms changes from one date to another', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -218,7 +218,7 @@ describe('Bybit delisting detection', function () {
         );
     });
 
-    it('does NOT trigger notification when delivery_ts_ms remains null', function () {
+    it('does NOT trigger notification when delivery_ts_ms remains null', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -231,7 +231,7 @@ describe('Bybit delisting detection', function () {
         Notification::assertNothingSent();
     });
 
-    it('does NOT trigger notification when delivery_ts_ms is unchanged', function () {
+    it('does NOT trigger notification when delivery_ts_ms is unchanged', function (): void {
         setupNotificationPrerequisites();
 
         // Fake BEFORE the row is created so the discovery-time
@@ -263,8 +263,8 @@ describe('Bybit delisting detection', function () {
 // EDGE CASES
 // =============================================================================
 
-describe('Edge cases', function () {
-    it('does NOT trigger notification for unsupported exchange', function () {
+describe('Edge cases', function (): void {
+    it('does NOT trigger notification for unsupported exchange', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -279,7 +279,7 @@ describe('Edge cases', function () {
         Notification::assertNothingSent();
     });
 
-    it('does NOT trigger notification when apiSystem relationship is missing', function () {
+    it('does NOT trigger notification when apiSystem relationship is missing', function (): void {
         Notification::fake();
         setupNotificationPrerequisites();
 
@@ -306,8 +306,8 @@ describe('Edge cases', function () {
 // These unit tests verify the mapper logic in isolation using the pre-save state.
 // =============================================================================
 
-describe('BinanceTradingMapper::isNowDelisted (pre-save state)', function () {
-    it('returns false when delivery_ts_ms was not changed', function () {
+describe('BinanceTradingMapper::isNowDelisted (pre-save state)', function (): void {
+    it('returns false when delivery_ts_ms was not changed', function (): void {
         $exchangeSymbol = createExchangeSymbolForExchange('binance', 'BIN_UNIT_1', 1735689600000);
 
         // Refresh to clear dirty state - no change made
@@ -317,7 +317,7 @@ describe('BinanceTradingMapper::isNowDelisted (pre-save state)', function () {
         expect($mapper->isNowDelisted($exchangeSymbol))->toBeFalse();
     });
 
-    it('returns false when new value is perpetual default (using isDirty check)', function () {
+    it('returns false when new value is perpetual default (using isDirty check)', function (): void {
         $exchangeSymbol = createExchangeSymbolForExchange('binance', 'BIN_UNIT_2', 1735689600000);
 
         // Change to perpetual default - check isDirty state before save
@@ -328,7 +328,7 @@ describe('BinanceTradingMapper::isNowDelisted (pre-save state)', function () {
         expect($exchangeSymbol->delivery_ts_ms)->toBe(BinanceTradingMapper::PERPETUAL_DEFAULT);
     });
 
-    it('detects first sync with already delisted symbol (null to real date)', function () {
+    it('detects first sync with already delisted symbol (null to real date)', function (): void {
         $exchangeSymbol = createExchangeSymbolForExchange('binance', 'BIN_UNIT_3', null);
 
         // First sync: null → real date (symbol already delisted on exchange)
@@ -341,8 +341,8 @@ describe('BinanceTradingMapper::isNowDelisted (pre-save state)', function () {
     });
 });
 
-describe('BybitTradingMapper::isNowDelisted (pre-save state)', function () {
-    it('returns false when delivery_ts_ms was not changed', function () {
+describe('BybitTradingMapper::isNowDelisted (pre-save state)', function (): void {
+    it('returns false when delivery_ts_ms was not changed', function (): void {
         $exchangeSymbol = createExchangeSymbolForExchange('bybit', 'BYBIT_UNIT_1', 1735689600000);
 
         $exchangeSymbol->refresh();
@@ -351,7 +351,7 @@ describe('BybitTradingMapper::isNowDelisted (pre-save state)', function () {
         expect($mapper->isNowDelisted($exchangeSymbol))->toBeFalse();
     });
 
-    it('detects null to value change (delisting scenario)', function () {
+    it('detects null to value change (delisting scenario)', function (): void {
         $exchangeSymbol = createExchangeSymbolForExchange('bybit', 'BYBIT_UNIT_2', null);
 
         // Delisting: null → real date

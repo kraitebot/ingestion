@@ -120,7 +120,7 @@ function createStepForPriceAlignmentJob(ExchangeSymbol $exchangeSymbol, ?array $
     ]);
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     StepsDispatcher::updateOrCreate(['group' => 'alpha'], ['can_dispatch' => true]);
     seedCandleComparisonIndicator();
 });
@@ -135,7 +135,7 @@ beforeEach(function () {
 |
 */
 
-test('confirms LONG direction when current candle is green (close > open)', function () {
+test('confirms LONG direction when current candle is green (close > open)', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALGRNLONG', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -161,7 +161,7 @@ test('confirms LONG direction when current candle is green (close > open)', func
     expect($exchangeSymbol->direction)->toBe('LONG');
 });
 
-test('rejects LONG direction when current candle is red (close < open)', function () {
+test('rejects LONG direction when current candle is red (close < open)', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALREDLONG', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -188,7 +188,7 @@ test('rejects LONG direction when current candle is red (close < open)', functio
     expect($exchangeSymbol->has_price_trend_misalignment)->toBeTrue();
 });
 
-test('rejects LONG direction when current candle is flat (close == open)', function () {
+test('rejects LONG direction when current candle is flat (close == open)', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALFLTLONG', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -225,7 +225,7 @@ test('rejects LONG direction when current candle is flat (close == open)', funct
 |
 */
 
-test('confirms SHORT direction when current candle is red (close < open)', function () {
+test('confirms SHORT direction when current candle is red (close < open)', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALREDSHORT', 'SHORT', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -251,7 +251,7 @@ test('confirms SHORT direction when current candle is red (close < open)', funct
     expect($exchangeSymbol->direction)->toBe('SHORT');
 });
 
-test('rejects SHORT direction when current candle is green (close > open)', function () {
+test('rejects SHORT direction when current candle is green (close > open)', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALGRNSHORT', 'SHORT', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -278,7 +278,7 @@ test('rejects SHORT direction when current candle is green (close > open)', func
     expect($exchangeSymbol->has_price_trend_misalignment)->toBeTrue();
 });
 
-test('rejects SHORT direction when current candle is flat (close == open)', function () {
+test('rejects SHORT direction when current candle is flat (close == open)', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALFLTSHORT', 'SHORT', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -311,7 +311,7 @@ test('rejects SHORT direction when current candle is flat (close == open)', func
 |--------------------------------------------------------------------------
 */
 
-test('invalidates symbol when no indicator history exists', function () {
+test('invalidates symbol when no indicator history exists', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALNODATA', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -336,7 +336,7 @@ test('invalidates symbol when no indicator history exists', function () {
 |--------------------------------------------------------------------------
 */
 
-test('uses exchange symbol timeframe to find correct indicator history', function () {
+test('uses exchange symbol timeframe to find correct indicator history', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALTF4H', 'LONG', '4h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -379,7 +379,7 @@ test('uses exchange symbol timeframe to find correct indicator history', functio
     expect($result['response'])->toContain('4h');
 });
 
-test('uses latest indicator history when multiple exist for same timeframe', function () {
+test('uses latest indicator history when multiple exist for same timeframe', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALLATEST', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -426,7 +426,7 @@ test('uses latest indicator history when multiple exist for same timeframe', fun
 |--------------------------------------------------------------------------
 */
 
-test('clears all indicator fields when price alignment fails', function () {
+test('clears all indicator fields when price alignment fails', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALCLEAR', 'LONG', '1h');
     $exchangeSymbol->update([
         'indicators_values' => ['some' => 'data'],
@@ -459,7 +459,7 @@ test('clears all indicator fields when price alignment fails', function () {
     expect($exchangeSymbol->has_price_trend_misalignment)->toBeTrue();
 });
 
-test('enables symbol for trading when price alignment confirms', function () {
+test('enables symbol for trading when price alignment confirms', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALENABLE', 'LONG', '1h');
     $exchangeSymbol->update([
         'has_no_indicator_data' => true,
@@ -494,7 +494,7 @@ test('enables symbol for trading when price alignment confirms', function () {
 |--------------------------------------------------------------------------
 */
 
-test('handles very small price differences for LONG confirmation', function () {
+test('handles very small price differences for LONG confirmation', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALSMALLLONG', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -516,7 +516,7 @@ test('handles very small price differences for LONG confirmation', function () {
     expect($result['response'])->toContain('CONFIRMED');
 });
 
-test('handles very small price differences for SHORT confirmation', function () {
+test('handles very small price differences for SHORT confirmation', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALSMALLSHORT', 'SHORT', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -538,7 +538,7 @@ test('handles very small price differences for SHORT confirmation', function () 
     expect($result['response'])->toContain('CONFIRMED');
 });
 
-test('handles large price values correctly', function () {
+test('handles large price values correctly', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALLARGE', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -567,7 +567,7 @@ test('handles large price values correctly', function () {
 |--------------------------------------------------------------------------
 */
 
-test('includes open and close prices in confirmation response', function () {
+test('includes open and close prices in confirmation response', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALPRICES', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -589,7 +589,7 @@ test('includes open and close prices in confirmation response', function () {
     expect($result['response'])->toContain('102.5'); // currentClose
 });
 
-test('includes timeframe in response message', function () {
+test('includes timeframe in response message', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALTFRESP', 'LONG', '4h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -610,7 +610,7 @@ test('includes timeframe in response message', function () {
     expect($result['response'])->toContain('4h');
 });
 
-test('includes trading pair in response message', function () {
+test('includes trading pair in response message', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('ETHPAIR', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -644,7 +644,7 @@ test('includes trading pair in response message', function () {
 |
 */
 
-test('correctly identifies LONG alignment from candle body not wicks', function () {
+test('correctly identifies LONG alignment from candle body not wicks', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALWICKLONG', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -673,7 +673,7 @@ test('correctly identifies LONG alignment from candle body not wicks', function 
     expect($result['response'])->toContain('price misalignment');
 });
 
-test('correctly identifies SHORT alignment from candle body not wicks', function () {
+test('correctly identifies SHORT alignment from candle body not wicks', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALWICKSHORT', 'SHORT', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -702,7 +702,7 @@ test('correctly identifies SHORT alignment from candle body not wicks', function
     expect($result['response'])->toContain('price misalignment');
 });
 
-test('real world scenario: gap down recovery still fails LONG alignment', function () {
+test('real world scenario: gap down recovery still fails LONG alignment', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALGAPDOWN', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -731,7 +731,7 @@ test('real world scenario: gap down recovery still fails LONG alignment', functi
     expect($result['response'])->toContain('CONFIRMED');
 });
 
-test('real world scenario: gap up selloff still fails SHORT alignment', function () {
+test('real world scenario: gap up selloff still fails SHORT alignment', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALGAPUP', 'SHORT', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -764,7 +764,7 @@ test('real world scenario: gap up selloff still fails SHORT alignment', function
 |--------------------------------------------------------------------------
 */
 
-test('handles floating point precision for equality comparison', function () {
+test('handles floating point precision for equality comparison', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALFLOAT', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 
@@ -793,7 +793,7 @@ test('handles floating point precision for equality comparison', function () {
 |--------------------------------------------------------------------------
 */
 
-test('handles zero open price correctly', function () {
+test('handles zero open price correctly', function (): void {
     $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALZERO', 'LONG', '1h');
     $step = createStepForPriceAlignmentJob($exchangeSymbol);
 

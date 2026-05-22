@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: Group A: 1->2 | Group B: 1->2 (independent chains)
 // Two completely independent chains in different groups should not interfere
-it('executes independent chains in different groups without interference', function () {
+it('executes independent chains in different groups without interference', function (): void {
     $blockA = (string) Str::uuid();
     $blockB = (string) Str::uuid();
 
@@ -101,7 +101,7 @@ it('executes independent chains in different groups without interference', funct
 
 // Schematic: Group A: P1->C1 | Group B: P1->C1 (nested in different groups)
 // Parent-child blocks in different groups should not interfere
-it('executes parent-child blocks in different groups independently', function () {
+it('executes parent-child blocks in different groups independently', function (): void {
     // Group Alpha
     $parentBlockA = (string) Str::uuid();
     $childBlockA = (string) Str::uuid();
@@ -187,7 +187,7 @@ it('executes parent-child blocks in different groups independently', function ()
 
 // Schematic: Group A: 1 (fails) -> 2 (cancelled) | Group B: 1->2 (unaffected)
 // Failure in one group should not affect another group
-it('isolates failures between groups', function () {
+it('isolates failures between groups', function (): void {
     $blockA = (string) Str::uuid();
     $blockB = (string) Str::uuid();
 
@@ -243,7 +243,7 @@ it('isolates failures between groups', function () {
 
 // Schematic: Same block UUID in different groups (should not happen, but test robustness)
 // If somehow same block_uuid exists in multiple groups, groups should still be isolated
-it('handles same block_uuid in different groups', function () {
+it('handles same block_uuid in different groups', function (): void {
     $block = (string) Str::uuid(); // Same block UUID!
 
     $stepsA = StepTester::createSteps([
@@ -297,7 +297,7 @@ it('handles same block_uuid in different groups', function () {
 
 // Schematic: 3 groups (alpha, beta, gamma) all with parallel work
 // Multiple groups can be dispatched in any order without interference
-it('handles three groups with interleaved dispatches', function () {
+it('handles three groups with interleaved dispatches', function (): void {
     $blockA = (string) Str::uuid();
     $blockB = (string) Str::uuid();
     $blockC = (string) Str::uuid();
@@ -345,7 +345,7 @@ it('handles three groups with interleaved dispatches', function () {
 
 // Schematic: Group alpha with chainable workflow
 // Test a complex chainable workflow with multiple sequential and parallel steps
-it('handles complex chainable workflow in single group', function () {
+it('handles complex chainable workflow in single group', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([

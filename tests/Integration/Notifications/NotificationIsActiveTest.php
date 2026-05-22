@@ -30,7 +30,7 @@ function createAdminForIsActiveTests(): Kraite
     ]);
 }
 
-it('does not send notifications when notification is_active is false', function () {
+it('does not send notifications when notification is_active is false', function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
@@ -52,7 +52,7 @@ it('does not send notifications when notification is_active is false', function 
     Notification::assertNothingSent();
 });
 
-it('sends notifications when notification is_active is true', function () {
+it('sends notifications when notification is_active is true', function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
@@ -81,7 +81,7 @@ it('sends notifications when notification is_active is true', function () {
     );
 });
 
-it('sends notifications when is_active defaults to true', function () {
+it('sends notifications when is_active defaults to true', function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
@@ -111,7 +111,7 @@ it('sends notifications when is_active defaults to true', function () {
     );
 });
 
-it('blocks inactive notification even when throttle would allow it', function () {
+it('blocks inactive notification even when throttle would allow it', function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
@@ -141,7 +141,7 @@ it('blocks inactive notification even when throttle would allow it', function ()
     expect(cache()->has('server_rate_limit_exceeded-api_system:binance'))->toBeFalse();
 });
 
-it('respects is_active per notification independently', function () {
+it('respects is_active per notification independently', function (): void {
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
 
@@ -193,7 +193,7 @@ it('respects is_active per notification independently', function () {
     );
 });
 
-it('global toggle takes precedence over is_active', function () {
+it('global toggle takes precedence over is_active', function (): void {
     // Global toggle OFF, but notification is_active = true
     config(['kraite.notifications_enabled' => false]);
     Notification::fake();
@@ -216,7 +216,7 @@ it('global toggle takes precedence over is_active', function () {
     Notification::assertNothingSent();
 });
 
-it('blocks notification when canonical does not exist (NotificationMessageBuilder rejects unknowns)', function () {
+it('blocks notification when canonical does not exist (NotificationMessageBuilder rejects unknowns)', function (): void {
     // The is_active gate doesn't block an unknown canonical — but
     // NotificationMessageBuilder::build() throws InvalidArgumentException
     // on unknown canonicals downstream, which NotificationService catches

@@ -13,7 +13,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -24,7 +24,7 @@ it('Cleans laravel.log', function () {
 // The worker calls handle() on a Cancelled step, which tries Cancelled → Running
 // and then Cancelled → Failed, both unregistered transitions, causing an
 // infinite retry loop that wrote 64GB of logs.
-it('silently skips execution when step is already Cancelled', function () {
+it('silently skips execution when step is already Cancelled', function (): void {
     $step = Step::factory()->create([
         'class' => TestQueueableJob::class,
         'queue' => 'sync',
@@ -47,14 +47,14 @@ it('silently skips execution when step is already Cancelled', function () {
     expect($step->state)->toBeInstanceOf(Cancelled::class);
 });
 
-it('silently skips execution when step is already Failed', function () {
+it('silently skips execution when step is already Failed', function (): void {
     $step = Step::factory()->create([
         'class' => TestQueueableJob::class,
         'queue' => 'sync',
     ]);
 
     // Transition to Failed via valid path: Pending → Running → Failed
-    $step->state->transitionTo(\StepDispatcher\States\Running::class);
+    $step->state->transitionTo(StepDispatcher\States\Running::class);
     $step->state->transitionTo(Failed::class);
     $step->refresh();
     expect($step->state)->toBeInstanceOf(Failed::class);
@@ -68,14 +68,14 @@ it('silently skips execution when step is already Failed', function () {
     expect($step->state)->toBeInstanceOf(Failed::class);
 });
 
-it('silently skips execution when step is already Completed', function () {
+it('silently skips execution when step is already Completed', function (): void {
     $step = Step::factory()->create([
         'class' => TestQueueableJob::class,
         'queue' => 'sync',
     ]);
 
     // Transition to Completed via valid path: Pending → Running → Completed
-    $step->state->transitionTo(\StepDispatcher\States\Running::class);
+    $step->state->transitionTo(StepDispatcher\States\Running::class);
     $step->state->transitionTo(Completed::class);
     $step->refresh();
     expect($step->state)->toBeInstanceOf(Completed::class);
@@ -89,14 +89,14 @@ it('silently skips execution when step is already Completed', function () {
     expect($step->state)->toBeInstanceOf(Completed::class);
 });
 
-it('silently skips execution when step is already Stopped', function () {
+it('silently skips execution when step is already Stopped', function (): void {
     $step = Step::factory()->create([
         'class' => TestQueueableJob::class,
         'queue' => 'sync',
     ]);
 
     // Transition to Stopped via valid path: Pending → Running → Stopped
-    $step->state->transitionTo(\StepDispatcher\States\Running::class);
+    $step->state->transitionTo(StepDispatcher\States\Running::class);
     $step->state->transitionTo(Stopped::class);
     $step->refresh();
     expect($step->state)->toBeInstanceOf(Stopped::class);
@@ -110,14 +110,14 @@ it('silently skips execution when step is already Stopped', function () {
     expect($step->state)->toBeInstanceOf(Stopped::class);
 });
 
-it('silently skips execution when step is already Skipped', function () {
+it('silently skips execution when step is already Skipped', function (): void {
     $step = Step::factory()->create([
         'class' => TestQueueableJob::class,
         'queue' => 'sync',
     ]);
 
     // Transition to Skipped via valid path: Pending → Running → Skipped
-    $step->state->transitionTo(\StepDispatcher\States\Running::class);
+    $step->state->transitionTo(StepDispatcher\States\Running::class);
     $step->state->transitionTo(Skipped::class);
     $step->refresh();
     expect($step->state)->toBeInstanceOf(Skipped::class);

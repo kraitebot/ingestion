@@ -13,7 +13,7 @@ use Tests\Support\TestCoinmarketCapApiableJob;
 
 uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'coinmarketcap');
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Create Engine admin record (required for forbidden hostname notifications)
     Kraite::create([
         'id' => 1,
@@ -24,13 +24,13 @@ beforeEach(function () {
     ]);
 });
 
-it('cleans laravel.log', function () {
+it('cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
     expect(true)->toBe(true);
 });
 
-describe('CoinmarketCapExceptionHandler - Rate Limits', function () {
-    it('handles 429/1008 minute rate limit by setting dispatch_after', function () {
+describe('CoinmarketCapExceptionHandler - Rate Limits', function (): void {
+    it('handles 429/1008 minute rate limit by setting dispatch_after', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -62,7 +62,7 @@ describe('CoinmarketCapExceptionHandler - Rate Limits', function () {
         expect($step->dispatch_after->isFuture())->toBeTrue();
     });
 
-    it('handles 429/1011 IP rate limit by setting dispatch_after', function () {
+    it('handles 429/1011 IP rate limit by setting dispatch_after', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -94,7 +94,7 @@ describe('CoinmarketCapExceptionHandler - Rate Limits', function () {
         expect($step->dispatch_after->isFuture())->toBeTrue();
     });
 
-    it('handles 429/1009 daily rate limit by setting dispatch_after', function () {
+    it('handles 429/1009 daily rate limit by setting dispatch_after', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -126,7 +126,7 @@ describe('CoinmarketCapExceptionHandler - Rate Limits', function () {
         expect($step->dispatch_after->isFuture())->toBeTrue();
     });
 
-    it('handles 429/1010 monthly rate limit by setting dispatch_after', function () {
+    it('handles 429/1010 monthly rate limit by setting dispatch_after', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -159,8 +159,8 @@ describe('CoinmarketCapExceptionHandler - Rate Limits', function () {
     });
 });
 
-describe('CoinmarketCapExceptionHandler - Ignorable Errors', function () {
-    it('handles 400 bad request as ignorable (skipped)', function () {
+describe('CoinmarketCapExceptionHandler - Ignorable Errors', function (): void {
+    it('handles 400 bad request as ignorable (skipped)', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -191,8 +191,8 @@ describe('CoinmarketCapExceptionHandler - Ignorable Errors', function () {
     });
 });
 
-describe('CoinmarketCapExceptionHandler - Retryable Errors', function () {
-    it('handles 500 internal server error as retryable', function () {
+describe('CoinmarketCapExceptionHandler - Retryable Errors', function (): void {
+    it('handles 500 internal server error as retryable', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -223,7 +223,7 @@ describe('CoinmarketCapExceptionHandler - Retryable Errors', function () {
         expect($step->dispatch_after)->not->toBeNull();
     });
 
-    it('handles 503 service unavailable as retryable', function () {
+    it('handles 503 service unavailable as retryable', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -255,8 +255,8 @@ describe('CoinmarketCapExceptionHandler - Retryable Errors', function () {
     });
 });
 
-describe('CoinmarketCapExceptionHandler - Forbidden Errors (Account Blocked)', function () {
-    it('handles 401/1001 invalid API key by creating forbidden_hostname with type account_blocked', function () {
+describe('CoinmarketCapExceptionHandler - Forbidden Errors (Account Blocked)', function (): void {
+    it('handles 401/1001 invalid API key by creating forbidden_hostname with type account_blocked', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -295,7 +295,7 @@ describe('CoinmarketCapExceptionHandler - Forbidden Errors (Account Blocked)', f
         expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
     });
 
-    it('handles 401/1002 missing API key by creating forbidden_hostname with type account_blocked', function () {
+    it('handles 401/1002 missing API key by creating forbidden_hostname with type account_blocked', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -334,7 +334,7 @@ describe('CoinmarketCapExceptionHandler - Forbidden Errors (Account Blocked)', f
         expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
     });
 
-    it('handles 402/1003 payment required by creating forbidden_hostname with type account_blocked', function () {
+    it('handles 402/1003 payment required by creating forbidden_hostname with type account_blocked', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -373,7 +373,7 @@ describe('CoinmarketCapExceptionHandler - Forbidden Errors (Account Blocked)', f
         expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
     });
 
-    it('handles 403/1007 key disabled by creating forbidden_hostname with type account_blocked', function () {
+    it('handles 403/1007 key disabled by creating forbidden_hostname with type account_blocked', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();
@@ -413,8 +413,8 @@ describe('CoinmarketCapExceptionHandler - Forbidden Errors (Account Blocked)', f
     });
 });
 
-describe('CoinmarketCapExceptionHandler - Network Errors', function () {
-    it('handles network connection errors as retryable', function () {
+describe('CoinmarketCapExceptionHandler - Network Errors', function (): void {
+    it('handles network connection errors as retryable', function (): void {
         // Arrange: Create CoinMarketCap account
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'coinmarketcap']);
         $user = User::factory()->create();

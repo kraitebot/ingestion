@@ -13,7 +13,6 @@ use Kraite\Core\Models\Position;
  * pre-transition state — closed_at unset, error_message lingering,
  * or — worst — `failed` rows that never get their notification fired.
  */
-
 it('isActive returns true for non-terminal statuses', function (string $status): void {
     $position = Position::factory()->long()->create(['status' => $status]);
     expect($position->isActive())->toBeTrue();

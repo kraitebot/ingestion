@@ -6,11 +6,11 @@ use Kraite\Core\Models\AppLog;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Position;
 
-beforeEach(function () {
+beforeEach(function (): void {
     AppLog::enable();
 });
 
-it('creates an app log entry with correct polymorphic relationship', function () {
+it('creates an app log entry with correct polymorphic relationship', function (): void {
     $position = Position::factory()->create();
 
     $log = $position->appLog(
@@ -28,7 +28,7 @@ it('creates an app log entry with correct polymorphic relationship', function ()
     expect($log->loggable->id)->toBe($position->id);
 });
 
-it('defaults severity to info', function () {
+it('defaults severity to info', function (): void {
     $position = Position::factory()->create();
 
     $log = $position->appLog(
@@ -39,7 +39,7 @@ it('defaults severity to info', function () {
     expect($log->severity)->toBe('info');
 });
 
-it('stores metadata as JSON', function () {
+it('stores metadata as JSON', function (): void {
     $position = Position::factory()->create();
     $metadata = ['order_id' => 42, 'price' => '2450.50', 'quantity' => '0.1'];
 
@@ -60,7 +60,7 @@ it('stores metadata as JSON', function () {
     expect($actual)->toBe($expected);
 });
 
-it('prevents logging when disabled', function () {
+it('prevents logging when disabled', function (): void {
     AppLog::disable();
     expect(AppLog::isEnabled())->toBeFalse();
 
@@ -86,7 +86,7 @@ it('prevents logging when disabled', function () {
     expect($log)->toBeInstanceOf(AppLog::class);
 });
 
-it('does not create recursive logs when AppLog is modified', function () {
+it('does not create recursive logs when AppLog is modified', function (): void {
     $position = Position::factory()->create();
 
     $log = $position->appLog(
@@ -102,7 +102,7 @@ it('does not create recursive logs when AppLog is modified', function () {
     expect(AppLog::count())->toBe($countBefore);
 });
 
-it('accepts custom severity levels', function () {
+it('accepts custom severity levels', function (): void {
     $position = Position::factory()->create();
 
     $warningLog = $position->appLog(
@@ -121,7 +121,7 @@ it('accepts custom severity levels', function () {
     expect($criticalLog->severity)->toBe('critical');
 });
 
-it('works with different model types', function () {
+it('works with different model types', function (): void {
     $position = Position::factory()->create();
     $exchangeSymbol = ExchangeSymbol::factory()->create();
 

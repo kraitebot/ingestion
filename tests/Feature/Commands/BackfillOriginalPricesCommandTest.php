@@ -29,7 +29,7 @@ use Kraite\Core\Models\Position;
  */
 uses(RefreshDatabase::class)->group('feature', 'command', 'backfill', 'original-price');
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->apiSystem = ApiSystem::firstWhere('canonical', 'binance')
         ?? ApiSystem::factory()->exchange()->create(['canonical' => 'binance', 'name' => 'Binance']);
 });

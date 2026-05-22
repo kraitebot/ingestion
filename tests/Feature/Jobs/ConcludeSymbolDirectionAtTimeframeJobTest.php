@@ -329,7 +329,7 @@ function ensureDefaultTradeConfiguration(): TradeConfiguration
     );
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     StepsDispatcher::updateOrCreate(['group' => 'alpha'], ['can_dispatch' => true]);
     StepsDispatcher::updateOrCreate(['group' => 'beta'], ['can_dispatch' => true]);
     ensureDefaultTradeConfiguration();
@@ -341,7 +341,7 @@ beforeEach(function () {
 |--------------------------------------------------------------------------
 */
 
-test('concludes LONG direction when all indicators agree on LONG', function () {
+test('concludes LONG direction when all indicators agree on LONG', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONLONG1');
     $step = createStepForConcludeJob($exchangeSymbol, '1h');
@@ -368,7 +368,7 @@ test('concludes LONG direction when all indicators agree on LONG', function () {
     expect($exchangeSymbol->indicators_timeframe)->toBe('1h');
 });
 
-test('concludes SHORT direction when all indicators agree on SHORT', function () {
+test('concludes SHORT direction when all indicators agree on SHORT', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONSHORT1');
     $step = createStepForConcludeJob($exchangeSymbol, '1h');
@@ -393,7 +393,7 @@ test('concludes SHORT direction when all indicators agree on SHORT', function ()
     expect($exchangeSymbol->direction)->toBe('SHORT');
 });
 
-test('stores indicators_values when concluding direction', function () {
+test('stores indicators_values when concluding direction', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONVALUES');
     $step = createStepForConcludeJob($exchangeSymbol, '1h');
@@ -426,7 +426,7 @@ test('stores indicators_values when concluding direction', function () {
 |--------------------------------------------------------------------------
 */
 
-test('spawns next timeframe workflow when current timeframe is inconclusive', function () {
+test('spawns next timeframe workflow when current timeframe is inconclusive', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONINCON1');
     $step = createStepForConcludeJob($exchangeSymbol, '1m');
@@ -461,7 +461,7 @@ test('spawns next timeframe workflow when current timeframe is inconclusive', fu
     expect($childQueryStep)->not->toBeNull();
 });
 
-test('invalidates symbol when all timeframes are exhausted', function () {
+test('invalidates symbol when all timeframes are exhausted', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONEXHAUST');
     $exchangeSymbol->update(['direction' => 'LONG']); // Had a direction
@@ -499,7 +499,7 @@ test('invalidates symbol when all timeframes are exhausted', function () {
     expect($exchangeSymbol->has_invalid_indicator_direction)->toBeTrue();
 });
 
-test('handles inconclusive when validation indicator fails', function () {
+test('handles inconclusive when validation indicator fails', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONVFAIL');
     $step = createStepForConcludeJob($exchangeSymbol, '1m');
@@ -528,7 +528,7 @@ test('handles inconclusive when validation indicator fails', function () {
 |--------------------------------------------------------------------------
 */
 
-test('allows direction change at minimum timeframe index', function () {
+test('allows direction change at minimum timeframe index', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONDIRCHG1');
     $exchangeSymbol->update(['direction' => 'LONG']); // Currently LONG
@@ -566,7 +566,7 @@ test('allows direction change at minimum timeframe index', function () {
     expect($exchangeSymbol->direction)->toBe('SHORT');
 });
 
-test('rejects direction change with path inconsistency', function () {
+test('rejects direction change with path inconsistency', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONPATHFAIL');
     $exchangeSymbol->update(['direction' => 'LONG']); // Currently LONG
@@ -605,7 +605,7 @@ test('rejects direction change with path inconsistency', function () {
     expect($exchangeSymbol->has_early_direction_change)->toBeTrue();
 });
 
-test('disallows direction change before minimum timeframe index', function () {
+test('disallows direction change before minimum timeframe index', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONDIREARLY');
     $exchangeSymbol->update(['direction' => 'LONG']); // Currently LONG
@@ -635,7 +635,7 @@ test('disallows direction change before minimum timeframe index', function () {
     expect($exchangeSymbol->direction)->toBe('LONG');
 });
 
-test('allows same direction confirmation at any timeframe', function () {
+test('allows same direction confirmation at any timeframe', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONSAMEDIR');
     $exchangeSymbol->update(['direction' => 'LONG']); // Currently LONG
@@ -674,7 +674,7 @@ test('allows same direction confirmation at any timeframe', function () {
 // dynamically by createFinalizationSteps() when direction is successfully concluded.
 // They are NOT created for inconclusive timeframes (avoiding wasted step records).
 
-test('creates finalization steps after successful conclusion at first timeframe', function () {
+test('creates finalization steps after successful conclusion at first timeframe', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONCONFIRM');
     $step = createStepForConcludeJob($exchangeSymbol, '1h');
@@ -705,7 +705,7 @@ test('creates finalization steps after successful conclusion at first timeframe'
     expect($newCopyStepCount)->toBe($initialCopyStepCount + 1);
 });
 
-test('does not create Cleanup step after successful conclusion at first timeframe', function () {
+test('does not create Cleanup step after successful conclusion at first timeframe', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONCLEAN');
     $step = createStepForConcludeJob($exchangeSymbol, '1h', [], true);
@@ -727,7 +727,7 @@ test('does not create Cleanup step after successful conclusion at first timefram
     expect(Step::where('class', CleanupIndicatorHistoriesJob::class)->count())->toBe($initialCleanupCount);
 });
 
-test('does not create Cleanup step when shouldCleanup is false', function () {
+test('does not create Cleanup step when shouldCleanup is false', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONNOCLEAN');
     $step = createStepForConcludeJob($exchangeSymbol, '1h', [], false);
@@ -754,7 +754,7 @@ test('does not create Cleanup step when shouldCleanup is false', function () {
 |--------------------------------------------------------------------------
 */
 
-test('returns error when no indicator data exists', function () {
+test('returns error when no indicator data exists', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONNODATA');
     $step = createStepForConcludeJob($exchangeSymbol, '1h');
@@ -775,7 +775,7 @@ test('returns error when no indicator data exists', function () {
     expect($result['message'])->toContain('No indicator data found');
 });
 
-test('handles invalid timeframe gracefully', function () {
+test('handles invalid timeframe gracefully', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONBADTF');
     $step = createStepForConcludeJob($exchangeSymbol, 'invalid_timeframe');
@@ -804,7 +804,7 @@ test('handles invalid timeframe gracefully', function () {
 |--------------------------------------------------------------------------
 */
 
-test('builds correct path string in response', function () {
+test('builds correct path string in response', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONPATH');
     $step = createStepForConcludeJob($exchangeSymbol, '15m', [
@@ -838,7 +838,7 @@ test('builds correct path string in response', function () {
 |--------------------------------------------------------------------------
 */
 
-test('correctly progresses through multiple timeframes until conclusion', function () {
+test('correctly progresses through multiple timeframes until conclusion', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONPROGRESS');
 
@@ -909,7 +909,7 @@ test('correctly progresses through multiple timeframes until conclusion', functi
 |--------------------------------------------------------------------------
 */
 
-test('handles symbol with null direction when concluding same direction', function () {
+test('handles symbol with null direction when concluding same direction', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONNULLDIR');
     // Direction is null by default
@@ -931,7 +931,7 @@ test('handles symbol with null direction when concluding same direction', functi
     expect($result['is_change'])->toBe('first_time');
 });
 
-test('stamps indicators_synced_at on skip when indicator data is unchanged', function () {
+test('stamps indicators_synced_at on skip when indicator data is unchanged', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONSKIPSTAMP');
 
@@ -978,7 +978,7 @@ test('stamps indicators_synced_at on skip when indicator data is unchanged', fun
     expect($exchangeSymbol->indicators_synced_at->greaterThan($firstStamp))->toBeTrue();
 });
 
-test('handles missing indicator data for some but not all indicators', function () {
+test('handles missing indicator data for some but not all indicators', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONPARTIAL');
     $step = createStepForConcludeJob($exchangeSymbol, '1h');
@@ -1023,7 +1023,7 @@ test('handles missing indicator data for some but not all indicators', function 
     expect($result['result'])->toBe('inconclusive');
 });
 
-test('preserves previous conclusions when spawning child workflows', function () {
+test('preserves previous conclusions when spawning child workflows', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONPRESERVE');
     $step = createStepForConcludeJob($exchangeSymbol, '5m', [

@@ -31,7 +31,7 @@ function createCandleWithPrice(ExchangeSymbol $symbol, string $price): Candle
 |--------------------------------------------------------------------------
 */
 
-test('meetsMinNotional returns true when amount equals min_notional', function () {
+test('meetsMinNotional returns true when amount equals min_notional', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => 10.00,
     ]);
@@ -39,7 +39,7 @@ test('meetsMinNotional returns true when amount equals min_notional', function (
     expect(Kraite::meetsMinNotional($symbol, 10.00))->toBeTrue();
 });
 
-test('meetsMinNotional returns true when amount exceeds min_notional', function () {
+test('meetsMinNotional returns true when amount exceeds min_notional', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => 10.00,
     ]);
@@ -47,7 +47,7 @@ test('meetsMinNotional returns true when amount exceeds min_notional', function 
     expect(Kraite::meetsMinNotional($symbol, 15.00))->toBeTrue();
 });
 
-test('meetsMinNotional returns false when amount is below min_notional', function () {
+test('meetsMinNotional returns false when amount is below min_notional', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => 10.00,
     ]);
@@ -61,7 +61,7 @@ test('meetsMinNotional returns false when amount is below min_notional', functio
 |--------------------------------------------------------------------------
 */
 
-test('meetsMinNotional returns true for KuCoin when amount meets calculated min', function () {
+test('meetsMinNotional returns true for KuCoin when amount meets calculated min', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => 1.0,
@@ -75,7 +75,7 @@ test('meetsMinNotional returns true for KuCoin when amount meets calculated min'
     expect(Kraite::meetsMinNotional($symbol, 100.00))->toBeTrue();
 });
 
-test('meetsMinNotional returns false for KuCoin when amount is below calculated min', function () {
+test('meetsMinNotional returns false for KuCoin when amount is below calculated min', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => 1.0,
@@ -94,7 +94,7 @@ test('meetsMinNotional returns false for KuCoin when amount is below calculated 
 |--------------------------------------------------------------------------
 */
 
-test('meetsMinNotional returns false when symbol has no min order data', function () {
+test('meetsMinNotional returns false when symbol has no min order data', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => null,
@@ -104,7 +104,7 @@ test('meetsMinNotional returns false when symbol has no min order data', functio
     expect(Kraite::meetsMinNotional($symbol, 100.00))->toBeFalse();
 });
 
-test('meetsMinNotional returns false for KuCoin without current_price', function () {
+test('meetsMinNotional returns false for KuCoin without current_price', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => 1.0,
@@ -116,7 +116,7 @@ test('meetsMinNotional returns false for KuCoin without current_price', function
     expect(Kraite::meetsMinNotional($symbol, 100.00))->toBeFalse();
 });
 
-test('meetsMinNotional returns false for KuCoin with only lot_size (missing multiplier)', function () {
+test('meetsMinNotional returns false for KuCoin with only lot_size (missing multiplier)', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => 1.0,
@@ -128,7 +128,7 @@ test('meetsMinNotional returns false for KuCoin with only lot_size (missing mult
     expect(Kraite::meetsMinNotional($symbol, 100.00))->toBeFalse();
 });
 
-test('meetsMinNotional accepts string amounts', function () {
+test('meetsMinNotional accepts string amounts', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => 10.00,
     ]);
@@ -143,7 +143,7 @@ test('meetsMinNotional accepts string amounts', function () {
 |--------------------------------------------------------------------------
 */
 
-test('hasMinOrderRequirements returns true for symbol with min_notional', function () {
+test('hasMinOrderRequirements returns true for symbol with min_notional', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => 10.00,
     ]);
@@ -151,7 +151,7 @@ test('hasMinOrderRequirements returns true for symbol with min_notional', functi
     expect(Kraite::hasMinOrderRequirements($symbol))->toBeTrue();
 });
 
-test('hasMinOrderRequirements returns true for KuCoin symbol with current_price', function () {
+test('hasMinOrderRequirements returns true for KuCoin symbol with current_price', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => 1.0,
@@ -163,7 +163,7 @@ test('hasMinOrderRequirements returns true for KuCoin symbol with current_price'
     expect(Kraite::hasMinOrderRequirements($symbol))->toBeTrue();
 });
 
-test('hasMinOrderRequirements returns false for symbol without any min order data', function () {
+test('hasMinOrderRequirements returns false for symbol without any min order data', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => null,
@@ -181,7 +181,7 @@ test('hasMinOrderRequirements returns false for symbol without any min order dat
 |--------------------------------------------------------------------------
 */
 
-test('getEffectiveMinNotional returns string for direct min_notional', function () {
+test('getEffectiveMinNotional returns string for direct min_notional', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => '10.00',
     ]);
@@ -191,7 +191,7 @@ test('getEffectiveMinNotional returns string for direct min_notional', function 
         ->toBe('10.00');
 });
 
-test('getEffectiveMinNotional returns string for KuCoin contract value', function () {
+test('getEffectiveMinNotional returns string for KuCoin contract value', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => '1',
@@ -205,7 +205,7 @@ test('getEffectiveMinNotional returns string for KuCoin contract value', functio
         ->toBe('50.0000000000000000');
 });
 
-test('getEffectiveMinNotional preserves precision past float-safe digits', function () {
+test('getEffectiveMinNotional preserves precision past float-safe digits', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => '0.123456789012345678',
     ]);
@@ -215,7 +215,7 @@ test('getEffectiveMinNotional preserves precision past float-safe digits', funct
         ->toBe('0.123456789012345678');
 });
 
-test('getEffectiveMinNotional returns null when symbol has no min order data', function () {
+test('getEffectiveMinNotional returns null when symbol has no min order data', function (): void {
     $symbol = ExchangeSymbol::factory()->create([
         'min_notional' => null,
         'kucoin_lot_size' => null,

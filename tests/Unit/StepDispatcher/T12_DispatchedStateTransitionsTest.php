@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: Pending → Dispatched → Running/Completed
 // Normal step should transition through Dispatched state
-it('transitions through dispatched state for normal step', function () {
+it('transitions through dispatched state for normal step', function (): void {
     $step = StepTester::createSteps([[]], TestQueueableJob::class)[0];
 
     expect($step->state->value())->toBe('pending');
@@ -32,7 +32,7 @@ it('transitions through dispatched state for normal step', function () {
 
 // Schematic: Lifecycle step Pending → Dispatched → Running
 // Parent lifecycle step should become Running when dispatched
-it('transitions lifecycle step to running when dispatched', function () {
+it('transitions lifecycle step to running when dispatched', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -51,7 +51,7 @@ it('transitions lifecycle step to running when dispatched', function () {
 
 // Schematic: Multiple steps dispatched in same tick
 // All ready steps should transition to Dispatched simultaneously
-it('dispatches multiple ready steps in same tick', function () {
+it('dispatches multiple ready steps in same tick', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -77,7 +77,7 @@ it('dispatches multiple ready steps in same tick', function () {
 
 // Schematic: Sequential dispatch respects index order
 // Index 2 should not dispatch until index 1 completes
-it('respects index order through dispatched state', function () {
+it('respects index order through dispatched state', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -108,7 +108,7 @@ it('respects index order through dispatched state', function () {
 
 // Schematic: Failed dispatch transitions to Failed
 // If step dispatch fails, should transition to Failed
-it('transitions to failed when dispatch execution fails', function () {
+it('transitions to failed when dispatch execution fails', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['fail' => true]],
     ], TestQueueableJob::class)[0];
@@ -123,7 +123,7 @@ it('transitions to failed when dispatch execution fails', function () {
 
 // Schematic: Stopped dispatch transitions to Stopped
 // If step stops execution, should transition to Stopped
-it('transitions to stopped when dispatch execution stops', function () {
+it('transitions to stopped when dispatch execution stops', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['stop' => true]],
     ], TestQueueableJob::class)[0];
@@ -138,7 +138,7 @@ it('transitions to stopped when dispatch execution stops', function () {
 
 // Schematic: Skipped step never reaches Dispatched
 // Skipped steps should not be dispatched
-it('does not dispatch skipped steps', function () {
+it('does not dispatch skipped steps', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['skip' => true]],
     ], TestQueueableJob::class)[0];
@@ -154,7 +154,7 @@ it('does not dispatch skipped steps', function () {
 
 // Schematic: Cancelled step never reaches Dispatched
 // Cancelled steps should not be dispatched
-it('does not dispatch cancelled steps', function () {
+it('does not dispatch cancelled steps', function (): void {
     $step = StepTester::createSteps([[]], TestQueueableJob::class)[0];
 
     // Manually cancel the step
@@ -168,7 +168,7 @@ it('does not dispatch cancelled steps', function () {
 
 // Schematic: Completed step not re-dispatched
 // Already completed steps should not transition through Dispatched again
-it('does not re-dispatch completed steps', function () {
+it('does not re-dispatch completed steps', function (): void {
     $step = StepTester::createSteps([[]], TestQueueableJob::class)[0];
 
     // Complete the step
@@ -186,7 +186,7 @@ it('does not re-dispatch completed steps', function () {
 
 // Schematic: Parent dispatched → running, child still pending
 // Parent should reach running before children are ready
-it('parent becomes running before children dispatch', function () {
+it('parent becomes running before children dispatch', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 

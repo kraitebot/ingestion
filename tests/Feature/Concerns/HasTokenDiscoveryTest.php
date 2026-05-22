@@ -205,7 +205,7 @@ function createFastTradedPosition(Account $account, ExchangeSymbol $exchangeSymb
     ]);
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     StepsDispatcher::updateOrCreate(['group' => 'alpha'], ['can_dispatch' => true]);
     StepsDispatcher::updateOrCreate(['group' => 'beta'], ['can_dispatch' => true]);
 
@@ -228,7 +228,7 @@ beforeEach(function () {
 |
 */
 
-test('selects token with highest score when BTC has LONG direction and position is LONG', function () {
+test('selects token with highest score when BTC has LONG direction and position is LONG', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // Create BTC with LONG direction and 1h timeframe
@@ -286,7 +286,7 @@ test('selects token with highest score when BTC has LONG direction and position 
     expect($position->exchange_symbol_id)->toBe($tokenB->id);
 });
 
-test('selects token with NEGATIVE correlation when BTC is LONG and position is SHORT', function () {
+test('selects token with NEGATIVE correlation when BTC is LONG and position is SHORT', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -328,7 +328,7 @@ test('selects token with NEGATIVE correlation when BTC is LONG and position is S
     expect($position->exchange_symbol_id)->toBe($correctToken->id);
 });
 
-test('selects token with NEGATIVE correlation when BTC is SHORT and position is LONG', function () {
+test('selects token with NEGATIVE correlation when BTC is SHORT and position is LONG', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is SHORT
@@ -369,7 +369,7 @@ test('selects token with NEGATIVE correlation when BTC is SHORT and position is 
     expect($position->exchange_symbol_id)->toBe($correctToken->id);
 });
 
-test('selects token with POSITIVE correlation when BTC is SHORT and position is SHORT', function () {
+test('selects token with POSITIVE correlation when BTC is SHORT and position is SHORT', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is SHORT
@@ -410,7 +410,7 @@ test('selects token with POSITIVE correlation when BTC is SHORT and position is 
     expect($position->exchange_symbol_id)->toBe($correctToken->id);
 });
 
-test('uses symbol own timeframe for scoring not BTC timeframe', function () {
+test('uses symbol own timeframe for scoring not BTC timeframe', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC has 4h timeframe (not used for scoring anymore)
@@ -462,7 +462,7 @@ test('uses symbol own timeframe for scoring not BTC timeframe', function () {
 |
 */
 
-test('deletes all position slots when BTC has no direction and btc_biased_restriction is true', function () {
+test('deletes all position slots when BTC has no direction and btc_biased_restriction is true', function (): void {
     Config::set('kraite.token_discovery.btc_biased_restriction', true);
 
     $account = createAccountForTokenDiscoveryTest();
@@ -497,7 +497,7 @@ test('deletes all position slots when BTC has no direction and btc_biased_restri
     expect($finalCount)->toBe(0);
 });
 
-test('uses fallback algorithm when BTC has no direction and btc_biased_restriction is false', function () {
+test('uses fallback algorithm when BTC has no direction and btc_biased_restriction is false', function (): void {
     Config::set('kraite.token_discovery.btc_biased_restriction', false);
 
     $account = createAccountForTokenDiscoveryTest();
@@ -541,7 +541,7 @@ test('uses fallback algorithm when BTC has no direction and btc_biased_restricti
 |
 */
 
-test('deletes position slot when no tokens match correlation sign requirement', function () {
+test('deletes position slot when no tokens match correlation sign requirement', function (): void {
     Config::set('kraite.token_discovery.require_matching_correlation_sign', true);
 
     $account = createAccountForTokenDiscoveryTest();
@@ -580,7 +580,7 @@ test('deletes position slot when no tokens match correlation sign requirement', 
     expect($remainingPositions)->toBe(0);
 });
 
-test('selects best token regardless of correlation sign when require_matching_correlation_sign is false', function () {
+test('selects best token regardless of correlation sign when require_matching_correlation_sign is false', function (): void {
     Config::set('kraite.token_discovery.require_matching_correlation_sign', false);
 
     $account = createAccountForTokenDiscoveryTest();
@@ -637,7 +637,7 @@ test('selects best token regardless of correlation sign when require_matching_co
 |
 */
 
-test('fallback algorithm scores across all timeframes', function () {
+test('fallback algorithm scores across all timeframes', function (): void {
     Config::set('kraite.token_discovery.btc_biased_restriction', false);
 
     $account = createAccountForTokenDiscoveryTest();
@@ -679,7 +679,7 @@ test('fallback algorithm scores across all timeframes', function () {
     expect($position->exchange_symbol_id)->toBe($bestOverall->id);
 });
 
-test('fallback algorithm ignores correlation sign', function () {
+test('fallback algorithm ignores correlation sign', function (): void {
     Config::set('kraite.token_discovery.btc_biased_restriction', false);
     Config::set('kraite.token_discovery.require_matching_correlation_sign', true); // Even with this true
 
@@ -723,7 +723,7 @@ test('fallback algorithm ignores correlation sign', function () {
 |
 */
 
-test('prioritizes fast-tracked symbols over scored tokens', function () {
+test('prioritizes fast-tracked symbols over scored tokens', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -766,7 +766,7 @@ test('prioritizes fast-tracked symbols over scored tokens', function () {
     expect($position->exchange_symbol_id)->toBe($fastTrackedToken->id);
 });
 
-test('fast-tracked symbol must have matching direction', function () {
+test('fast-tracked symbol must have matching direction', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -809,7 +809,7 @@ test('fast-tracked symbol must have matching direction', function () {
     expect($position->exchange_symbol_id)->toBe($correctDirectionToken->id);
 });
 
-test('fast-tracked symbol skips correlation sign check', function () {
+test('fast-tracked symbol skips correlation sign check', function (): void {
     Config::set('kraite.token_discovery.require_matching_correlation_sign', true);
 
     $account = createAccountForTokenDiscoveryTest();
@@ -849,7 +849,7 @@ test('fast-tracked symbol skips correlation sign check', function () {
 |--------------------------------------------------------------------------
 */
 
-test('assigns different tokens to multiple position slots', function () {
+test('assigns different tokens to multiple position slots', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -896,7 +896,7 @@ test('assigns different tokens to multiple position slots', function () {
     expect(array_unique($assignedTokenIds))->toHaveCount(2);
 });
 
-test('handles mixed LONG and SHORT position slots correctly', function () {
+test('handles mixed LONG and SHORT position slots correctly', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -949,7 +949,7 @@ test('handles mixed LONG and SHORT position slots correctly', function () {
 |--------------------------------------------------------------------------
 */
 
-test('handles no available exchange symbols gracefully', function () {
+test('handles no available exchange symbols gracefully', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG but no other tradeable symbols
@@ -964,7 +964,7 @@ test('handles no available exchange symbols gracefully', function () {
     expect($remainingPositions)->toBe(0);
 });
 
-test('handles symbols with incomplete data (missing own timeframe correlation)', function () {
+test('handles symbols with incomplete data (missing own timeframe correlation)', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG with 4h timeframe
@@ -1022,7 +1022,7 @@ test('handles symbols with incomplete data (missing own timeframe correlation)',
     expect($position->exchange_symbol_id)->toBe($completeToken->id);
 });
 
-test('excludes symbols already in opened positions', function () {
+test('excludes symbols already in opened positions', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -1070,7 +1070,7 @@ test('excludes symbols already in opened positions', function () {
     expect($newPosition->exchange_symbol_id)->toBe($availableToken->id);
 });
 
-test('filters symbols missing required trading metadata', function () {
+test('filters symbols missing required trading metadata', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -1116,7 +1116,7 @@ test('filters symbols missing required trading metadata', function () {
     expect($position->exchange_symbol_id)->toBe($completeToken->id);
 });
 
-test('uses correct correlation type from config', function () {
+test('uses correct correlation type from config', function (): void {
     Config::set('kraite.token_discovery.correlation_type', 'spearman');
 
     $account = createAccountForTokenDiscoveryTest();
@@ -1166,7 +1166,7 @@ test('uses correct correlation type from config', function () {
     expect($result)->toContain('CORRTYPE');
 });
 
-test('handles BTC exchange symbol not found for account api_system', function () {
+test('handles BTC exchange symbol not found for account api_system', function (): void {
     Config::set('kraite.token_discovery.btc_biased_restriction', false);
 
     $account = createAccountForTokenDiscoveryTest();
@@ -1198,7 +1198,7 @@ test('handles BTC exchange symbol not found for account api_system', function ()
     expect($position->exchange_symbol_id)->toBe($token->id);
 });
 
-test('deleteUnassignedPositionSlots only deletes new positions with null exchange_symbol_id', function () {
+test('deleteUnassignedPositionSlots only deletes new positions with null exchange_symbol_id', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -1252,7 +1252,7 @@ test('deleteUnassignedPositionSlots only deletes new positions with null exchang
 |--------------------------------------------------------------------------
 */
 
-test('uses elasticity_long for LONG positions', function () {
+test('uses elasticity_long for LONG positions', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -1292,7 +1292,7 @@ test('uses elasticity_long for LONG positions', function () {
     expect($position->exchange_symbol_id)->toBe($highLongElasticity->id);
 });
 
-test('uses absolute elasticity_short for SHORT positions', function () {
+test('uses absolute elasticity_short for SHORT positions', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is SHORT
@@ -1338,7 +1338,7 @@ test('uses absolute elasticity_short for SHORT positions', function () {
 |--------------------------------------------------------------------------
 */
 
-test('returns assigned tokens string', function () {
+test('returns assigned tokens string', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
@@ -1374,7 +1374,7 @@ test('returns assigned tokens string', function () {
     expect($result)->toContain('SHORT');
 });
 
-test('returns empty string when no positions to assign', function () {
+test('returns empty string when no positions to assign', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
@@ -1406,7 +1406,7 @@ test('returns empty string when no positions to assign', function () {
 |
 */
 
-test('excludes tokens with open positions on exchange from api_snapshots', function () {
+test('excludes tokens with open positions on exchange from api_snapshots', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -1457,7 +1457,7 @@ test('excludes tokens with open positions on exchange from api_snapshots', funct
     expect($position->exchange_symbol_id)->toBe($availableToken->id);
 });
 
-test('excludes tokens with open orders on exchange from api_snapshots', function () {
+test('excludes tokens with open orders on exchange from api_snapshots', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -1508,7 +1508,7 @@ test('excludes tokens with open orders on exchange from api_snapshots', function
     expect($position->exchange_symbol_id)->toBe($noOpenOrders->id);
 });
 
-test('allows token selection when api_snapshots has no open positions', function () {
+test('allows token selection when api_snapshots has no open positions', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -1540,7 +1540,7 @@ test('allows token selection when api_snapshots has no open positions', function
     expect($position->exchange_symbol_id)->toBe($bestToken->id);
 });
 
-test('excludes multiple tokens open on exchange from api_snapshots', function () {
+test('excludes multiple tokens open on exchange from api_snapshots', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     // BTC is LONG
@@ -1616,7 +1616,7 @@ test('excludes multiple tokens open on exchange from api_snapshots', function ()
 |
 */
 
-test('excludes tokens from other accounts when have_distinct_position_tokens_on_all_accounts is true', function () {
+test('excludes tokens from other accounts when have_distinct_position_tokens_on_all_accounts is true', function (): void {
     // Create user with the flag enabled
     $user = Kraite\Core\Models\User::factory()->create([
         'have_distinct_position_tokens_on_all_accounts' => true,
@@ -1734,7 +1734,7 @@ test('excludes tokens from other accounts when have_distinct_position_tokens_on_
     expect($position->exchange_symbol_id)->toBe($availableToken->id);
 });
 
-test('does not exclude tokens from other accounts when have_distinct_position_tokens_on_all_accounts is false', function () {
+test('does not exclude tokens from other accounts when have_distinct_position_tokens_on_all_accounts is false', function (): void {
     // Create user with the flag DISABLED
     $user = Kraite\Core\Models\User::factory()->create([
         'have_distinct_position_tokens_on_all_accounts' => false,
@@ -1823,7 +1823,7 @@ test('does not exclude tokens from other accounts when have_distinct_position_to
     expect($position->exchange_symbol_id)->toBe($bestTokenBybit->id);
 });
 
-test('excludes TokenMapper equivalent tokens across accounts', function () {
+test('excludes TokenMapper equivalent tokens across accounts', function (): void {
     // Create user with the flag enabled
     $user = Kraite\Core\Models\User::factory()->create([
         'have_distinct_position_tokens_on_all_accounts' => true,
@@ -1942,7 +1942,7 @@ test('excludes TokenMapper equivalent tokens across accounts', function () {
     expect($position->exchange_symbol_id)->toBe($availableToken->id);
 });
 
-test('excludes reverse TokenMapper equivalent tokens across accounts', function () {
+test('excludes reverse TokenMapper equivalent tokens across accounts', function (): void {
     // Test the reverse: position on Bybit with FLOKI should exclude 1000FLOKI on Binance
     $user = Kraite\Core\Models\User::factory()->create([
         'have_distinct_position_tokens_on_all_accounts' => true,
@@ -2047,7 +2047,7 @@ test('excludes reverse TokenMapper equivalent tokens across accounts', function 
     expect($position->exchange_symbol_id)->toBe($availableToken->id);
 });
 
-test('does not exclude tokens when user has no active positions on other accounts', function () {
+test('does not exclude tokens when user has no active positions on other accounts', function (): void {
     $user = Kraite\Core\Models\User::factory()->create([
         'have_distinct_position_tokens_on_all_accounts' => true,
     ]);
@@ -2101,7 +2101,7 @@ test('does not exclude tokens when user has no active positions on other account
     expect($position->exchange_symbol_id)->toBe($bestToken->id);
 });
 
-test('expandTokensWithMappings expands binance tokens to other tokens', function () {
+test('expandTokensWithMappings expands binance tokens to other tokens', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     $bybitApiSystem = ApiSystem::firstOrCreate(
@@ -2126,7 +2126,7 @@ test('expandTokensWithMappings expands binance tokens to other tokens', function
     expect($expanded->unique()->count())->toBe(3);
 });
 
-test('expandTokensWithMappings expands other tokens to binance tokens', function () {
+test('expandTokensWithMappings expands other tokens to binance tokens', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     $bybitApiSystem = ApiSystem::firstOrCreate(
@@ -2150,7 +2150,7 @@ test('expandTokensWithMappings expands other tokens to binance tokens', function
     expect($expanded->unique()->count())->toBe(2);
 });
 
-test('expandTokensWithMappings handles tokens with no mappings', function () {
+test('expandTokensWithMappings handles tokens with no mappings', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 
     $tokens = collect(['NOMAPPING1', 'NOMAPPING2']);

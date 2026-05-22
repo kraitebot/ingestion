@@ -40,7 +40,7 @@ use Spatie\Backup\Tasks\Cleanup\CleanupStrategy;
  * when `deleteOldBackups()` is invoked, but this class re-sorts
  * defensively in case of contract drift.
  */
-class TieredStrategy extends CleanupStrategy
+final class TieredStrategy extends CleanupStrategy
 {
     public function deleteOldBackups(BackupCollection $backups): void
     {

@@ -10,7 +10,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -18,7 +18,7 @@ it('Cleans laravel.log', function () {
 
 // Test: Empty dispatch (no pending steps)
 // Dispatcher should handle gracefully when there are no steps to dispatch
-it('handles empty dispatch with no pending steps', function () {
+it('handles empty dispatch with no pending steps', function (): void {
     // No steps created at all
     StepDispatcher\Support\StepDispatcher::dispatch();
 
@@ -28,7 +28,7 @@ it('handles empty dispatch with no pending steps', function () {
 
 // Test: Dispatcher with only completed steps
 // Should not re-dispatch completed steps
-it('does not re-dispatch completed steps', function () {
+it('does not re-dispatch completed steps', function (): void {
     $step = StepTester::createSteps([[]], TestQueueableJob::class)[0];
 
     // Dispatch once to complete
@@ -50,7 +50,7 @@ it('does not re-dispatch completed steps', function () {
 
 // Test: Step with invalid class name
 // Should transition to Failed
-it('fails step with invalid class name', function () {
+it('fails step with invalid class name', function (): void {
     $step = Step::factory()->create([
         'class' => 'NonExistent\\Class\\That\\Does\\Not\\Exist',
         'queue' => 'sync',
@@ -64,7 +64,7 @@ it('fails step with invalid class name', function () {
 
 // Test: Step with empty class name
 // Should transition to Failed
-it('fails step with empty class name', function () {
+it('fails step with empty class name', function (): void {
     $step = Step::factory()->create([
         'class' => '',
         'queue' => 'sync',
@@ -78,7 +78,7 @@ it('fails step with empty class name', function () {
 
 // Test: Step with null class name
 // Should transition to Failed
-it('fails step with null class name', function () {
+it('fails step with null class name', function (): void {
     $step = Step::factory()->create([
         'class' => null,
         'queue' => 'sync',
@@ -92,7 +92,7 @@ it('fails step with null class name', function () {
 
 // Test: Step with index gap (1, 3, 5 - missing 2, 4)
 // Index 3 should wait forever since index 2 doesn't exist
-it('waits forever when previous index does not exist', function () {
+it('waits forever when previous index does not exist', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -116,7 +116,7 @@ it('waits forever when previous index does not exist', function () {
 
 // Test: Step with index 0
 // Observer should normalize to index 1
-it('normalizes index 0 to index 1', function () {
+it('normalizes index 0 to index 1', function (): void {
     $step = Step::factory()->create([
         'index' => 0,
     ]);
@@ -127,7 +127,7 @@ it('normalizes index 0 to index 1', function () {
 
 // Test: Parent with no child_block_uuid (orphan parent)
 // Should behave like regular step without children
-it('treats parent with null child_block_uuid as regular step', function () {
+it('treats parent with null child_block_uuid as regular step', function (): void {
     $step = StepTester::createSteps([
         ['child_block_uuid' => null], // No children
     ], TestQueueableJob::class)[0];
@@ -144,7 +144,7 @@ it('treats parent with null child_block_uuid as regular step', function () {
 
 // Test: Parent with empty string child_block_uuid
 // Should be treated as null
-it('treats parent with empty string child_block_uuid as null', function () {
+it('treats parent with empty string child_block_uuid as null', function (): void {
     $step = Step::factory()->create([
         'child_block_uuid' => '',
     ]);
@@ -154,7 +154,7 @@ it('treats parent with empty string child_block_uuid as null', function () {
 
 // Test: Step exists but no parent points to it
 // Step without a parent should dispatch normally (treated as regular step)
-it('dispatches steps without parent normally', function () {
+it('dispatches steps without parent normally', function (): void {
     $childBlock = (string) Str::uuid();
 
     $child = StepTester::createSteps([
@@ -175,7 +175,7 @@ it('dispatches steps without parent normally', function () {
 
 // Test: Multiple parents pointing to same child_block_uuid
 // This is technically invalid, but system should not crash
-it('handles multiple parents with same child_block_uuid', function () {
+it('handles multiple parents with same child_block_uuid', function (): void {
     $parentBlock1 = (string) Str::uuid();
     $parentBlock2 = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
@@ -232,7 +232,7 @@ it('handles multiple parents with same child_block_uuid', function () {
 
 // Test: Completed step with child_block_uuid (parent already completed)
 // Should not check children again
-it('does not recheck children for completed parent', function () {
+it('does not recheck children for completed parent', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -267,7 +267,7 @@ it('does not recheck children for completed parent', function () {
 
 // Test: Deep nesting (5 levels)
 // P1 -> C1 -> G1 -> GG1 -> GGG1
-it('handles deep nesting (5 levels)', function () {
+it('handles deep nesting (5 levels)', function (): void {
     $blocks = [
         (string) Str::uuid(),
         (string) Str::uuid(),
@@ -366,7 +366,7 @@ it('handles deep nesting (5 levels)', function () {
 
 // Test: Circular reference (P1 -> C1, C1 -> P1) - should not crash
 // This is invalid but system should not infinite loop
-it('handles circular reference without infinite loop', function () {
+it('handles circular reference without infinite loop', function (): void {
     $block1 = (string) Str::uuid();
     $block2 = (string) Str::uuid();
 
@@ -392,7 +392,7 @@ it('handles circular reference without infinite loop', function () {
 
 // Test: Step with null block_uuid
 // Should fail or be rejected
-it('handles step with null block_uuid', function () {
+it('handles step with null block_uuid', function (): void {
     $step = Step::factory()->create([
         'block_uuid' => null,
     ]);

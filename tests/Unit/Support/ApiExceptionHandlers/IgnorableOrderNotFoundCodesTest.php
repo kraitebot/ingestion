@@ -26,7 +26,7 @@ function buildOrderNotFoundException(int $httpStatus, array $vendorBody, string 
     return new RequestException('vendor error', $request, $response);
 }
 
-it('bitget: ignoreException returns true for code 22001 (order does not exist)', function () {
+it('bitget: ignoreException returns true for code 22001 (order does not exist)', function (): void {
     // Bitget's cancel-order endpoint returns HTTP 200 with body
     // {"code":"22001","msg":"no order to cancel"} when the targeted
     // order has already been removed (filled, manually cancelled,
@@ -43,7 +43,7 @@ it('bitget: ignoreException returns true for code 22001 (order does not exist)',
     expect($handler->ignoreException($exception))->toBeTrue();
 });
 
-it('bitget: ignoreException returns true for code 43001 (order does not exist)', function () {
+it('bitget: ignoreException returns true for code 43001 (order does not exist)', function (): void {
     // Sibling Bitget code returned by certain plan-order cancel paths
     // when the target plan has already been triggered or cancelled.
     $handler = new BitgetExceptionHandler;
@@ -56,7 +56,7 @@ it('bitget: ignoreException returns true for code 43001 (order does not exist)',
     expect($handler->ignoreException($exception))->toBeTrue();
 });
 
-it('bitget: ignoreException returns false for unrelated codes', function () {
+it('bitget: ignoreException returns false for unrelated codes', function (): void {
     // Sanity guard: ignorable expansion must not absorb actual error
     // codes. 40808 is "Parameter verification exception" — a real
     // upstream bug we want to keep visible.
@@ -70,7 +70,7 @@ it('bitget: ignoreException returns false for unrelated codes', function () {
     expect($handler->ignoreException($exception))->toBeFalse();
 });
 
-it('bybit: ignoreException returns true for retCode 110001 (order does not exist) on futures cancel', function () {
+it('bybit: ignoreException returns true for retCode 110001 (order does not exist) on futures cancel', function (): void {
     // Bybit V5 futures cancel-of-missing-order. Spotter's idempotent
     // path mirrors Phase 2/3A's Binance behaviour: classify as
     // ignorable, mark CANCELLED locally, complete the step.
@@ -84,7 +84,7 @@ it('bybit: ignoreException returns true for retCode 110001 (order does not exist
     expect($handler->ignoreException($exception))->toBeTrue();
 });
 
-it('bybit: 170213 stays retryable (eventual-consistency lag on spot place), NOT ignorable', function () {
+it('bybit: 170213 stays retryable (eventual-consistency lag on spot place), NOT ignorable', function (): void {
     // Documented blast-radius limit: 170213 on Bybit spot is more
     // commonly the "order isn't visible yet right after a place"
     // signal than a true missing order. Promoting it to ignorable
@@ -102,7 +102,7 @@ it('bybit: 170213 stays retryable (eventual-consistency lag on spot place), NOT 
     expect($handler->retryException($exception))->toBeTrue();
 });
 
-it('bybit: ignoreException returns false for unrelated retCodes', function () {
+it('bybit: ignoreException returns false for unrelated retCodes', function (): void {
     // A signature mismatch must not be silently swallowed.
     $handler = new BybitExceptionHandler;
 

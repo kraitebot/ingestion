@@ -9,13 +9,13 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
-it('runs a single step wrapped inside 3 nested blocks', function () {
+it('runs a single step wrapped inside 3 nested blocks', function (): void {
     $mainBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
     $grandchildBlock = (string) Str::uuid();
@@ -63,7 +63,7 @@ it('runs a single step wrapped inside 3 nested blocks', function () {
         ->test();
 });
 
-it('runs two parallel steps at the same index in a 3-level nested structure with parents and child blocks', function () {
+it('runs two parallel steps at the same index in a 3-level nested structure with parents and child blocks', function (): void {
     $mainBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
     $grandchildBlock = (string) Str::uuid();
@@ -178,7 +178,7 @@ it('runs two parallel steps at the same index in a 3-level nested structure with
         ->test();
 });
 
-it('runs a parent-and-child step in the 2nd level without other step peers', function () {
+it('runs a parent-and-child step in the 2nd level without other step peers', function (): void {
     $mainBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
     $grandchildBlock = (string) Str::uuid();

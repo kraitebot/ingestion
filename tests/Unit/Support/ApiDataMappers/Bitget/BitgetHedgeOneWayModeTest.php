@@ -86,7 +86,7 @@ function bitgetMockResponse(array $data, int $status = 200): Response
 // MapsPlaceOrder — request payload branching
 // =============================================================================
 
-test('place-order in HEDGE mode carries posSide+tradeSide and omits reduceOnly', function () {
+test('place-order in HEDGE mode carries posSide+tradeSide and omits reduceOnly', function (): void {
     $position = bitgetTestPosition(hedgeMode: true);
     $order = bitgetTestOrder($position, ['type' => 'LIMIT']);
 
@@ -97,7 +97,7 @@ test('place-order in HEDGE mode carries posSide+tradeSide and omits reduceOnly',
     expect($properties->get('options.reduceOnly'))->toBeNull();
 });
 
-test('place-order in HEDGE mode carries tradeSide=close on closing intent', function () {
+test('place-order in HEDGE mode carries tradeSide=close on closing intent', function (): void {
     $position = bitgetTestPosition(hedgeMode: true);
     $order = bitgetTestOrder($position, ['type' => 'PROFIT-LIMIT']);
 
@@ -108,7 +108,7 @@ test('place-order in HEDGE mode carries tradeSide=close on closing intent', func
     expect($properties->get('options.reduceOnly'))->toBeNull();
 });
 
-test('place-order in ONE-WAY mode opening order omits posSide/tradeSide/reduceOnly', function () {
+test('place-order in ONE-WAY mode opening order omits posSide/tradeSide/reduceOnly', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
     $order = bitgetTestOrder($position, ['type' => 'LIMIT']);
 
@@ -119,7 +119,7 @@ test('place-order in ONE-WAY mode opening order omits posSide/tradeSide/reduceOn
     expect($properties->get('options.reduceOnly'))->toBeNull();
 });
 
-test('place-order in ONE-WAY mode PROFIT-LIMIT carries reduceOnly=YES', function () {
+test('place-order in ONE-WAY mode PROFIT-LIMIT carries reduceOnly=YES', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
     $order = bitgetTestOrder($position, ['type' => 'PROFIT-LIMIT']);
 
@@ -130,7 +130,7 @@ test('place-order in ONE-WAY mode PROFIT-LIMIT carries reduceOnly=YES', function
     expect($properties->get('options.posSide'))->toBeNull();
 });
 
-test('place-order in ONE-WAY mode MARKET-CANCEL carries reduceOnly=YES', function () {
+test('place-order in ONE-WAY mode MARKET-CANCEL carries reduceOnly=YES', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
     $order = bitgetTestOrder($position, ['type' => 'MARKET-CANCEL']);
 
@@ -143,7 +143,7 @@ test('place-order in ONE-WAY mode MARKET-CANCEL carries reduceOnly=YES', functio
 // MapsPlacePlanOrder — STOP-MARKET / trigger orders
 // =============================================================================
 
-test('plan-order in HEDGE mode carries tradeSide', function () {
+test('plan-order in HEDGE mode carries tradeSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: true);
     $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
 
@@ -153,7 +153,7 @@ test('plan-order in HEDGE mode carries tradeSide', function () {
     expect($properties->get('options.reduceOnly'))->toBeNull();
 });
 
-test('plan-order in ONE-WAY mode omits tradeSide and carries reduceOnly=YES', function () {
+test('plan-order in ONE-WAY mode omits tradeSide and carries reduceOnly=YES', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
     $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
 
@@ -167,7 +167,7 @@ test('plan-order in ONE-WAY mode omits tradeSide and carries reduceOnly=YES', fu
 // MapsPlacePosTpsl — position-level TP/SL attach (paired)
 // =============================================================================
 
-test('place-pos-tpsl in HEDGE mode carries holdSide', function () {
+test('place-pos-tpsl in HEDGE mode carries holdSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: true, direction: 'SHORT');
 
     $properties = (new BitgetApiDataMapper)
@@ -176,7 +176,7 @@ test('place-pos-tpsl in HEDGE mode carries holdSide', function () {
     expect($properties->get('options.holdSide'))->toBe('short');
 });
 
-test('place-pos-tpsl in ONE-WAY mode omits holdSide', function () {
+test('place-pos-tpsl in ONE-WAY mode omits holdSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
 
     $properties = (new BitgetApiDataMapper)
@@ -189,7 +189,7 @@ test('place-pos-tpsl in ONE-WAY mode omits holdSide', function () {
 // MapsPlaceTpslOrder — single TP or SL recreate
 // =============================================================================
 
-test('place-tpsl-order in HEDGE mode carries holdSide', function () {
+test('place-tpsl-order in HEDGE mode carries holdSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: true);
     $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
 
@@ -198,7 +198,7 @@ test('place-tpsl-order in HEDGE mode carries holdSide', function () {
     expect($properties->get('options.holdSide'))->toBe('long');
 });
 
-test('place-tpsl-order in ONE-WAY mode omits holdSide', function () {
+test('place-tpsl-order in ONE-WAY mode omits holdSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
     $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
 
@@ -211,7 +211,7 @@ test('place-tpsl-order in ONE-WAY mode omits holdSide', function () {
 // MapsModifyTpsl — TP/SL price modify
 // =============================================================================
 
-test('modify-tpsl in HEDGE mode carries holdSide', function () {
+test('modify-tpsl in HEDGE mode carries holdSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: true);
     $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
 
@@ -221,7 +221,7 @@ test('modify-tpsl in HEDGE mode carries holdSide', function () {
     expect($properties->get('options.holdSide'))->toBe('long');
 });
 
-test('modify-tpsl in ONE-WAY mode omits holdSide', function () {
+test('modify-tpsl in ONE-WAY mode omits holdSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
     $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
 
@@ -235,7 +235,7 @@ test('modify-tpsl in ONE-WAY mode omits holdSide', function () {
 // MapsTokenLeverageRatios — set-leverage
 // =============================================================================
 
-test('set-leverage in HEDGE mode carries holdSide', function () {
+test('set-leverage in HEDGE mode carries holdSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: true, direction: 'SHORT');
 
     $properties = (new BitgetApiDataMapper)
@@ -244,7 +244,7 @@ test('set-leverage in HEDGE mode carries holdSide', function () {
     expect($properties->get('options.holdSide'))->toBe('short');
 });
 
-test('set-leverage in ONE-WAY mode omits holdSide', function () {
+test('set-leverage in ONE-WAY mode omits holdSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
 
     $properties = (new BitgetApiDataMapper)
@@ -257,7 +257,7 @@ test('set-leverage in ONE-WAY mode omits holdSide', function () {
 // MapsPositionsQuery — response keying mirrors Binance for consumer parity
 // =============================================================================
 
-test('positions response in HEDGE mode keys by symbol:LONG and symbol:SHORT', function () {
+test('positions response in HEDGE mode keys by symbol:LONG and symbol:SHORT', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = bitgetMockResponse([
@@ -292,7 +292,7 @@ test('positions response in HEDGE mode keys by symbol:LONG and symbol:SHORT', fu
     expect($result['BTCUSDT:SHORT']['positionAmt'])->toBe(-0.3);
 });
 
-test('positions response in ONE-WAY mode keys by symbol:BOTH', function () {
+test('positions response in ONE-WAY mode keys by symbol:BOTH', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = bitgetMockResponse([
@@ -317,7 +317,7 @@ test('positions response in ONE-WAY mode keys by symbol:BOTH', function () {
     expect($result['ETHUSDT:BOTH']['positionAmt'])->toBe(1.5);
 });
 
-test('positions response in ONE-WAY SHORT keys by symbol:BOTH with negative positionAmt', function () {
+test('positions response in ONE-WAY SHORT keys by symbol:BOTH with negative positionAmt', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = bitgetMockResponse([

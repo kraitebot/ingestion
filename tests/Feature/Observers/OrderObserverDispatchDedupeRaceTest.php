@@ -120,10 +120,10 @@ it('dispatchClosePosition is wrapped in DB::transaction with lockForUpdate on th
     // TP and SL flip FILLED in the same sync cycle, the observer
     // fires twice in parallel — same race class.
     $methodBody = (function () use ($source): string {
-        $start = strpos($source, 'private function dispatchClosePosition(');
-        $end = strpos($source, 'private function dispatchPositionReplacement(', $start);
+        $start = mb_strpos($source, 'private function dispatchClosePosition(');
+        $end = mb_strpos($source, 'private function dispatchPositionReplacement(', $start);
 
-        return substr($source, $start, $end - $start);
+        return mb_substr($source, $start, $end - $start);
     })();
 
     expect($methodBody)->toContain('DB::transaction');
@@ -138,15 +138,15 @@ it('dispatchApplyWap is wrapped in DB::transaction with lockForUpdate on the pos
     expect($source)->toContain('private function dispatchApplyWap(');
 
     $methodBody = (function () use ($source): string {
-        $start = strpos($source, 'private function dispatchApplyWap(');
+        $start = mb_strpos($source, 'private function dispatchApplyWap(');
         // Find the next `private function` after the opening to
         // bound the body, or end of file if last private method.
-        $end = strpos($source, 'private function ', $start + 1);
+        $end = mb_strpos($source, 'private function ', $start + 1);
         if ($end === false) {
-            $end = strlen($source);
+            $end = mb_strlen($source);
         }
 
-        return substr($source, $start, $end - $start);
+        return mb_substr($source, $start, $end - $start);
     })();
 
     expect($methodBody)->toContain('DB::transaction');
@@ -155,19 +155,19 @@ it('dispatchApplyWap is wrapped in DB::transaction with lockForUpdate on the pos
 
 it('ProcessUserDataEventJob::maybeDetectManualPositionClose is wrapped in DB::transaction with lockForUpdate on the position row', function (): void {
     $source = file_get_contents(
-        (new ReflectionClass(\Kraite\Core\Jobs\Atomic\UserDataStream\ProcessUserDataEventJob::class))->getFileName()
+        (new ReflectionClass(Kraite\Core\Jobs\Atomic\UserDataStream\ProcessUserDataEventJob::class))->getFileName()
     );
 
     expect($source)->toContain('private function maybeDetectManualPositionClose(');
 
     $methodBody = (function () use ($source): string {
-        $start = strpos($source, 'private function maybeDetectManualPositionClose(');
-        $end = strpos($source, 'private function ', $start + 1);
+        $start = mb_strpos($source, 'private function maybeDetectManualPositionClose(');
+        $end = mb_strpos($source, 'private function ', $start + 1);
         if ($end === false) {
-            $end = strlen($source);
+            $end = mb_strlen($source);
         }
 
-        return substr($source, $start, $end - $start);
+        return mb_substr($source, $start, $end - $start);
     })();
 
     expect($methodBody)->toContain('DB::transaction');

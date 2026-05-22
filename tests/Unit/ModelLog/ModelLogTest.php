@@ -6,14 +6,14 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\ModelLog;
 use StepDispatcher\Models\Step;
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Re-enable logging before each test (in case previous test disabled it)
     ModelLog::enable();
 
     // Clear application_logs table before each test
 });
 
-it('logs all attributes when ExchangeSymbol is created', function () {
+it('logs all attributes when ExchangeSymbol is created', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
 
     $logs = ModelLog::where('loggable_type', ExchangeSymbol::class)
@@ -35,7 +35,7 @@ it('logs all attributes when ExchangeSymbol is created', function () {
     // so they will be logged during creation. They are only skipped during updates.
 });
 
-it('logs attribute changes when ExchangeSymbol is updated', function () {
+it('logs attribute changes when ExchangeSymbol is updated', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'min_notional' => 100.50,
     ]);
@@ -57,7 +57,7 @@ it('logs attribute changes when ExchangeSymbol is updated', function () {
     expect($log->message)->toContain('Attribute "min_notional" changed from 100.5 to 200.75');
 });
 
-it('logs null to value changes', function () {
+it('logs null to value changes', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'indicators_synced_at' => null,
     ]);
@@ -80,7 +80,7 @@ it('logs null to value changes', function () {
     expect($log->message)->toContain('Attribute "indicators_synced_at" changed from null to');
 });
 
-it('logs value to null changes', function () {
+it('logs value to null changes', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'min_notional' => 100.50,
     ]);
@@ -102,7 +102,7 @@ it('logs value to null changes', function () {
     expect($log->message)->toContain('Attribute "min_notional" changed from 100.5 to null');
 });
 
-it('does not log when no attributes changed', function () {
+it('does not log when no attributes changed', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
 
     // Clear creation logs
@@ -118,7 +118,7 @@ it('does not log when no attributes changed', function () {
     expect($logs->count())->toBe(0);
 });
 
-it('respects skipLogging array for timestamps on updates', function () {
+it('respects skipLogging array for timestamps on updates', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
 
     // Clear creation logs
@@ -139,7 +139,7 @@ it('respects skipLogging array for timestamps on updates', function () {
     expect($updatedAtLog)->toBeNull();
 });
 
-it('allows manual logging with modelLog method', function () {
+it('allows manual logging with modelLog method', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
     $step = Step::factory()->create();
 
@@ -160,7 +160,7 @@ it('allows manual logging with modelLog method', function () {
     expect($log->message)->toBe('Failed to sync price due to connection timeout');
 });
 
-it('allows manual logging without relatable model', function () {
+it('allows manual logging without relatable model', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
 
     $log = $exchangeSymbol->modelLog(
@@ -176,7 +176,7 @@ it('allows manual logging without relatable model', function () {
     expect($log->message)->toBe('Symbol delisted due to low volume');
 });
 
-it('stores polymorphic relationships correctly', function () {
+it('stores polymorphic relationships correctly', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create(['min_notional' => 100]);
 
     // Clear creation logs
@@ -195,7 +195,7 @@ it('stores polymorphic relationships correctly', function () {
     expect($log->loggable->id)->toBe($exchangeSymbol->id);
 });
 
-it('stores relatable polymorphic relationship correctly', function () {
+it('stores relatable polymorphic relationship correctly', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create();
     $step = Step::factory()->create();
 
@@ -209,7 +209,7 @@ it('stores relatable polymorphic relationship correctly', function () {
     expect($log->relatable->id)->toBe($step->id);
 });
 
-it('formats boolean values as 0/1 in messages to match raw database values', function () {
+it('formats boolean values as 0/1 in messages to match raw database values', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create(['has_no_indicator_data' => false]);
 
     $exchangeSymbol->update(['has_no_indicator_data' => true]);
@@ -223,7 +223,7 @@ it('formats boolean values as 0/1 in messages to match raw database values', fun
     expect($log->message)->toContain('from 0 to 1');
 });
 
-it('formats array values correctly in messages', function () {
+it('formats array values correctly in messages', function (): void {
     $exchangeSymbol = ExchangeSymbol::factory()->create([
         'symbol_information' => ['test' => 'value'],
     ]);
@@ -238,7 +238,7 @@ it('formats array values correctly in messages', function () {
     expect($log->message)->toContain('{"test":"updated"}');
 });
 
-it('does not create ModelLog entries for ModelLog model itself', function () {
+it('does not create ModelLog entries for ModelLog model itself', function (): void {
     // Create an ModelLog entry
     $exchangeSymbol = ExchangeSymbol::factory()->create();
     $modelLog = $exchangeSymbol->modelLog('test_event', ['key' => 'value']);
@@ -255,7 +255,7 @@ it('does not create ModelLog entries for ModelLog model itself', function () {
     expect($countAfter)->toBe($countBefore);
 });
 
-it('can disable and enable logging globally', function () {
+it('can disable and enable logging globally', function (): void {
     // Disable logging
     ModelLog::disable();
     expect(ModelLog::isEnabled())->toBeFalse();

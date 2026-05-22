@@ -13,7 +13,7 @@ use Tests\Support\TestBitgetApiableJob;
 
 uses(RefreshDatabase::class)->group('integration', 'exception-handlers', 'bitget');
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Create Engine admin record (required for forbidden hostname notifications)
     Kraite::create([
         'id' => 1,
@@ -24,12 +24,12 @@ beforeEach(function () {
     ]);
 });
 
-it('cleans laravel.log', function () {
+it('cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
     expect(true)->toBe(true);
 });
 
-it('handles 429 rate limit by setting dispatch_after', function () {
+it('handles 429 rate limit by setting dispatch_after', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -66,7 +66,7 @@ it('handles 429 rate limit by setting dispatch_after', function () {
     expect($events)->toContain('handleApiException:handled');
 });
 
-it('handles 429 rate limit with Retry-After header', function () {
+it('handles 429 rate limit with Retry-After header', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -99,7 +99,7 @@ it('handles 429 rate limit with Retry-After header', function () {
     expect($step->dispatch_after->isFuture())->toBeTrue();
 });
 
-it('handles 401 authentication failure by creating forbidden_hostname', function () {
+it('handles 401 authentication failure by creating forbidden_hostname', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -138,7 +138,7 @@ it('handles 401 authentication failure by creating forbidden_hostname', function
     expect($forbiddenHostname->account_id)->toBe($account->id);
 });
 
-it('handles 40014 invalid API key by creating forbidden_hostname', function () {
+it('handles 40014 invalid API key by creating forbidden_hostname', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -176,7 +176,7 @@ it('handles 40014 invalid API key by creating forbidden_hostname', function () {
     expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
 });
 
-it('handles 40017 not a trader by creating forbidden_hostname', function () {
+it('handles 40017 not a trader by creating forbidden_hostname', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -214,7 +214,7 @@ it('handles 40017 not a trader by creating forbidden_hostname', function () {
     expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
 });
 
-it('handles 40018 invalid passphrase by creating forbidden_hostname', function () {
+it('handles 40018 invalid passphrase by creating forbidden_hostname', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -252,7 +252,7 @@ it('handles 40018 invalid passphrase by creating forbidden_hostname', function (
     expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
 });
 
-it('handles 403 forbidden by failing step', function () {
+it('handles 403 forbidden by failing step', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -289,7 +289,7 @@ it('handles 403 forbidden by failing step', function () {
     expect($events)->toContain('handleApiException:rethrow');
 });
 
-it('retries 45001 system maintenance error with backoff', function () {
+it('retries 45001 system maintenance error with backoff', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -326,7 +326,7 @@ it('retries 45001 system maintenance error with backoff', function () {
     expect($events)->toContain('handleApiException:rethrow');
 });
 
-it('retries 408 request timeout exception with backoff', function () {
+it('retries 408 request timeout exception with backoff', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -363,7 +363,7 @@ it('retries 408 request timeout exception with backoff', function () {
     expect($events)->toContain('handleApiException:rethrow');
 });
 
-it('retries 500 server error exception with backoff', function () {
+it('retries 500 server error exception with backoff', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -396,7 +396,7 @@ it('retries 500 server error exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('retries 502 bad gateway exception with backoff', function () {
+it('retries 502 bad gateway exception with backoff', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -429,7 +429,7 @@ it('retries 502 bad gateway exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('retries 503 service unavailable exception with backoff', function () {
+it('retries 503 service unavailable exception with backoff', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -462,7 +462,7 @@ it('retries 503 service unavailable exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('retries 504 gateway timeout exception with backoff', function () {
+it('retries 504 gateway timeout exception with backoff', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -495,7 +495,7 @@ it('retries 504 gateway timeout exception with backoff', function () {
     expect($step->retries)->toBe(1);
 });
 
-it('fails step for 40808 parameter verification exception', function () {
+it('fails step for 40808 parameter verification exception', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -526,7 +526,7 @@ it('fails step for 40808 parameter verification exception', function () {
     expect($step->state->value())->toBe('failed');
 });
 
-it('completes step successfully when no exception is thrown', function () {
+it('completes step successfully when no exception is thrown', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();

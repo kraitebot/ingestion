@@ -16,11 +16,11 @@ use Kraite\Core\Models\Server;
  */
 uses()->group('unit', 'kraite', 'server-ip');
 
-beforeEach(function () {
+beforeEach(function (): void {
     Cache::forget(Kraite::IP_CACHE_KEY);
 });
 
-it('returns the ip_address from the servers row matching the OS hostname', function () {
+it('returns the ip_address from the servers row matching the OS hostname', function (): void {
     Server::create([
         'hostname' => gethostname(),
         'ip_address' => '203.0.113.42',
@@ -33,7 +33,7 @@ it('returns the ip_address from the servers row matching the OS hostname', funct
     expect(Kraite::ip())->toBe('203.0.113.42');
 });
 
-it('falls back to the external resolver when no servers row matches and caches the result', function () {
+it('falls back to the external resolver when no servers row matches and caches the result', function (): void {
     Http::fake([
         'api.ipify.org*' => Http::response('198.51.100.7', 200),
     ]);
@@ -46,7 +46,7 @@ it('falls back to the external resolver when no servers row matches and caches t
     Http::assertSentCount(1);
 });
 
-it('throws when the external resolver returns a loopback or private ip', function () {
+it('throws when the external resolver returns a loopback or private ip', function (): void {
     Http::fake([
         'api.ipify.org*' => Http::response('127.0.1.1', 200),
     ]);
@@ -54,7 +54,7 @@ it('throws when the external resolver returns a loopback or private ip', functio
     Kraite::ip();
 })->throws(RuntimeException::class, 'Unable to resolve the server public IP');
 
-it('reads from the cached fallback without hitting the external resolver when primed', function () {
+it('reads from the cached fallback without hitting the external resolver when primed', function (): void {
     Cache::put(Kraite::IP_CACHE_KEY, '203.0.113.99', Kraite::IP_CACHE_TTL_SECONDS);
 
     // Stray request detection would blow up if the resolver was called.

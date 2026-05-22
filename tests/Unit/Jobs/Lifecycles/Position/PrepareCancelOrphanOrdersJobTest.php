@@ -57,7 +57,7 @@ function buildOrphanCancelFixture(string $status): array
     return ['account' => $account, 'position' => $position];
 }
 
-it('dispatches the cancel-position-open-orders lifecycle for a closed orphan parent', function () {
+it('dispatches the cancel-position-open-orders lifecycle for a closed orphan parent', function (): void {
     // Closed positions that still carry NEW/PARTIALLY_FILLED orders are
     // the spotter's primary orphan use case. The wrapper must spawn
     // both atomic legs of the existing CancelPositionOpenOrders
@@ -86,7 +86,7 @@ it('dispatches the cancel-position-open-orders lifecycle for a closed orphan par
     expect(is_a($steps[1]->class, AtomicCancelAlgoOpenOrdersJob::class, true))->toBeTrue();
 });
 
-it('dispatches the lifecycle for a cancelled orphan parent', function () {
+it('dispatches the lifecycle for a cancelled orphan parent', function (): void {
     $f = buildOrphanCancelFixture('cancelled');
 
     $job = new PrepareCancelOrphanOrdersJob($f['position']->id);
@@ -96,7 +96,7 @@ it('dispatches the lifecycle for a cancelled orphan parent', function () {
     expect(Step::where('block_uuid', $blockUuid)->count())->toBe(2);
 });
 
-it('dispatches the lifecycle for a failed orphan parent', function () {
+it('dispatches the lifecycle for a failed orphan parent', function (): void {
     $f = buildOrphanCancelFixture('failed');
 
     $job = new PrepareCancelOrphanOrdersJob($f['position']->id);
@@ -106,7 +106,7 @@ it('dispatches the lifecycle for a failed orphan parent', function () {
     expect(Step::where('block_uuid', $blockUuid)->count())->toBe(2);
 });
 
-it('skips the dispatch when the parent position is still active', function () {
+it('skips the dispatch when the parent position is still active', function (): void {
     // Sanity guard: the orphan-cancel path only applies when the parent
     // is in a terminal state. An active position still in the live trade
     // loop must NOT have its open orders cancelled by this code path —
@@ -118,7 +118,7 @@ it('skips the dispatch when the parent position is still active', function () {
     expect($job->isOrphanParent())->toBeFalse();
 });
 
-it('flags a closed/cancelled/failed parent as a valid orphan parent', function () {
+it('flags a closed/cancelled/failed parent as a valid orphan parent', function (): void {
     foreach (['closed', 'cancelled', 'failed'] as $status) {
         $f = buildOrphanCancelFixture($status);
         $job = new PrepareCancelOrphanOrdersJob($f['position']->id);

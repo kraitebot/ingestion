@@ -87,7 +87,7 @@ function createBitgetMockResponse(array $data, int $statusCode = 200): Response
 // MapsPlaceOrder Tests
 // =============================================================================
 
-test('preparePlaceOrderProperties sets correct properties for LIMIT order', function () {
+test('preparePlaceOrderProperties sets correct properties for LIMIT order', function (): void {
     $order = createBitgetTestOrder('PLACE_LIMIT', ['type' => 'LIMIT']);
     $mapper = new BitgetApiDataMapper;
 
@@ -103,7 +103,7 @@ test('preparePlaceOrderProperties sets correct properties for LIMIT order', func
     expect($properties->get('options.price'))->not->toBeNull();
 });
 
-test('preparePlaceOrderProperties sets correct properties for MARKET order', function () {
+test('preparePlaceOrderProperties sets correct properties for MARKET order', function (): void {
     $order = createBitgetTestOrder('PLACE_MARKET', ['type' => 'MARKET']);
     $mapper = new BitgetApiDataMapper;
 
@@ -114,7 +114,7 @@ test('preparePlaceOrderProperties sets correct properties for MARKET order', fun
     expect($properties->get('options.price'))->toBeNull();
 });
 
-test('resolvePlaceOrderResponse parses BitGet response correctly', function () {
+test('resolvePlaceOrderResponse parses BitGet response correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     // BitGet place order response per documentation
@@ -140,7 +140,7 @@ test('resolvePlaceOrderResponse parses BitGet response correctly', function () {
 // MapsOrderQuery Tests
 // =============================================================================
 
-test('prepareOrderQueryProperties sets correct properties', function () {
+test('prepareOrderQueryProperties sets correct properties', function (): void {
     $order = createBitgetTestOrder('QUERY_ORDER');
     $mapper = new BitgetApiDataMapper;
 
@@ -151,7 +151,7 @@ test('prepareOrderQueryProperties sets correct properties', function () {
     expect($properties->get('options.orderId'))->toBe('1234567890');
 });
 
-test('resolveOrderQueryResponse parses filled order correctly', function () {
+test('resolveOrderQueryResponse parses filled order correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     // BitGet order detail response per documentation
@@ -192,7 +192,7 @@ test('resolveOrderQueryResponse parses filled order correctly', function () {
     expect($result['_raw'])->toBeArray();
 });
 
-test('resolveOrderQueryResponse parses new order correctly', function () {
+test('resolveOrderQueryResponse parses new order correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -220,7 +220,7 @@ test('resolveOrderQueryResponse parses new order correctly', function () {
     expect($result['_price'])->toBe('1800');
 });
 
-test('resolveOrderQueryResponse normalizes various states correctly', function () {
+test('resolveOrderQueryResponse normalizes various states correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $testCases = [
@@ -256,7 +256,7 @@ test('resolveOrderQueryResponse normalizes various states correctly', function (
 // MapsOrderCancel Tests
 // =============================================================================
 
-test('prepareOrderCancelProperties sets correct properties', function () {
+test('prepareOrderCancelProperties sets correct properties', function (): void {
     $order = createBitgetTestOrder('CANCEL_ORDER');
     $mapper = new BitgetApiDataMapper;
 
@@ -268,7 +268,7 @@ test('prepareOrderCancelProperties sets correct properties', function () {
     expect($properties->get('options.orderId'))->toBe('1234567890');
 });
 
-test('resolveOrderCancelResponse parses response correctly', function () {
+test('resolveOrderCancelResponse parses response correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -291,7 +291,7 @@ test('resolveOrderCancelResponse parses response correctly', function () {
 // MapsOrderModify Tests
 // =============================================================================
 
-test('prepareOrderModifyProperties sets correct properties', function () {
+test('prepareOrderModifyProperties sets correct properties', function (): void {
     $order = createBitgetTestOrder('MODIFY_ORDER');
     $mapper = new BitgetApiDataMapper;
 
@@ -306,7 +306,7 @@ test('prepareOrderModifyProperties sets correct properties', function () {
     expect($properties->get('options.newClientOid'))->not->toBeNull();
 });
 
-test('resolveOrderModifyResponse parses response correctly', function () {
+test('resolveOrderModifyResponse parses response correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -328,7 +328,7 @@ test('resolveOrderModifyResponse parses response correctly', function () {
 // MapsCancelOrders Tests
 // =============================================================================
 
-test('prepareCancelOrdersProperties sets correct properties', function () {
+test('prepareCancelOrdersProperties sets correct properties', function (): void {
     $position = createBitgetTestPosition('CANCEL_ALL');
     $mapper = new BitgetApiDataMapper;
 
@@ -339,7 +339,7 @@ test('prepareCancelOrdersProperties sets correct properties', function () {
     expect($properties->get('options.marginCoin'))->toBe('USDT');
 });
 
-test('resolveCancelOrdersResponse parses response with success and failure lists', function () {
+test('resolveCancelOrdersResponse parses response with success and failure lists', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -368,7 +368,7 @@ test('resolveCancelOrdersResponse parses response with success and failure lists
 // MapsAccountQueryTrades Tests
 // =============================================================================
 
-test('prepareQueryTokenTradesProperties sets correct properties', function () {
+test('prepareQueryTokenTradesProperties sets correct properties', function (): void {
     $position = createBitgetTestPosition('QUERY_TRADES');
     $mapper = new BitgetApiDataMapper;
 
@@ -378,7 +378,7 @@ test('prepareQueryTokenTradesProperties sets correct properties', function () {
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');
 });
 
-test('prepareQueryTokenTradesProperties includes orderId when provided', function () {
+test('prepareQueryTokenTradesProperties includes orderId when provided', function (): void {
     $position = createBitgetTestPosition('QUERY_TRADES_ORDER');
     $mapper = new BitgetApiDataMapper;
 
@@ -387,7 +387,7 @@ test('prepareQueryTokenTradesProperties includes orderId when provided', functio
     expect($properties->get('options.orderId'))->toBe('1234567890');
 });
 
-test('resolveQueryTradeResponse parses fillList correctly', function () {
+test('resolveQueryTradeResponse parses fillList correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     // BitGet order fills response per documentation
@@ -442,7 +442,7 @@ test('resolveQueryTradeResponse parses fillList correctly', function () {
 // MapsMarkPriceQuery Tests
 // =============================================================================
 
-test('prepareQueryMarkPriceProperties sets correct properties', function () {
+test('prepareQueryMarkPriceProperties sets correct properties', function (): void {
     $exchangeSymbol = createBitgetTestExchangeSymbol('MARK_PRICE');
     $mapper = new BitgetApiDataMapper;
 
@@ -452,7 +452,7 @@ test('prepareQueryMarkPriceProperties sets correct properties', function () {
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');
 });
 
-test('resolveQueryMarkPriceResponse returns mark price', function () {
+test('resolveQueryMarkPriceResponse returns mark price', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -472,7 +472,7 @@ test('resolveQueryMarkPriceResponse returns mark price', function () {
     expect($result)->toBe('40500.5');
 });
 
-test('resolveQueryMarkPriceResponse returns null when mark price missing', function () {
+test('resolveQueryMarkPriceResponse returns null when mark price missing', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -493,7 +493,7 @@ test('resolveQueryMarkPriceResponse returns null when mark price missing', funct
 // MapsLeverageBracketsQuery Tests
 // =============================================================================
 
-test('prepareQueryLeverageBracketsDataProperties sets correct properties', function () {
+test('prepareQueryLeverageBracketsDataProperties sets correct properties', function (): void {
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $mapper = new BitgetApiDataMapper;
 
@@ -503,7 +503,7 @@ test('prepareQueryLeverageBracketsDataProperties sets correct properties', funct
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');
 });
 
-test('prepareQueryLeverageBracketsDataProperties accepts optional symbol', function () {
+test('prepareQueryLeverageBracketsDataProperties accepts optional symbol', function (): void {
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $mapper = new BitgetApiDataMapper;
 
@@ -514,7 +514,7 @@ test('prepareQueryLeverageBracketsDataProperties accepts optional symbol', funct
     expect($properties->get('options.symbol'))->toBe('BTCUSDT');
 });
 
-test('resolveLeverageBracketsDataResponse parses position tier data', function () {
+test('resolveLeverageBracketsDataResponse parses position tier data', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     // BitGet V2 position tier response format
@@ -567,7 +567,7 @@ test('resolveLeverageBracketsDataResponse parses position tier data', function (
 // MapsTokenLeverageRatios Tests
 // =============================================================================
 
-test('prepareTokenLeverageRatiosProperties sets correct properties', function () {
+test('prepareTokenLeverageRatiosProperties sets correct properties', function (): void {
     $position = createBitgetTestPosition('SET_LEVERAGE');
     $mapper = new BitgetApiDataMapper;
 
@@ -580,7 +580,7 @@ test('prepareTokenLeverageRatiosProperties sets correct properties', function ()
     expect($properties->get('options.holdSide'))->toBe('long');
 })->todo('MapsTokenLeverageRatios trait not yet implemented');
 
-test('resolveTokenLeverageRatiosResponse parses leverage confirmation', function () {
+test('resolveTokenLeverageRatiosResponse parses leverage confirmation', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -605,7 +605,7 @@ test('resolveTokenLeverageRatiosResponse parses leverage confirmation', function
 // MapsSymbolMarginType Tests
 // =============================================================================
 
-test('prepareSymbolMarginTypeProperties sets correct properties', function () {
+test('prepareSymbolMarginTypeProperties sets correct properties', function (): void {
     $position = createBitgetTestPosition('SET_MARGIN');
     $mapper = new BitgetApiDataMapper;
 
@@ -618,7 +618,7 @@ test('prepareSymbolMarginTypeProperties sets correct properties', function () {
     expect($properties->get('options.marginMode'))->toBe($position->account->margin_mode);
 })->todo('MapsSymbolMarginType trait not yet implemented');
 
-test('resolveSymbolMarginTypeResponse parses margin mode confirmation', function () {
+test('resolveSymbolMarginTypeResponse parses margin mode confirmation', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -641,7 +641,7 @@ test('resolveSymbolMarginTypeResponse parses margin mode confirmation', function
 // Canonical Order Type Tests
 // =============================================================================
 
-test('canonicalOrderType maps BitGet order types correctly', function () {
+test('canonicalOrderType maps BitGet order types correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $testCases = [
@@ -667,7 +667,7 @@ test('canonicalOrderType maps BitGet order types correctly', function () {
 // Edge Cases and Error Handling
 // =============================================================================
 
-test('resolvers handle empty data gracefully', function () {
+test('resolvers handle empty data gracefully', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $emptyResponse = createBitgetMockResponse([
@@ -681,7 +681,7 @@ test('resolvers handle empty data gracefully', function () {
     expect($mapper->resolveLeverageBracketsDataResponse($emptyResponse))->toBe([]);
 });
 
-test('resolvers handle missing data key gracefully', function () {
+test('resolvers handle missing data key gracefully', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -694,7 +694,7 @@ test('resolvers handle missing data key gracefully', function () {
     expect($mapper->resolveQueryTradeResponse($response))->toBe([]);
 });
 
-test('sideType converts canonical sides to BitGet format', function () {
+test('sideType converts canonical sides to BitGet format', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     expect($mapper->sideType('BUY'))->toBe('buy');
@@ -703,7 +703,7 @@ test('sideType converts canonical sides to BitGet format', function () {
     expect($mapper->sideType('sell'))->toBe('sell');
 });
 
-test('directionType converts canonical directions to BitGet format', function () {
+test('directionType converts canonical directions to BitGet format', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     expect($mapper->directionType('LONG'))->toBe('long');
@@ -712,7 +712,7 @@ test('directionType converts canonical directions to BitGet format', function ()
     expect($mapper->directionType('short'))->toBe('short');
 });
 
-test('identifyBaseAndQuote parses BitGet symbols correctly', function () {
+test('identifyBaseAndQuote parses BitGet symbols correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     expect($mapper->identifyBaseAndQuote('BTCUSDT'))->toBe(['base' => 'BTC', 'quote' => 'USDT']);
@@ -724,7 +724,7 @@ test('identifyBaseAndQuote parses BitGet symbols correctly', function () {
 // MapsKlinesQuery Tests
 // =============================================================================
 
-test('prepareQueryKlinesProperties sets correct properties', function () {
+test('prepareQueryKlinesProperties sets correct properties', function (): void {
     $exchangeSymbol = createBitgetTestExchangeSymbol('KLINES_QUERY');
     $mapper = new BitgetApiDataMapper;
 
@@ -737,7 +737,7 @@ test('prepareQueryKlinesProperties sets correct properties', function () {
     expect($properties->get('options.limit'))->toBe(100);
 });
 
-test('prepareQueryKlinesProperties normalizes lowercase hour timeframes to uppercase', function () {
+test('prepareQueryKlinesProperties normalizes lowercase hour timeframes to uppercase', function (): void {
     $exchangeSymbol = createBitgetTestExchangeSymbol('KLINES_HOUR');
     $mapper = new BitgetApiDataMapper;
 
@@ -758,7 +758,7 @@ test('prepareQueryKlinesProperties normalizes lowercase hour timeframes to upper
     }
 });
 
-test('prepareQueryKlinesProperties normalizes lowercase day timeframes to uppercase', function () {
+test('prepareQueryKlinesProperties normalizes lowercase day timeframes to uppercase', function (): void {
     $exchangeSymbol = createBitgetTestExchangeSymbol('KLINES_DAY');
     $mapper = new BitgetApiDataMapper;
 
@@ -774,7 +774,7 @@ test('prepareQueryKlinesProperties normalizes lowercase day timeframes to upperc
     }
 });
 
-test('prepareQueryKlinesProperties normalizes lowercase week timeframes to uppercase', function () {
+test('prepareQueryKlinesProperties normalizes lowercase week timeframes to uppercase', function (): void {
     $exchangeSymbol = createBitgetTestExchangeSymbol('KLINES_WEEK');
     $mapper = new BitgetApiDataMapper;
 
@@ -789,7 +789,7 @@ test('prepareQueryKlinesProperties normalizes lowercase week timeframes to upper
     }
 });
 
-test('prepareQueryKlinesProperties keeps minute timeframes lowercase', function () {
+test('prepareQueryKlinesProperties keeps minute timeframes lowercase', function (): void {
     $exchangeSymbol = createBitgetTestExchangeSymbol('KLINES_MINUTE');
     $mapper = new BitgetApiDataMapper;
 
@@ -802,7 +802,7 @@ test('prepareQueryKlinesProperties keeps minute timeframes lowercase', function 
     }
 });
 
-test('prepareQueryKlinesProperties includes optional time parameters', function () {
+test('prepareQueryKlinesProperties includes optional time parameters', function (): void {
     $exchangeSymbol = createBitgetTestExchangeSymbol('KLINES_TIME');
     $mapper = new BitgetApiDataMapper;
 
@@ -816,7 +816,7 @@ test('prepareQueryKlinesProperties includes optional time parameters', function 
     expect($properties->get('options.limit'))->toBe(500);
 });
 
-test('resolveQueryKlinesResponse parses klines data correctly', function () {
+test('resolveQueryKlinesResponse parses klines data correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     // Bitget klines response format: [timestamp, open, high, low, close, volume, quoteVolume]
@@ -844,7 +844,7 @@ test('resolveQueryKlinesResponse parses klines data correctly', function () {
     expect($result[1]['open'])->toBe('42300.0');
 });
 
-test('resolveQueryKlinesResponse handles empty data', function () {
+test('resolveQueryKlinesResponse handles empty data', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -858,7 +858,7 @@ test('resolveQueryKlinesResponse handles empty data', function () {
     expect($result)->toBe([]);
 });
 
-test('resolveQueryKlinesResponse handles missing data key', function () {
+test('resolveQueryKlinesResponse handles missing data key', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -871,7 +871,7 @@ test('resolveQueryKlinesResponse handles missing data key', function () {
     expect($result)->toBe([]);
 });
 
-test('resolveQueryKlinesResponse skips malformed candles', function () {
+test('resolveQueryKlinesResponse skips malformed candles', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([

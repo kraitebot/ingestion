@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -18,7 +18,7 @@ it('Cleans laravel.log', function () {
 // Schematic: [∅]
 // A single unindexed step should immediately run and complete.
 // Fail the step to check cancellation.
-it('fails a single step with no index or children', function () {
+it('fails a single step with no index or children', function (): void {
     $step = StepTester::createSteps([
         [/* no index or block, fail argument added */ 'arguments' => ['stop' => true]],
     ], TestQueueableJob::class)[0];
@@ -36,7 +36,7 @@ it('fails a single step with no index or children', function () {
 // Schematic: 1 -> 2
 // Two steps in sequence should run one after the other.
 // Fail step 1 to ensure step 2 gets cancelled.
-it('fails two sequential steps (index 1 → 2)', function () {
+it('fails two sequential steps (index 1 → 2)', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -59,7 +59,7 @@ it('fails two sequential steps (index 1 → 2)', function () {
 
 // Schematic: 1,1
 // Two steps at the same index should run in parallel. Fail one step.
-it('fails one parallel step at the same index', function () {
+it('fails one parallel step at the same index', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -82,7 +82,7 @@ it('fails one parallel step at the same index', function () {
 // Schematic: 1 -> 2,2 -> 3
 // Mixed case: sequential step, then two parallel steps, then another sequential step.
 // Fail step 2 in block 2 to test the cancellation of subsequent steps.
-it('fails a sequence with parallel middle: 1 → (2 + 2) → 3', function () {
+it('fails a sequence with parallel middle: 1 → (2 + 2) → 3', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -112,7 +112,7 @@ it('fails a sequence with parallel middle: 1 → (2 + 2) → 3', function () {
 // ChildBlock: 1 -> 2
 // A parent lifecycle step completes only after its child block completes.
 // Stop child step 1 to check parent stopped and cancellation of step 2.
-it('stops a lifecycle step after its child is stopped', function () {
+it('stops a lifecycle step after its child is stopped', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -148,7 +148,7 @@ it('stops a lifecycle step after its child is stopped', function () {
 // G1a [1], G1b [1] → G2 [2]
 // A grandchild block with two parallel steps (index 1) followed by one step (index 2), in 3-level nesting.
 // Stop the grandchild step G2 and check that parents cascade to stopped.
-it('stops parallel + sequential grandchildren steps inside 3-level nesting', function () {
+it('stops parallel + sequential grandchildren steps inside 3-level nesting', function (): void {
     $block1 = (string) Str::uuid();
     $block2 = (string) Str::uuid();
     $block3 = (string) Str::uuid();
@@ -219,7 +219,7 @@ it('stops parallel + sequential grandchildren steps inside 3-level nesting', fun
 });
 
 // Verify that parent gets error_message when child step is stopped
-it('sets error_message on parent when child step is stopped', function () {
+it('sets error_message on parent when child step is stopped', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -252,7 +252,7 @@ it('sets error_message on parent when child step is stopped', function () {
 });
 
 // Verify that pending children are cancelled (not failed) when parent is stopped
-it('cancels pending children when parent is stopped', function () {
+it('cancels pending children when parent is stopped', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -279,7 +279,7 @@ it('cancels pending children when parent is stopped', function () {
 });
 
 // Verify recursive cancellation - grandchildren also get cancelled when parent stops
-it('cancels grandchildren when parent is stopped', function () {
+it('cancels grandchildren when parent is stopped', function (): void {
     $block1 = (string) Str::uuid();
     $block2 = (string) Str::uuid();
     $block3 = (string) Str::uuid();

@@ -12,7 +12,7 @@ use Kraite\Core\Trading\Kraite as KraiteEngine;
 
 uses(RefreshDatabase::class)->group('billing', 'guard');
 
-beforeEach(function () {
+beforeEach(function (): void {
     KraiteModel::firstOrCreate(
         ['id' => 1],
         [
@@ -58,9 +58,9 @@ function unlimitedTier(float $monthly = 150.0): Subscription
 function billableUserWithAccount(
     Subscription $tier,
     float $balance,
-    ?\DateTimeInterface $trialStart = null,
+    ?DateTimeInterface $trialStart = null,
     ?int $activeAccountId = null,
-    ?\DateTimeInterface $renewsAt = null,
+    ?DateTimeInterface $renewsAt = null,
 ): array {
     $apiSystem = ApiSystem::firstWhere('canonical', 'binance')
         ?? ApiSystem::factory()->exchange()->create([
@@ -92,7 +92,7 @@ function billableUserWithAccount(
     return ['user' => $user->refresh(), 'account' => $account];
 }
 
-it('allows new opens when renewal anchor is in the future and account is active', function () {
+it('allows new opens when renewal anchor is in the future and account is active', function (): void {
     $tier = starterTier(75);
 
     $f = billableUserWithAccount(
@@ -107,7 +107,7 @@ it('allows new opens when renewal anchor is in the future and account is active'
     expect($engine->canOpenNewPositions())->toBeTrue();
 });
 
-it('blocks new opens when renewal anchor is in the past (closing-mode)', function () {
+it('blocks new opens when renewal anchor is in the past (closing-mode)', function (): void {
     $tier = starterTier(75);
 
     $f = billableUserWithAccount(
@@ -122,7 +122,7 @@ it('blocks new opens when renewal anchor is in the past (closing-mode)', functio
     expect($engine->canOpenNewPositions())->toBeFalse();
 });
 
-it('blocks new opens when post-trial user has no renewal anchor set', function () {
+it('blocks new opens when post-trial user has no renewal anchor set', function (): void {
     $tier = starterTier(75);
 
     $f = billableUserWithAccount(
@@ -137,7 +137,7 @@ it('blocks new opens when post-trial user has no renewal anchor set', function (
     expect($engine->canOpenNewPositions())->toBeFalse();
 });
 
-it('does not block when trial is active even with empty wallet', function () {
+it('does not block when trial is active even with empty wallet', function (): void {
     $tier = starterTier(75);
 
     $f = billableUserWithAccount(
@@ -151,7 +151,7 @@ it('does not block when trial is active even with empty wallet', function () {
     expect($engine->canOpenNewPositions())->toBeTrue();
 });
 
-it('blocks new opens on a Starter user’s non-active account', function () {
+it('blocks new opens on a Starter user’s non-active account', function (): void {
     $tier = starterTier(75);
 
     $apiSystem = ApiSystem::firstWhere('canonical', 'binance')
@@ -190,7 +190,7 @@ it('blocks new opens on a Starter user’s non-active account', function () {
     expect(KraiteEngine::withAccount($secondary->refresh())->canOpenNewPositions())->toBeFalse();
 });
 
-it('does not apply the active-account gate on Unlimited tier', function () {
+it('does not apply the active-account gate on Unlimited tier', function (): void {
     $tier = unlimitedTier(150);
 
     $apiSystem = ApiSystem::firstWhere('canonical', 'binance')
@@ -227,7 +227,7 @@ it('does not apply the active-account gate on Unlimited tier', function () {
     expect(KraiteEngine::withAccount($accountB->refresh())->canOpenNewPositions())->toBeTrue();
 });
 
-it('blocks new opens when the user is paused', function () {
+it('blocks new opens when the user is paused', function (): void {
     $tier = starterTier(75);
 
     $f = billableUserWithAccount(

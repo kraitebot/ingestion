@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: Parent with child_block_uuid that gets children later
 // Parent stays running and waits for children that are created after parent starts
-it('waits for children created after parent starts running', function () {
+it('waits for children created after parent starts running', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -57,7 +57,7 @@ it('waits for children created after parent starts running', function () {
 
 // Schematic: Parent remains running indefinitely if child never completes
 // Parent with pending child should not complete
-it('keeps parent running while child is pending', function () {
+it('keeps parent running while child is pending', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -83,7 +83,7 @@ it('keeps parent running while child is pending', function () {
 
 // Schematic: Parent with all children completed
 // Parent should complete when all children are completed
-it('completes parent when all children are completed', function () {
+it('completes parent when all children are completed', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -115,7 +115,7 @@ it('completes parent when all children are completed', function () {
 
 // Schematic: Parent with some children skipped
 // Parent should still complete if all non-skipped children complete
-it('completes parent when non-skipped children complete', function () {
+it('completes parent when non-skipped children complete', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -145,7 +145,7 @@ it('completes parent when non-skipped children complete', function () {
 
 // Schematic: Parent re-dispatched multiple times (idempotency)
 // Running parent should remain running on re-dispatch
-it('keeps parent in running state on re-dispatch', function () {
+it('keeps parent in running state on re-dispatch', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -171,7 +171,7 @@ it('keeps parent in running state on re-dispatch', function () {
 
 // Schematic: Parent with nested parent child
 // Parent → Child (also parent) → Grandchild
-it('handles nested parent lifecycle correctly', function () {
+it('handles nested parent lifecycle correctly', function (): void {
     $blocks = [
         (string) Str::uuid(), // Grandparent
         (string) Str::uuid(), // Parent (also a child)

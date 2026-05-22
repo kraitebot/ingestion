@@ -48,7 +48,7 @@ function createOrderOnPosition(Position $position, array $attributes = []): Orde
 
 // --- STOP-MARKET restrictions ---
 
-it('allows creating a STOP-MARKET order when none exists', function () {
+it('allows creating a STOP-MARKET order when none exists', function (): void {
     $position = createTestPosition();
 
     $order = createOrderOnPosition($position, ['type' => 'STOP-MARKET']);
@@ -56,14 +56,14 @@ it('allows creating a STOP-MARKET order when none exists', function () {
     expect($order->exists)->toBeTrue();
 });
 
-it('blocks creating a second active STOP-MARKET order', function () {
+it('blocks creating a second active STOP-MARKET order', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'STOP-MARKET', 'status' => 'NEW']);
 
     createOrderOnPosition($position, ['type' => 'STOP-MARKET']);
 })->throws(NonNotifiableException::class, 'STOP-MARKET order creation blocked');
 
-it('allows STOP-MARKET when existing one is CANCELLED', function () {
+it('allows STOP-MARKET when existing one is CANCELLED', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'STOP-MARKET', 'status' => 'CANCELLED']);
 
@@ -72,7 +72,7 @@ it('allows STOP-MARKET when existing one is CANCELLED', function () {
     expect($order->exists)->toBeTrue();
 });
 
-it('allows STOP-MARKET when existing one is EXPIRED', function () {
+it('allows STOP-MARKET when existing one is EXPIRED', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'STOP-MARKET', 'status' => 'EXPIRED']);
 
@@ -83,7 +83,7 @@ it('allows STOP-MARKET when existing one is EXPIRED', function () {
 
 // --- MARKET restrictions ---
 
-it('allows creating a MARKET order when none exists', function () {
+it('allows creating a MARKET order when none exists', function (): void {
     $position = createTestPosition();
 
     $order = createOrderOnPosition($position, ['type' => 'MARKET']);
@@ -91,14 +91,14 @@ it('allows creating a MARKET order when none exists', function () {
     expect($order->exists)->toBeTrue();
 });
 
-it('blocks creating a second active MARKET order', function () {
+it('blocks creating a second active MARKET order', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'MARKET', 'status' => 'NEW']);
 
     createOrderOnPosition($position, ['type' => 'MARKET']);
 })->throws(NonNotifiableException::class, 'MARKET order creation blocked');
 
-it('allows MARKET when existing one is CANCELLED', function () {
+it('allows MARKET when existing one is CANCELLED', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'MARKET', 'status' => 'CANCELLED']);
 
@@ -109,7 +109,7 @@ it('allows MARKET when existing one is CANCELLED', function () {
 
 // --- MARKET-CANCEL restrictions ---
 
-it('blocks creating a second active MARKET-CANCEL order', function () {
+it('blocks creating a second active MARKET-CANCEL order', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'MARKET-CANCEL', 'status' => 'NEW']);
 
@@ -118,7 +118,7 @@ it('blocks creating a second active MARKET-CANCEL order', function () {
 
 // --- PROFIT restrictions ---
 
-it('allows creating a PROFIT-LIMIT order when none exists', function () {
+it('allows creating a PROFIT-LIMIT order when none exists', function (): void {
     $position = createTestPosition();
 
     $order = createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT']);
@@ -126,21 +126,21 @@ it('allows creating a PROFIT-LIMIT order when none exists', function () {
     expect($order->exists)->toBeTrue();
 });
 
-it('blocks creating a second active PROFIT-LIMIT order', function () {
+it('blocks creating a second active PROFIT-LIMIT order', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT', 'status' => 'NEW']);
 
     createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT']);
 })->throws(NonNotifiableException::class, 'PROFIT order creation blocked');
 
-it('blocks PROFIT-MARKET when active PROFIT-LIMIT exists', function () {
+it('blocks PROFIT-MARKET when active PROFIT-LIMIT exists', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT', 'status' => 'NEW']);
 
     createOrderOnPosition($position, ['type' => 'PROFIT-MARKET']);
 })->throws(NonNotifiableException::class, 'PROFIT order creation blocked');
 
-it('allows PROFIT-LIMIT when existing profit order is CANCELLED', function () {
+it('allows PROFIT-LIMIT when existing profit order is CANCELLED', function (): void {
     $position = createTestPosition();
     createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT', 'status' => 'CANCELLED']);
 
@@ -151,7 +151,7 @@ it('allows PROFIT-LIMIT when existing profit order is CANCELLED', function () {
 
 // --- LIMIT restrictions ---
 
-it('allows creating LIMIT orders up to total_limit_orders', function () {
+it('allows creating LIMIT orders up to total_limit_orders', function (): void {
     $position = createTestPosition(totalLimitOrders: 3);
 
     createOrderOnPosition($position, ['type' => 'LIMIT', 'price' => '39000']);
@@ -161,7 +161,7 @@ it('allows creating LIMIT orders up to total_limit_orders', function () {
     expect($third->exists)->toBeTrue();
 });
 
-it('blocks creating LIMIT order beyond total_limit_orders', function () {
+it('blocks creating LIMIT order beyond total_limit_orders', function (): void {
     $position = createTestPosition(totalLimitOrders: 2);
 
     createOrderOnPosition($position, ['type' => 'LIMIT', 'price' => '39000']);
@@ -170,7 +170,7 @@ it('blocks creating LIMIT order beyond total_limit_orders', function () {
     createOrderOnPosition($position, ['type' => 'LIMIT', 'price' => '37000']);
 })->throws(NonNotifiableException::class, 'LIMIT order creation blocked');
 
-it('allows LIMIT when cancelled orders free up slots', function () {
+it('allows LIMIT when cancelled orders free up slots', function (): void {
     $position = createTestPosition(totalLimitOrders: 2);
 
     createOrderOnPosition($position, ['type' => 'LIMIT', 'price' => '39000', 'status' => 'CANCELLED']);
@@ -183,7 +183,7 @@ it('allows LIMIT when cancelled orders free up slots', function () {
 
 // --- Close position dispatch on fill ---
 
-it('dispatches ClosePositionJob when a PROFIT-LIMIT order is filled', function () {
+it('dispatches ClosePositionJob when a PROFIT-LIMIT order is filled', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT', 'status' => 'NEW']);
 
@@ -195,7 +195,7 @@ it('dispatches ClosePositionJob when a PROFIT-LIMIT order is filled', function (
     expect($order->fresh()->reference_status)->toBe('FILLED');
 });
 
-it('dispatches ClosePositionJob when a STOP-MARKET order is filled', function () {
+it('dispatches ClosePositionJob when a STOP-MARKET order is filled', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, ['type' => 'STOP-MARKET', 'status' => 'NEW']);
 
@@ -207,7 +207,7 @@ it('dispatches ClosePositionJob when a STOP-MARKET order is filled', function ()
     expect($order->fresh()->reference_status)->toBe('FILLED');
 });
 
-it('does not dispatch ClosePositionJob when a LIMIT order is filled', function () {
+it('does not dispatch ClosePositionJob when a LIMIT order is filled', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, ['type' => 'LIMIT', 'status' => 'NEW']);
 
@@ -216,7 +216,7 @@ it('does not dispatch ClosePositionJob when a LIMIT order is filled', function (
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', ClosePositionJob::class)->exists()))->toBeFalse();
 });
 
-it('does not dispatch ClosePositionJob when position is already closed', function () {
+it('does not dispatch ClosePositionJob when position is already closed', function (): void {
     $position = createTestPosition();
     $position->update(['status' => 'closed']);
 
@@ -226,7 +226,7 @@ it('does not dispatch ClosePositionJob when position is already closed', functio
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', ClosePositionJob::class)->exists()))->toBeFalse();
 });
 
-it('does not dispatch ClosePositionJob when reference_status is already FILLED', function () {
+it('does not dispatch ClosePositionJob when reference_status is already FILLED', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'PROFIT-LIMIT',
@@ -242,7 +242,7 @@ it('does not dispatch ClosePositionJob when reference_status is already FILLED',
 
 // --- Position replacement dispatch on expired/cancelled ---
 
-it('dispatches PreparePositionReplacementJob when a PROFIT-LIMIT order expires', function () {
+it('dispatches PreparePositionReplacementJob when a PROFIT-LIMIT order expires', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT', 'status' => 'NEW']);
 
@@ -257,7 +257,7 @@ it('dispatches PreparePositionReplacementJob when a PROFIT-LIMIT order expires',
     // RecreateCancelledOrderJob::complete() updates it after successful recreation.
 });
 
-it('dispatches PreparePositionReplacementJob when a STOP-MARKET order expires', function () {
+it('dispatches PreparePositionReplacementJob when a STOP-MARKET order expires', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, ['type' => 'STOP-MARKET', 'status' => 'NEW']);
 
@@ -270,7 +270,7 @@ it('dispatches PreparePositionReplacementJob when a STOP-MARKET order expires', 
     // Note: reference_status is NOT updated immediately for replacements.
 });
 
-it('dispatches PreparePositionReplacementJob when a PROFIT-LIMIT order is cancelled', function () {
+it('dispatches PreparePositionReplacementJob when a PROFIT-LIMIT order is cancelled', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, ['type' => 'PROFIT-LIMIT', 'status' => 'NEW']);
 
@@ -283,7 +283,7 @@ it('dispatches PreparePositionReplacementJob when a PROFIT-LIMIT order is cancel
     // Note: reference_status is NOT updated immediately for replacements.
 });
 
-it('dispatches PreparePositionReplacementJob when a STOP-MARKET order is cancelled', function () {
+it('dispatches PreparePositionReplacementJob when a STOP-MARKET order is cancelled', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, ['type' => 'STOP-MARKET', 'status' => 'NEW']);
 
@@ -296,7 +296,7 @@ it('dispatches PreparePositionReplacementJob when a STOP-MARKET order is cancell
     // Note: reference_status is NOT updated immediately for replacements.
 });
 
-it('does not dispatch PreparePositionReplacementJob when reference_status is already EXPIRED', function () {
+it('does not dispatch PreparePositionReplacementJob when reference_status is already EXPIRED', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'PROFIT-LIMIT',
@@ -309,7 +309,7 @@ it('does not dispatch PreparePositionReplacementJob when reference_status is alr
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PreparePositionReplacementJob::class)->exists()))->toBeFalse();
 });
 
-it('does not dispatch PreparePositionReplacementJob when reference_status is already CANCELLED', function () {
+it('does not dispatch PreparePositionReplacementJob when reference_status is already CANCELLED', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'PROFIT-LIMIT',
@@ -324,7 +324,7 @@ it('does not dispatch PreparePositionReplacementJob when reference_status is alr
 
 // --- Order modification detection ---
 
-it('dispatches PrepareOrderCorrectionJob when a LIMIT order price is modified', function () {
+it('dispatches PrepareOrderCorrectionJob when a LIMIT order price is modified', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'LIMIT',
@@ -342,7 +342,7 @@ it('dispatches PrepareOrderCorrectionJob when a LIMIT order price is modified', 
     expect($step->arguments['orderId'])->toBe($order->id);
 });
 
-it('dispatches PrepareOrderCorrectionJob when a LIMIT order quantity is modified', function () {
+it('dispatches PrepareOrderCorrectionJob when a LIMIT order quantity is modified', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'LIMIT',
@@ -360,7 +360,7 @@ it('dispatches PrepareOrderCorrectionJob when a LIMIT order quantity is modified
     expect($step->arguments['orderId'])->toBe($order->id);
 });
 
-it('dispatches PrepareOrderCorrectionJob when price and quantity are both modified', function () {
+it('dispatches PrepareOrderCorrectionJob when price and quantity are both modified', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'LIMIT',
@@ -378,7 +378,7 @@ it('dispatches PrepareOrderCorrectionJob when price and quantity are both modifi
     expect($step)->not->toBeNull();
 });
 
-it('does not dispatch correction job when order has no reference values', function () {
+it('does not dispatch correction job when order has no reference values', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'LIMIT',
@@ -392,7 +392,7 @@ it('does not dispatch correction job when order has no reference values', functi
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
-it('does not dispatch correction job when values match reference', function () {
+it('does not dispatch correction job when values match reference', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'LIMIT',
@@ -407,7 +407,7 @@ it('does not dispatch correction job when values match reference', function () {
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
-it('does not false-positive on decimal precision differences', function () {
+it('does not false-positive on decimal precision differences', function (): void {
     // This test verifies the fix for the cascade bug where string comparison
     // of decimals with different trailing zeros caused false modification detection.
     // The price accessor normalizes "40000.00000000" to "40000" but raw reference
@@ -427,7 +427,7 @@ it('does not false-positive on decimal precision differences', function () {
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
-it('does not dispatch correction job when order is not active', function () {
+it('does not dispatch correction job when order is not active', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'LIMIT',
@@ -442,7 +442,7 @@ it('does not dispatch correction job when order is not active', function () {
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
-it('does not dispatch correction job when position is not active', function () {
+it('does not dispatch correction job when position is not active', function (): void {
     $position = createTestPosition();
     $position->update(['status' => 'closed']);
 
@@ -458,7 +458,7 @@ it('does not dispatch correction job when position is not active', function () {
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeFalse();
 });
 
-it('dispatches correction job for PARTIALLY_FILLED orders', function () {
+it('dispatches correction job for PARTIALLY_FILLED orders', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'LIMIT',
@@ -472,7 +472,7 @@ it('dispatches correction job for PARTIALLY_FILLED orders', function () {
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', PrepareOrderCorrectionJob::class)->exists()))->toBeTrue();
 });
 
-it('deduplicates correction job dispatch', function () {
+it('deduplicates correction job dispatch', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [
         'type' => 'LIMIT',
@@ -493,7 +493,7 @@ it('deduplicates correction job dispatch', function () {
 
 // --- WAP (Weighted Average Price) dispatch on LIMIT fill ---
 
-it('dispatches ApplyWapJob when a LIMIT order is filled', function () {
+it('dispatches ApplyWapJob when a LIMIT order is filled', function (): void {
     $position = createTestPosition();
     $position->update(['profit_percentage' => '0.350']);
 
@@ -514,7 +514,7 @@ it('dispatches ApplyWapJob when a LIMIT order is filled', function () {
     expect($order->fresh()->reference_status)->toBe('FILLED');
 });
 
-it('does not dispatch ApplyWapJob when position is not active', function () {
+it('does not dispatch ApplyWapJob when position is not active', function (): void {
     $position = createTestPosition();
     $position->update([
         'status' => 'closed',
@@ -532,7 +532,7 @@ it('does not dispatch ApplyWapJob when position is not active', function () {
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->exists()))->toBeFalse();
 });
 
-it('does not dispatch ApplyWapJob when reference_status is already FILLED', function () {
+it('does not dispatch ApplyWapJob when reference_status is already FILLED', function (): void {
     $position = createTestPosition();
     $position->update(['profit_percentage' => '0.350']);
 
@@ -553,7 +553,7 @@ it('does not dispatch ApplyWapJob when reference_status is already FILLED', func
     expect(Steps::usingPrefix('trading', fn (): bool => Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->exists()))->toBeFalse();
 });
 
-it('deduplicates ApplyWapJob dispatch for same position', function () {
+it('deduplicates ApplyWapJob dispatch for same position', function (): void {
     $position = createTestPosition();
     $position->update(['profit_percentage' => '0.350']);
 

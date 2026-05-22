@@ -9,7 +9,7 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'step-dispatcher');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
@@ -17,7 +17,7 @@ it('Cleans laravel.log', function () {
 
 // Schematic: Early return Step 0 - No skipped parent steps found
 // If no parents are skipped, skipAllChildStepsOnParentAndChildSingleStep should return early
-it('step 0 returns early when no skipped parents exist', function () {
+it('step 0 returns early when no skipped parents exist', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -41,7 +41,7 @@ it('step 0 returns early when no skipped parents exist', function () {
 
 // Schematic: Early return Step 1 - No cancelled steps found
 // If no steps are cancelled, cascadeCancelledSteps should return early
-it('step 1 returns early when no cancelled steps exist', function () {
+it('step 1 returns early when no cancelled steps exist', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -65,7 +65,7 @@ it('step 1 returns early when no cancelled steps exist', function () {
 
 // Schematic: Early return Step 2 - No resolve-exception steps to promote
 // If no resolve-exception steps are in not-runnable state, promoteResolveExceptionSteps returns early
-it('step 2 returns early when no resolve-exception steps need promotion', function () {
+it('step 2 returns early when no resolve-exception steps need promotion', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -87,7 +87,7 @@ it('step 2 returns early when no resolve-exception steps need promotion', functi
 
 // Schematic: Early return Step 3 - No parent steps failed
 // If no parent steps are in failed state, transitionParentsToFailed returns early
-it('step 3 returns early when no parent steps failed', function () {
+it('step 3 returns early when no parent steps failed', function (): void {
     $parentBlock = (string) Str::uuid();
     $childBlock = (string) Str::uuid();
 
@@ -114,7 +114,7 @@ it('step 3 returns early when no parent steps failed', function () {
 
 // Schematic: Early return Step 4 - No failed steps with children
 // If no failed steps have child_block_uuid, cascadeFailureToChildren returns early
-it('step 4 returns early when no failed steps have children', function () {
+it('step 4 returns early when no failed steps have children', function (): void {
     $block = (string) Str::uuid();
 
     $step = StepTester::createSteps([
@@ -134,7 +134,7 @@ it('step 4 returns early when no failed steps have children', function () {
 
 // Schematic: Early return Step 5 - No running parents to complete
 // If no running parents exist, transitionParentsToComplete returns early
-it('step 5 returns early when no running parents exist', function () {
+it('step 5 returns early when no running parents exist', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -156,7 +156,7 @@ it('step 5 returns early when no running parents exist', function () {
 
 // Schematic: Early return Step 6 - No pending steps to dispatch
 // If all steps are in terminal states, PendingToDispatched returns early
-it('step 6 returns early when no pending steps exist', function () {
+it('step 6 returns early when no pending steps exist', function (): void {
     $block = (string) Str::uuid();
 
     $step = StepTester::createSteps([
@@ -178,7 +178,7 @@ it('step 6 returns early when no pending steps exist', function () {
 
 // Schematic: Multiple early returns in same dispatch cycle
 // Complex scenario where multiple steps return early
-it('handles multiple early returns in same dispatch cycle', function () {
+it('handles multiple early returns in same dispatch cycle', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -207,7 +207,7 @@ it('handles multiple early returns in same dispatch cycle', function () {
 
 // Schematic: dispatch_after prevents step 6 transition
 // Steps with future dispatch_after should not transition in step 6
-it('step 6 skips steps with future dispatch_after', function () {
+it('step 6 skips steps with future dispatch_after', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -232,7 +232,7 @@ it('step 6 skips steps with future dispatch_after', function () {
 
 // Schematic: Step 6 respects index sequencing (early return for blocked steps)
 // Steps blocked by previous index should not transition
-it('step 6 respects index sequencing and skips blocked steps', function () {
+it('step 6 respects index sequencing and skips blocked steps', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -254,7 +254,7 @@ it('step 6 respects index sequencing and skips blocked steps', function () {
 
 // Schematic: Step 6 dispatches when dispatch_after is reached
 // Steps with past/current dispatch_after should transition
-it('step 6 dispatches steps when dispatch_after is reached', function () {
+it('step 6 dispatches steps when dispatch_after is reached', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([
@@ -272,7 +272,7 @@ it('step 6 dispatches steps when dispatch_after is reached', function () {
 
 // Schematic: Empty group returns early (no steps to process)
 // Dispatching a group with no steps should return immediately
-it('returns early when dispatching empty group', function () {
+it('returns early when dispatching empty group', function (): void {
     $nonExistentGroup = 'empty-group-'.Str::uuid();
 
     // Dispatch should return early (no steps found)
@@ -284,7 +284,7 @@ it('returns early when dispatching empty group', function () {
 
 // Schematic: All steps in terminal states returns early
 // If all steps are completed/failed/stopped/cancelled/skipped, dispatcher returns early
-it('returns early when all steps are in terminal states', function () {
+it('returns early when all steps are in terminal states', function (): void {
     $block = (string) Str::uuid();
 
     $steps = StepTester::createSteps([

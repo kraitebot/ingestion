@@ -8,13 +8,13 @@ use Tests\Support\TestQueueableJob;
 
 uses(RefreshDatabase::class)->group('unit', 'base-queueable-job');
 
-it('Cleans laravel.log', function () {
+it('Cleans laravel.log', function (): void {
     file_put_contents(storage_path('logs/laravel.log'), '');
 
     expect(true)->toBe(true);
 });
 
-it('fails when generic exception is thrown', function () {
+it('fails when generic exception is thrown', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => [
             'throw_exception' => true,
@@ -31,7 +31,7 @@ it('fails when generic exception is thrown', function () {
     expect($step->error_message)->toContain('Generic test exception');
 });
 
-it('fails silently when NonNotifiableException is thrown', function () {
+it('fails silently when NonNotifiableException is thrown', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['throw_non_notifiable' => true]],
     ], TestQueueableJob::class)[0];
@@ -45,7 +45,7 @@ it('fails silently when NonNotifiableException is thrown', function () {
     expect($step->error_message)->toContain('Non-notifiable');
 });
 
-it('fails when MaxRetriesReachedException is thrown', function () {
+it('fails when MaxRetriesReachedException is thrown', function (): void {
     $step = StepTester::createSteps([
         ['arguments' => ['throw_max_retries' => true]],
     ], TestQueueableJob::class)[0];

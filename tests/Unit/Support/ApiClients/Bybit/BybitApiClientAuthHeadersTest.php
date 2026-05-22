@@ -20,7 +20,7 @@ use Kraite\Core\Support\ValueObjects\ApiRequest;
  */
 uses(RefreshDatabase::class)->group('unit', 'bybit', 'api-client');
 
-beforeEach(function () {
+beforeEach(function (): void {
     ApiSystem::factory()->exchange()->create([
         'canonical' => 'bybit',
         'name' => 'Bybit',
@@ -34,7 +34,7 @@ beforeEach(function () {
     ]);
 });
 
-it('does not send X-BAPI-API-KEY on public market kline requests', function () {
+it('does not send X-BAPI-API-KEY on public market kline requests', function (): void {
     Http::fake([
         '*' => Http::response([
             'retCode' => 0,
@@ -59,7 +59,7 @@ it('does not send X-BAPI-API-KEY on public market kline requests', function () {
     });
 });
 
-it('sends X-BAPI-API-KEY on signed account requests', function () {
+it('sends X-BAPI-API-KEY on signed account requests', function (): void {
     Http::fake([
         '*' => Http::response([
             'retCode' => 0,

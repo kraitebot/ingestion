@@ -53,7 +53,7 @@ function pendingCorrectionsFor(Order $order): int
         ->count());
 }
 
-it('dispatches a correction when drift is seen on an active position', function () {
+it('dispatches a correction when drift is seen on an active position', function (): void {
     $position = Position::factory()->long()->create(['status' => 'active']);
     $order = createOrderForDrift($position);
 
@@ -63,7 +63,7 @@ it('dispatches a correction when drift is seen on an active position', function 
     expect(pendingCorrectionsFor($order))->toBe(1);
 });
 
-it('does NOT dispatch a correction when the position is waping', function () {
+it('does NOT dispatch a correction when the position is waping', function (): void {
     // The real-world WAP flow: computeApiable runs apiModify, then apiSync
     // writes the new price into the DB — at which point reference_price is
     // still the pre-WAP value. Without the guard, this writes a spurious
@@ -78,7 +78,7 @@ it('does NOT dispatch a correction when the position is waping', function () {
     expect(pendingCorrectionsFor($order))->toBe(0);
 });
 
-it('does NOT dispatch a correction when the position is opening', function () {
+it('does NOT dispatch a correction when the position is opening', function (): void {
     $position = Position::factory()->long()->create(['status' => 'opening']);
     $order = createOrderForDrift($position);
 
@@ -87,7 +87,7 @@ it('does NOT dispatch a correction when the position is opening', function () {
     expect(pendingCorrectionsFor($order))->toBe(0);
 });
 
-it('DOES dispatch a correction when drift is observed while the position is syncing', function () {
+it('DOES dispatch a correction when drift is observed while the position is syncing', function (): void {
     // Sync is the only window where a third-party modification is
     // observable — apiSync reads the exchange value into the DB, which
     // triggers this observer. Closing the window would mean the drift
@@ -101,7 +101,7 @@ it('DOES dispatch a correction when drift is observed while the position is sync
     expect(pendingCorrectionsFor($order))->toBe(1);
 });
 
-it('does NOT dispatch a correction when the price matches reference on an active position', function () {
+it('does NOT dispatch a correction when the price matches reference on an active position', function (): void {
     $position = Position::factory()->long()->create(['status' => 'active']);
     $order = createOrderForDrift($position);
 
@@ -111,7 +111,7 @@ it('does NOT dispatch a correction when the price matches reference on an active
     expect(pendingCorrectionsFor($order))->toBe(0);
 });
 
-it('dispatches a correction on quantity drift on an active position', function () {
+it('dispatches a correction on quantity drift on an active position', function (): void {
     $position = Position::factory()->long()->create(['status' => 'active']);
     $order = createOrderForDrift($position);
 

@@ -8,7 +8,7 @@ use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\NotificationService;
 
 // Test that notifications are blocked when NOTIFICATIONS_ENABLED is false
-it('does not send notifications when notifications are globally disabled', function () {
+it('does not send notifications when notifications are globally disabled', function (): void {
     // Disable notifications globally
     config(['kraite.notifications_enabled' => false]);
 
@@ -45,7 +45,7 @@ it('does not send notifications when notifications are globally disabled', funct
 });
 
 // Test that notifications ARE sent when NOTIFICATIONS_ENABLED is true
-it('sends notifications when notifications are globally enabled', function () {
+it('sends notifications when notifications are globally enabled', function (): void {
     // Enable notifications globally (default)
     config(['kraite.notifications_enabled' => true]);
 
@@ -89,7 +89,7 @@ it('sends notifications when notifications are globally enabled', function () {
 });
 
 // Test that the toggle works for all notification types, not just one
-it('blocks all notification types when notifications are disabled', function () {
+it('blocks all notification types when notifications are disabled', function (): void {
     // Disable notifications globally
     config(['kraite.notifications_enabled' => false]);
 
@@ -133,7 +133,7 @@ it('blocks all notification types when notifications are disabled', function () 
 });
 
 // Test that toggle uses the default value from config when explicitly set to true
-it('sends notifications when explicitly enabled in config', function () {
+it('sends notifications when explicitly enabled in config', function (): void {
     // Explicitly enable notifications (simulates default behavior from config/kraite.php)
     config(['kraite.notifications_enabled' => true]);
 
@@ -173,7 +173,7 @@ it('sends notifications when explicitly enabled in config', function () {
 });
 
 // Test that toggle blocks notifications even when throttling would allow them
-it('blocks notifications regardless of throttle settings when disabled', function () {
+it('blocks notifications regardless of throttle settings when disabled', function (): void {
     // Disable notifications globally
     config(['kraite.notifications_enabled' => false]);
 

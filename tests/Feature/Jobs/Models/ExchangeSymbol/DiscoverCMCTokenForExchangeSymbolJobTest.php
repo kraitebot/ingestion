@@ -47,7 +47,7 @@ function createOrphanedExchangeSymbolForSingleTokenDiscovery(#[SensitiveParamete
     ]);
 }
 
-test('links exchange symbol via direct database match', function () {
+test('links exchange symbol via direct database match', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     // Create symbol in DB
@@ -69,7 +69,7 @@ test('links exchange symbol via direct database match', function () {
     expect($exchangeSymbol->symbol_id)->toBe($btcSymbol->id);
 });
 
-test('strips numeric prefix to find match (1000SHIB -> SHIB)', function () {
+test('strips numeric prefix to find match (1000SHIB -> SHIB)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     // Create SHIB symbol
@@ -90,7 +90,7 @@ test('strips numeric prefix to find match (1000SHIB -> SHIB)', function () {
     expect($exchangeSymbol->symbol_id)->toBe($shibSymbol->id);
 });
 
-test('uses hardcoded alias to find match (XBT -> BTC)', function () {
+test('uses hardcoded alias to find match (XBT -> BTC)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     // Create BTC symbol
@@ -110,7 +110,7 @@ test('uses hardcoded alias to find match (XBT -> BTC)', function () {
     expect($exchangeSymbol->symbol_id)->toBe($btcSymbol->id);
 });
 
-test('strips 1M prefix to find match (1MBABYDOGE -> BABYDOGE)', function () {
+test('strips 1M prefix to find match (1MBABYDOGE -> BABYDOGE)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $babyDogeSymbol = Symbol::factory()->create(['token' => 'BABYDOGE', 'cmc_id' => 10407]);
@@ -127,7 +127,7 @@ test('strips 1M prefix to find match (1MBABYDOGE -> BABYDOGE)', function () {
     expect($exchangeSymbol->symbol_id)->toBe($babyDogeSymbol->id);
 });
 
-test('strips trailing numbers to find match (SHIB1000 -> SHIB)', function () {
+test('strips trailing numbers to find match (SHIB1000 -> SHIB)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $shibSymbol = Symbol::factory()->create(['token' => 'SHIB', 'cmc_id' => 5994]);
@@ -144,7 +144,7 @@ test('strips trailing numbers to find match (SHIB1000 -> SHIB)', function () {
     expect($exchangeSymbol->symbol_id)->toBe($shibSymbol->id);
 });
 
-test('strips W prefix for wrapped tokens (WBTC -> BTC)', function () {
+test('strips W prefix for wrapped tokens (WBTC -> BTC)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $btcSymbol = Symbol::factory()->create(['token' => 'BTC', 'cmc_id' => 1]);
@@ -161,7 +161,7 @@ test('strips W prefix for wrapped tokens (WBTC -> BTC)', function () {
     expect($exchangeSymbol->symbol_id)->toBe($btcSymbol->id);
 });
 
-test('strips st prefix for staked tokens (stETH -> ETH)', function () {
+test('strips st prefix for staked tokens (stETH -> ETH)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $ethSymbol = Symbol::factory()->create(['token' => 'ETH', 'cmc_id' => 1027]);
@@ -178,7 +178,7 @@ test('strips st prefix for staked tokens (stETH -> ETH)', function () {
     expect($exchangeSymbol->symbol_id)->toBe($ethSymbol->id);
 });
 
-test('skips if exchange symbol already has symbol_id', function () {
+test('skips if exchange symbol already has symbol_id', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $existingSymbol = Symbol::factory()->create(['token' => 'BTC']);
@@ -194,7 +194,7 @@ test('skips if exchange symbol already has symbol_id', function () {
     expect($job->startOrSkip())->toBeFalse();
 });
 
-test('generates correct token candidates for complex token names', function () {
+test('generates correct token candidates for complex token names', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     // Test with 1000000BABYDOGE -> should try multiple candidates
@@ -209,7 +209,7 @@ test('generates correct token candidates for complex token names', function () {
     expect($result['matched_to'])->toBe('BABYDOGE');
 });
 
-test('handles .P suffix for perpetual contracts (BTC.P -> BTC)', function () {
+test('handles .P suffix for perpetual contracts (BTC.P -> BTC)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $btcSymbol = Symbol::factory()->create(['token' => 'BTC', 'cmc_id' => 1]);
@@ -223,7 +223,7 @@ test('handles .P suffix for perpetual contracts (BTC.P -> BTC)', function () {
     expect($result['matched_to'])->toBe('BTC');
 });
 
-test('strips PERP suffix (BTCPERP -> BTC)', function () {
+test('strips PERP suffix (BTCPERP -> BTC)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $btcSymbol = Symbol::factory()->create(['token' => 'BTC', 'cmc_id' => 1]);
@@ -237,7 +237,7 @@ test('strips PERP suffix (BTCPERP -> BTC)', function () {
     expect($result['matched_to'])->toBe('BTC');
 });
 
-test('handles extended X-prefix aliases for BTC (XXBT)', function () {
+test('handles extended X-prefix aliases for BTC (XXBT)', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     // Test XXBT -> BTC
@@ -252,7 +252,7 @@ test('handles extended X-prefix aliases for BTC (XXBT)', function () {
     expect($result['matched_to'])->toBe('BTC');
 });
 
-test('returns eloquent message for direct match', function () {
+test('returns eloquent message for direct match', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $btcSymbol = Symbol::factory()->create(['token' => 'BTC', 'cmc_id' => 1]);
@@ -264,7 +264,7 @@ test('returns eloquent message for direct match', function () {
     expect($result['message'])->toBe('Linked BTC → BTC (direct match)');
 });
 
-test('returns eloquent message for indirect match', function () {
+test('returns eloquent message for indirect match', function (): void {
     setupCmcApiSystemForSingleTokenDiscovery();
 
     $btcSymbol = Symbol::factory()->create(['token' => 'BTC', 'cmc_id' => 1]);

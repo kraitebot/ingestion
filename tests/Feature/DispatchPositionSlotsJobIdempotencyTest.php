@@ -25,7 +25,7 @@ beforeEach(function (): void {
     // UserFactory defaults to `can_trade=false`; override to true for
     // these idempotency tests, which are scoped to step-creation
     // semantics rather than user-state gating.
-    $user = \Kraite\Core\Models\User::factory()->create([
+    $user = Kraite\Core\Models\User::factory()->create([
         'is_active' => true,
         'can_trade' => true,
     ]);
@@ -160,7 +160,7 @@ it('treats only non-terminal DispatchPositionJob steps as a duplicate signal', f
         'queue' => 'positions',
         'arguments' => ['positionId' => $position->id],
     ]);
-    Step::withoutEvents(function () use ($oldStep) {
+    Step::withoutEvents(function () use ($oldStep): void {
         Step::where('id', $oldStep->id)->update([
             'state' => StepDispatcher\States\Cancelled::class,
         ]);

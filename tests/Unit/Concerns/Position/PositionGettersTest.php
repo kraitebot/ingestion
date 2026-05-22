@@ -186,7 +186,7 @@ it('averageEntryPrice computes the cost-weighted average across MARKET + LIMIT f
 
     $avg = $position->averageEntryPrice();
     expect($avg)->not->toBeNull()
-        ->and(rtrim(rtrim($avg, '0'), '.'))->toBe('0.06666666');
+        ->and(mb_rtrim(mb_rtrim($avg, '0'), '.'))->toBe('0.06666666');
 });
 
 it('averageEntryPrice ignores non-FILLED rows (NEW, CANCELLED, etc.)', function (): void {
@@ -195,7 +195,7 @@ it('averageEntryPrice ignores non-FILLED rows (NEW, CANCELLED, etc.)', function 
     makePositionGetterOrder($position, ['type' => 'LIMIT', 'price' => '999', 'quantity' => '999', 'status' => 'NEW']);
     makePositionGetterOrder($position, ['type' => 'LIMIT', 'price' => '999', 'quantity' => '999', 'status' => 'CANCELLED']);
 
-    expect(rtrim(rtrim($position->averageEntryPrice(), '0'), '.'))->toBe('0.1');
+    expect(mb_rtrim(mb_rtrim($position->averageEntryPrice(), '0'), '.'))->toBe('0.1');
 });
 
 it('averageEntryPrice ignores TP and SL order types', function (): void {
@@ -206,5 +206,5 @@ it('averageEntryPrice ignores TP and SL order types', function (): void {
     makePositionGetterOrder($position, ['type' => 'PROFIT-LIMIT', 'price' => '0.20', 'quantity' => '100', 'status' => 'FILLED']);
     makePositionGetterOrder($position, ['type' => 'STOP-MARKET', 'price' => '0.05', 'quantity' => '100', 'status' => 'FILLED', 'is_algo' => true]);
 
-    expect(rtrim(rtrim($position->averageEntryPrice(), '0'), '.'))->toBe('0.1');
+    expect(mb_rtrim(mb_rtrim($position->averageEntryPrice(), '0'), '.'))->toBe('0.1');
 });
