@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Kraite\Core\Abstracts\BaseWebsocketClient;
+use Tests\Support\TestableWebsocketClient;
 
 /**
  * Pin the reconnect-cancellation contract on BaseWebsocketClient.
@@ -24,18 +24,6 @@ use Kraite\Core\Abstracts\BaseWebsocketClient;
  * reflection. Full reconnect-loop behavior is exercised by the running
  * daemon and the integration suite.
  */
-final class TestableWebsocketClient extends BaseWebsocketClient
-{
-    public function publicGetShouldReconnect(): bool
-    {
-        $reflection = new ReflectionClass(BaseWebsocketClient::class);
-        $property = $reflection->getProperty('shouldReconnect');
-        $property->setAccessible(true);
-
-        return (bool) $property->getValue($this);
-    }
-}
-
 it('shouldReconnect starts true on a fresh client (always-on default)', function (): void {
     $client = new TestableWebsocketClient;
 

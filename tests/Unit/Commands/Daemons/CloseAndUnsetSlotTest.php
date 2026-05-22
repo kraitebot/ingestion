@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Kraite\Core\Commands\Daemons\StreamBinanceUserDataCommand;
+use Tests\Support\FakeWsClient;
 
 /**
  * Pin the close-then-unset contract on listen-key rotation and expiry.
@@ -22,22 +23,6 @@ use Kraite\Core\Commands\Daemons\StreamBinanceUserDataCommand;
  * Post-fix, all three paths route through `closeAndUnsetSlot()` so the
  * close-then-unset shape is uniform.
  */
-final class FakeWsClient
-{
-    public bool $closed = false;
-
-    public bool $closeShouldThrow = false;
-
-    public function close(): void
-    {
-        if ($this->closeShouldThrow) {
-            throw new RuntimeException('simulated close failure');
-        }
-
-        $this->closed = true;
-    }
-}
-
 it('closeAndUnsetSlot calls close() on the slot client and removes the slot', function (): void {
     $cmd = new StreamBinanceUserDataCommand;
     $client = new FakeWsClient;
