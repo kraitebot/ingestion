@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.49.5 - 2026-05-22
+
+### Tests
+
+- [REFACTOR] Extracted inline `TestableWebsocketClient` and `FakeWsClient` test helpers out of their host test files into properly-namespaced `Tests\Support\` classes so other specs can reuse them without redefining global classes.
+- [REFACTOR] `TieredStrategyTest` now instantiates the strategy via `ReflectionClass::newInstanceWithoutConstructor()` instead of an anonymous subclass — keeps `TieredStrategy` `final` (pint policy) without breaking the unit test.
+
+### Code quality
+
+- [TYPES] Typed `RouteBackupEventToSystemHealthAlert::THROTTLE_SECONDS` constant (PHP 8.3 typed constants) so project-wide type-coverage stays at 100%.
+- [LINT] Applied pint formatting fixes across 18 files (final_class, fully_qualified_strict_types, mb_str_functions, no_unused_imports, no_blank_lines_after_phpdoc, concat_space, no_extra_blank_lines, phpdoc_align).
+- [LINT] Applied rector's `AddClosureVoidReturnTypeWhereNoReturnRector` across 114 test closures so the lint gate stays green.
+
+### Tooling
+
+- [FIX] Restored `patches/laravel-boost-https-fix.patch` (it had been truncated to zero bytes; sha256 now matches `patches.lock.json` so `composer update` no longer reports a broken patch).
+- [FIX] Dropped two non-existent paths from `rector.php` (`./packages`, `./resources`) left over from earlier project layouts — `composer test:lint` no longer aborts before rector runs.
+
 ## 1.49.4 - 2026-05-17
 
 ### Fixes
