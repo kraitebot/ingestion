@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.49.6 - 2026-05-22
+
+### Deploy pipeline
+
+- [NEW FEATURE] **`composer.production.json` is now the source of truth for production dependencies.** The repo ships two manifests:
+  - `composer.json` — dev-time path repos (`../packages/*`) + `dev-master` constraints. Used by Bruno's local Mac (symlinked packages).
+  - `composer.production.json` — VCS repos on GitHub + versioned constraints (`^1.36`, `^1.12`, etc.) + `minimum-stability: stable`. Used by every production server.
+  `deploy.sh` now swaps `composer.production.json` over `composer.json` after `git checkout $DEPLOY_TAG`. The previous `/tmp/deploy-composer.json` backup-restore dance is gone.
+- [FIX] **Server-local composer.json drift is over.** Old flow kept the production manifest only on the server (backed up to `/tmp` before each `git reset`, restored afterwards) — meaning any change to the dev manifest in the repo (e.g. dropping `app/helpers.php` from autoload, removing `laravel/ui`) never reached production. Drift only surfaced when something blew up at runtime. New flow makes the production manifest a tracked file reviewed on every PR.
+- [FIX] **`laravel/ui` removed from the production manifest.** It was already gone from the repo's `composer.json` in v1.49.4 but the server-local prod manifest still carried it as `^4.6`. Next deploy uninstalls it cleanly.
+- [FIX] **`autoload.files: ["app/helpers.php"]` removed from the production manifest.** Same root cause as `laravel/ui` — repo dropped it in v1.49.4, server-local prod manifest kept it. This was the failure that crashed the v1.49.5 deploy mid-run on athena (composer post-autoload-dump tried to `require` a deleted file).
+
+### Documentation
+
+- [NEW FEATURE] `deploy.sh` header docblock now describes the two-manifest pattern explicitly so future operators know which file is the source of truth.
+
 ## 1.49.5 - 2026-05-22
 
 ### Tests

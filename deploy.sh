@@ -12,10 +12,11 @@ set -Eeuo pipefail
 # - Never run artisan/composer/git as root — waygou owns the project files.
 #   Root-created files get root:root ownership and PHP-FPM (www-data) can't
 #   read them.
-# - The server composer.json uses VCS repos (github), not ../packages/ path
-#   repos. git reset --hard would overwrite it with the dev version — we
-#   backup/restore around the reset. (bash reads the full script before
-#   executing, so the running script is unaffected by git reset mid-run.)
+# - The repo ships composer.json with ../packages/ path repos for local dev,
+#   and composer.production.json with VCS repos + versioned constraints for
+#   production. After git checkout, this script swaps composer.production.json
+#   over composer.json so the resolved manifest is the one tracked in git for
+#   the deployed tag. End of server-local composer.json drift.
 # - config:cache must run as waygou — root-cached .php files block PHP-FPM.
 # - SERVER_ROLE is read from artisan AFTER reset, not from .env BEFORE reset,
 #   because .env survives the reset (gitignored) but composer.json does not.
@@ -57,21 +58,26 @@ if [ -z "${DEPLOY_TAG:-}" ]; then
     exit 1
 fi
 
-# Backup production composer files before git reset (VCS repos, not path repos).
-cp "$PROJECT_DIR/composer.json" /tmp/deploy-composer.json
-cp "$PROJECT_DIR/composer.lock" /tmp/deploy-composer.lock 2>/dev/null || true
-
 # Reset to HEAD first to clean any dirty index state (staged changes from
 # prior composer update, migration cruft, etc.) that would block the checkout.
 su - waygou -c "cd $PROJECT_DIR && git reset --hard HEAD && git clean -fd"
 su - waygou -c "cd $PROJECT_DIR && git fetch origin --tags"
 su - waygou -c "cd $PROJECT_DIR && git checkout $DEPLOY_TAG"
 
-# Restore production composer.json (VCS repos, not dev path repos).
-# We restore the .json but NOT the .lock — the lock will be regenerated
-# by composer install + update below, ensuring it picks up the latest
-# tagged versions of kraitebot packages.
-cp /tmp/deploy-composer.json "$PROJECT_DIR/composer.json"
+# Swap composer.production.json (VCS repos, versioned constraints) over
+# composer.json (which the repo ships with ../packages path repos for dev).
+# This is the source of truth for production dependencies — the previous
+# /tmp/deploy-composer.json backup/restore dance let the server's prod
+# manifest drift from repo state (incident 2026-05-22: app/helpers.php
+# autoload entry survived the dead-code sweep on every server because
+# the server-local manifest was never updated).
+if [ ! -f "$PROJECT_DIR/composer.production.json" ]; then
+    echo "ERROR: composer.production.json missing at tag $DEPLOY_TAG."
+    echo "Production deploys swap composer.production.json over composer.json."
+    echo "Add the file to the repo and re-tag, or fall back to v1.49.5 (pre-swap deploy.sh)."
+    exit 1
+fi
+su - waygou -c "cd $PROJECT_DIR && cp composer.production.json composer.json"
 chown waygou:www-data "$PROJECT_DIR/composer.json"
 
 COMMIT=$(su - waygou -c "cd $PROJECT_DIR && git log --oneline -1")

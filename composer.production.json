@@ -1,0 +1,119 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "kraitebot/ingestion",
+    "type": "project",
+    "description": "Kraite Ingestion",
+    "keywords": [
+        "crypto",
+        "laravel"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.4.0",
+        "brunocfalcao/blade-feather-icons": "^6.0",
+        "brunocfalcao/laravel-helpers": "^1.0",
+        "brunocfalcao/step-dispatcher": "^1.12",
+        "kraitebot/core": "^1.36",
+        "laravel-notification-channels/telegram": "^7.0",
+        "laravel/boost": "^2.2",
+        "laravel/framework": "^12.40.2",
+        "laravel/horizon": "^5.46",
+        "laravel/tinker": "^2.10.2",
+        "league/flysystem-aws-s3-v3": "^3.32",
+        "nunomaduro/essentials": "^1.0.1",
+        "resend/resend-php": "^1.3",
+        "spatie/laravel-backup": "^10.2"
+    },
+    "require-dev": {
+        "cweagans/composer-patches": "^2.0",
+        "driftingly/rector-laravel": "^2.1.3",
+        "fakerphp/faker": "^1.24.1",
+        "larastan/larastan": "^3.8.0",
+        "laravel/pail": "^1.2.4",
+        "laravel/pint": "^1.26.0",
+        "mockery/mockery": "^1.6.12",
+        "nunomaduro/collision": "^8.8.3",
+        "pestphp/pest": "^4.1.5",
+        "pestphp/pest-plugin-browser": "^4.1.1",
+        "pestphp/pest-plugin-laravel": "^4.0.0",
+        "pestphp/pest-plugin-type-coverage": "^4.0.3",
+        "rector/rector": "^2.2.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "setup": [
+            "composer install",
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+            "@php artisan key:generate",
+            "@php artisan migrate --force"
+        ],
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
+            "@php artisan clear"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@php artisan migrate --graceful --ansi"
+        ],
+        "update:requirements": [
+            "composer bump"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        },
+        "composer-patches": {
+            "ignore-patch-failure": true
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true,
+            "cweagans/composer-patches": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/kraitebot/core.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/brunocfalcao/step-dispatcher.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/brunocfalcao/blade-feather-icons.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/brunocfalcao/laravel-helpers.git"
+        }
+    ]
+}
