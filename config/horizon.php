@@ -360,17 +360,12 @@ return [
             ],
         ],
 
+        // ATHENA — ingestion + web. Consumes user-data-stream frames (same box
+        // as the WS daemon source for lowest-latency frame handling). The
+        // hostname queue with 1 process is the connectivity-test queue used
+        // during account onboarding to verify athena can reach the user's
+        // exchange account with its public IP.
         'athena' => [
-            'cronjobs-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['cronjobs'],
-                'processes' => 5,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
             'user-data-stream-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['user-data-stream'],
@@ -381,40 +376,10 @@ return [
                 'backoff' => 10,
                 'memory' => 256,
             ],
-            'positions-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['positions'],
-                'processes' => 2,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
-            'orders-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['orders'],
-                'processes' => 2,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
-            'priority-supervisor' => [
-                'connection' => 'redis',
-                'queue' => ['priority'],
-                'processes' => 2,
-                'timeout' => 0,
-                'sleep' => 1,
-                'tries' => 5,
-                'backoff' => 10,
-                'memory' => 256,
-            ],
             'athena-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['athena'],
-                'processes' => 2,
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -423,11 +388,14 @@ return [
             ],
         ],
 
-        'apollo' => [
+        // EOS — worker, accounts 1-25 on Binance. Sized for CX23 (2 vCPU / 4 GB).
+        // Workers are I/O-bound waiting on Binance HTTP, so process counts well
+        // exceed core count.
+        'eos' => [
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
-                'processes' => 10,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -437,7 +405,7 @@ return [
             'orders-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['orders'],
-                'processes' => 15,
+                'processes' => 8,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -447,17 +415,17 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 5,
+                'processes' => 3,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
                 'backoff' => 10,
                 'memory' => 256,
             ],
-            'apollo-supervisor' => [
+            'eos-supervisor' => [
                 'connection' => 'redis',
-                'queue' => ['apollo'],
-                'processes' => 2,
+                'queue' => ['eos'],
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -466,11 +434,13 @@ return [
             ],
         ],
 
-        'ares' => [
+        // IRIS — worker, accounts 26-50 on Binance + all Bitget accounts.
+        // Mirror of eos to give Binance a second IP for per-IP weight distribution.
+        'iris' => [
             'positions-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['positions'],
-                'processes' => 10,
+                'processes' => 5,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -480,7 +450,7 @@ return [
             'orders-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['orders'],
-                'processes' => 15,
+                'processes' => 8,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -490,17 +460,17 @@ return [
             'priority-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['priority'],
-                'processes' => 5,
+                'processes' => 3,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
                 'backoff' => 10,
                 'memory' => 256,
             ],
-            'ares-supervisor' => [
+            'iris-supervisor' => [
                 'connection' => 'redis',
-                'queue' => ['ares'],
-                'processes' => 2,
+                'queue' => ['iris'],
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
@@ -509,21 +479,35 @@ return [
             ],
         ],
 
-        'artemis' => [
+        // TYCHE — isolated worker for indicators + cronjobs. Keeps the
+        // TAAPI-throttled indicator queue from starving position/order
+        // processing on eos/iris. Also processes scheduler-triggered cronjobs
+        // (kraite:cron-fetch-klines, kraite:cron-sync-orders, etc.).
+        'tyche' => [
             'indicators-supervisor' => [
                 'connection' => 'redis',
                 'queue' => ['indicators'],
-                'processes' => 20,
+                'processes' => 10,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
                 'backoff' => 10,
                 'memory' => 256,
             ],
-            'artemis-supervisor' => [
+            'cronjobs-supervisor' => [
                 'connection' => 'redis',
-                'queue' => ['artemis'],
-                'processes' => 2,
+                'queue' => ['cronjobs'],
+                'processes' => 3,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+            'tyche-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['tyche'],
+                'processes' => 1,
                 'timeout' => 0,
                 'sleep' => 1,
                 'tries' => 5,
