@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.49.8 - 2026-05-24
+
+### Config
+
+- [FIX] **PHP 8.5 deprecation cleared in `config/database.php`.** Replaced the unnamespaced `PDO::MYSQL_ATTR_SSL_CA` constants on the `mysql` and `mariadb` connection blocks with the namespaced `Pdo\Mysql::ATTR_SSL_CA` equivalent. PHP 8.5 logs a deprecation notice on every connect for the old form; PHP 9.x would drop the symbol entirely. Production fleet (Ubuntu 26.04 LTS, PHP 8.5) + local dev (Herd 8.5) now connect deprecation-clean.
+
+### Housekeeping
+
+- [REMOVED] **Dropped `scripts/ingestion-scheduler.conf`.** Leftover Ploi-era supervisor stub from a previous hosting generation — referenced `/home/ploi/...` paths and `user=waygou`, neither of which exist on the current 5-box Hetzner fleet. The live scheduler is a system cron under `/etc/cron.d/kraite-scheduler` per the 2026-05-24 fleet rebuild; the stub was dead on disk.
+
 ## 1.49.6 - 2026-05-22
 
 ### Deploy pipeline
