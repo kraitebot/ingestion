@@ -388,9 +388,12 @@ return [
             ],
         ],
 
-        // EOS — worker, accounts 1-25 on Binance. Sized for CX23 (2 vCPU / 4 GB).
-        // Workers are I/O-bound waiting on Binance HTTP, so process counts well
-        // exceed core count.
+        // EOS — trading worker. Sized for CX23 (2 vCPU / 4 GB). Workers are
+        // I/O-bound waiting on Binance HTTP, so process counts well exceed
+        // core count. eos/iris/nyx are interchangeable Horizon consumers
+        // competing on the same positions/orders/priority queues — no
+        // per-account-to-box binding by design. Three distinct public IPs
+        // spread Binance API call load across workers naturally.
         'eos' => [
             'positions-supervisor' => [
                 'connection' => 'redis',
@@ -434,8 +437,9 @@ return [
             ],
         ],
 
-        // IRIS — worker, accounts 26-50 on Binance + all Bitget accounts.
-        // Mirror of eos to give Binance a second IP for per-IP weight distribution.
+        // IRIS — trading worker. Mirror of eos. Adds a second public IP to
+        // the trading-worker pool so Binance API call load spreads across
+        // two IPs naturally. No per-account-to-box binding (see eos comment).
         'iris' => [
             'positions-supervisor' => [
                 'connection' => 'redis',
@@ -479,9 +483,57 @@ return [
             ],
         ],
 
+        // NYX — third trading worker. Joined 2026-05-24 to add a third public
+        // IP + raw throughput capacity to the trading pool. Identical
+        // supervisor shape to eos/iris; interchangeable Horizon consumer
+        // with no per-account-to-box binding. Primordial goddess of night —
+        // pairs with Eos (dawn) in the fleet's temporal-symmetry theme.
+        'nyx' => [
+            'positions-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['positions'],
+                'processes' => 5,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+            'orders-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['orders'],
+                'processes' => 8,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+            'priority-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['priority'],
+                'processes' => 3,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+            'nyx-supervisor' => [
+                'connection' => 'redis',
+                'queue' => ['nyx'],
+                'processes' => 1,
+                'timeout' => 0,
+                'sleep' => 1,
+                'tries' => 5,
+                'backoff' => 10,
+                'memory' => 256,
+            ],
+        ],
+
         // TYCHE — isolated worker for indicators + cronjobs. Keeps the
         // TAAPI-throttled indicator queue from starving position/order
-        // processing on eos/iris. Also processes scheduler-triggered cronjobs
+        // processing on eos/iris/nyx. Also processes scheduler-triggered cronjobs
         // (kraite:cron-fetch-klines, kraite:cron-sync-orders, etc.).
         'tyche' => [
             'indicators-supervisor' => [

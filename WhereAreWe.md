@@ -20,10 +20,11 @@ Key architectural changes from the rebuild:
 - **Athena** combines ingestion + all web apps (removes separate helios web box).
 - **Tyche** is new: isolated box for indicators + cronjobs (was co-located on workers before).
 - **Per-hostname user** replaces the old single `waygou` pattern across the fleet.
-- **Per-IP Binance weight distribution** across eos + iris (distinct public IPs per worker box).
+- **Per-IP Binance weight distribution** across eos + iris + nyx (three distinct public IPs per worker box).
 - Worker boxes downsized from CX33 → CX23; Horizon worker counts halved accordingly.
+- **Nyx joined the fleet on 2026-05-24** as a third trading worker to extend Binance per-IP weight capacity beyond eos/iris.
 
-Hardening run on 2026-05-24 (same day as provisioning). All 5 boxes hardened to the checklist in
+Hardening run on 2026-05-24 (same day as provisioning). All 6 boxes hardened to the checklist in
 `~/Herd/.credentials/kraite/hardening.json`.
 
 ---
@@ -37,6 +38,7 @@ Hardening run on 2026-05-24 (same day as provisioning). All 5 boxes hardened to 
 | eos | Worker 1 | 204.168.137.153 | 10.0.0.4 | CX23 | 4 GB | `eos` |
 | iris | Worker 2 | 204.168.138.83 | 10.0.0.5 | CX23 | 4 GB | `iris` |
 | tyche | Worker 3 — Indicators + Cronjobs | 204.168.135.246 | 10.0.0.6 | CX23 | 4 GB | `tyche` |
+| nyx | Worker 4 | 204.168.129.189 | 10.0.0.7 | CX23 | 4 GB | `nyx` |
 
 Private network gateway: 10.0.0.1. All inter-server traffic (MySQL 3306, Redis 6379) travels private only.
 UFW blocks both ports from the public internet.
@@ -57,7 +59,7 @@ Supervisor processes:
 - Horizon — `user-data-stream` queue only (5 workers)
 - Scheduler crontab — `routes/console.php` cron family (gated `SERVER_ROLE=ingestion`)
 
-Web stack (nginx + php8.4-fpm):
+Web stack (nginx + php8.5-fpm):
 - admin.kraite.com
 - kraite.com
 - syntax.kraite.com
@@ -70,28 +72,35 @@ Athena dispatches jobs to worker boxes. It does NOT consume positions/orders/ind
 ### eos — Worker 1
 
 - Horizon queues: `positions` (5), `orders` (8), `priority` (3), `eos` (1)
-- Exchange assignment: Binance accounts 1–25
-- Distinct public IP (204.168.137.153) → dedicated Binance per-IP API weight budget
+- Account-to-box routing: none by design — interchangeable Horizon consumer
+- Distinct public IP (204.168.137.153) → one of three Binance per-IP weight buckets
 - Project path: `/home/eos/ingestion.kraite.com/`
 
 ### iris — Worker 2
 
 - Horizon queues: `positions` (5), `orders` (8), `priority` (3), `iris` (1)
-- Exchange assignment: Binance accounts 26–50 + all Bitget accounts
-- Distinct public IP (204.168.138.83) → dedicated Binance per-IP API weight budget
+- Account-to-box routing: none by design — interchangeable Horizon consumer
+- Distinct public IP (204.168.138.83) → second Binance per-IP weight bucket
 - Project path: `/home/iris/ingestion.kraite.com/`
 
 ### tyche — Indicators + Cronjobs
 
 - Horizon queues: `indicators` (10), `cronjobs` (3), `tyche` (1)
-- Isolated from eos/iris: TAAPI throttler waits never starve real-time position/order processing
+- Isolated from eos/iris/nyx: TAAPI throttler waits never starve real-time position/order processing
 - Project path: `/home/tyche/ingestion.kraite.com/`
+
+### nyx — Worker 4 (joined 2026-05-24)
+
+- Horizon queues: `positions` (5), `orders` (8), `priority` (3), `nyx` (1) — mirror of eos/iris
+- Account-to-box routing: none by design — interchangeable Horizon consumer
+- Distinct public IP (204.168.129.189) → third Binance per-IP API weight bucket
+- Project path: `/home/nyx/ingestion.kraite.com/`
 
 ---
 
 ## Hardening status (2026-05-24)
 
-All 5 boxes completed:
+All 6 boxes completed:
 
 - apt update + upgrade + autoremove
 - Hostname-named sudo user (passwordless via `/etc/sudoers.d/<hostname>`)
@@ -100,7 +109,7 @@ All 5 boxes completed:
 - fail2ban + custom jails (SSH brute force, nginx on athena)
 - chrony (Cloudflare NTP pool, offset verified < 100ms — critical for Binance timestamp validation)
 - sysctl hardening per role (workers: `tcp_tw_reuse=1` for outbound exchange API calls)
-- `/etc/hosts` on all nodes: private hostnames mapped (`hyperion`, `athena`, `eos`, `iris`, `tyche`)
+- `/etc/hosts` on all nodes: private hostnames mapped (`hyperion`, `athena`, `eos`, `iris`, `nyx`, `tyche`)
 - etckeeper tracking `/etc/`
 - auditd + rkhunter + AIDE
 - logrotate (Laravel logs 14d, MySQL logs 7d, Redis logs 8w)
@@ -129,17 +138,17 @@ Role-specific service installs not yet done on any box. Fleet is hardened but no
 - [ ] Configure supervisor: dispatch-daemon + horizon + WS daemons
 - [ ] Configure nginx vhosts + SSL for admin.kraite.com, kraite.com, syntax.kraite.com
 
-### eos, iris, tyche (all three)
-- [ ] Install php8.4 + supervisor
+### eos, iris, nyx, tyche (all four)
+- [ ] Install php8.5 + supervisor
 - [ ] Clone ingestion project; set production composer.json
 - [ ] Configure `.env`: `SERVER_ROLE=worker`, `HORIZON_ENV=<hostname>`, `REDIS_HOST=10.0.0.2`, `REDIS_DB=2`
 - [ ] Configure horizon.php block for each hostname's queue assignment
 - [ ] Configure supervisor: horizon only
 
 ### Fleet-wide
-- [ ] Verify private network connectivity between all 5 boxes
-- [ ] Run `/kraite-release` from `ingestion.kraite.test` to tag + deploy full fleet
-- [ ] Run `/kraite-health` to confirm all 5 boxes healthy post-deploy
+- [ ] Verify private network connectivity between all 6 boxes
+- [ ] Run `/do kraite-release` from `ingestion.kraite.test` to tag + deploy full fleet
+- [ ] Run `/do kraite-health` to confirm all 6 boxes healthy post-deploy
 - [ ] Activate scheduler cron on athena (ONLY after positions/orders imported + verified)
 
 ---
@@ -187,7 +196,7 @@ First-pass numbers above. Monitor queue depth and latency; scale up counts if ne
 box size.
 
 **Binance per-IP weight distribution.**
-eos (accounts 1–25) and iris (accounts 26–50 + Bitget) have distinct public IPs. This distributes
+eos / iris / nyx have three distinct public IPs (workers are interchangeable Horizon consumers with no per-account-to-box binding). This distributes
 Binance API weight budget across two IP buckets, reducing per-IP rate-limit pressure at scale.
 
 ---

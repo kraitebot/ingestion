@@ -39,11 +39,23 @@ echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 
 # --- Step 1: Verify cooldown ---
-if ! su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:cooldown --status" 2>&1 | grep -q "STATUS:COOLED_DOWN"; then
+# FORCE_DEPLOY=1 escape hatch: bypass the cooldown gate when athena's scheduler
+# is already dispatching to a queue this box would normally drain (cooldown
+# --status reports STATUS:ACTIVE because of accumulating queue depth even
+# though the app is in maintenance + Horizon is processing). Use sparingly —
+# only when the operator has independently verified the box is safe to deploy
+# (e.g., during the v1.49.8 release flow where workers showed STATUS:ACTIVE
+# while still in maintenance mode because athena's resumed scheduler was
+# filling the queue faster than Horizon drained it).
+if [ "${FORCE_DEPLOY:-0}" = "1" ]; then
+    echo "[1/9] Cooldown check BYPASSED (FORCE_DEPLOY=1)"
+elif ! su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:cooldown --status" 2>&1 | grep -q "STATUS:COOLED_DOWN"; then
     echo "ERROR: Server is NOT cooled down. Run 'php artisan kraite:cooldown' first."
+    echo "       Or, if you've independently verified the box is safe, re-run with FORCE_DEPLOY=1."
     exit 1
+else
+    echo "[1/9] Cooldown verified"
 fi
-echo "[1/9] Cooldown verified"
 
 # --- Step 2: Ensure $KRAITE_USER has composer GitHub auth ---
 # Without this, composer update for private kraitebot repos fails with 401.
