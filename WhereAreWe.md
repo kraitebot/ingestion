@@ -129,7 +129,7 @@ Role-specific service installs not yet done on any box. Fleet is hardened but no
 - [ ] Verify connectivity from all other boxes (mysql -h hyperion, redis-cli -h hyperion)
 
 ### athena
-- [ ] Install nginx + php8.4-fpm + certbot (wildcard cert, Cloudflare DNS challenge)
+- [ ] Install nginx + php8.5-fpm + certbot (wildcard cert, Cloudflare DNS challenge)
 - [ ] Install supervisor
 - [ ] Install mysql-client (for mysqldump backups)
 - [ ] Clone ingestion + web projects; set production composer.json; run composer install

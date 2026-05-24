@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.49.9 - 2026-05-24
+
+### Documentation
+
+- [FIX] **WhereAreWe.md — athena server-prep stanza now reads `php8.5-fpm` instead of `php8.4-fpm`.** Matches the production Ubuntu 26.04 LTS / PHP 8.5 reality already documented elsewhere in the same file. Single-line doc drift left over from the v1.49.8 PHP 8.5 sweep.
+
 ## 1.49.8 - 2026-05-24
 
 ### Config
