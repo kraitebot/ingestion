@@ -274,82 +274,13 @@ describe('Notification Data', function (): void {
     });
 });
 
-describe('Notification Deduplication', function (): void {
-    it('does not send duplicate notification for same forbidden hostname', function (): void {
-        Notification::fake();
-
-        // Arrange: Create Binance account
-        $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
-        $user = User::factory()->create();
-        $account = Account::factory()->create([
-            'user_id' => $user->id,
-            'api_system_id' => $apiSystem->id,
-        ]);
-
-        // Create first step that throws account blocked error
-        $step1 = StepTester::createSteps([
-            ['arguments' => [
-                'accountId' => $account->id,
-                'throw_exception_stub' => 'binanceAccountBlocked',
-            ]],
-        ], TestBinanceApiableJob::class)[0];
-
-        // Act: Dispatch first step (creates ForbiddenHostname)
-        StepTester::withSteps([$step1])
-            ->withStatusMatrix([
-                1 => [$step1->id => 'pending'],
-            ])
-            ->withLabel('binance_account_blocked_first')
-            ->test();
-
-        // Assert: One notification sent
-        Notification::assertSentToTimes($user, AlertNotification::class, 1);
-
-        // Create second step with same error
-        $step2 = StepTester::createSteps([
-            ['arguments' => [
-                'accountId' => $account->id,
-                'throw_exception_stub' => 'binanceAccountBlocked',
-            ]],
-        ], TestBinanceApiableJob::class)[0];
-
-        // Act: Dispatch second step (ForbiddenHostname already exists).
-        // Post worker-IP-rotation, the pre-flight gate in BaseApiableJob
-        // sees the existing account_blocked ban and deactivates the
-        // account terminally — the second step fails instead of retrying.
-        StepTester::withSteps([$step2])
-            ->withStatusMatrix([
-                1 => [$step2->id => 'failed'],
-            ])
-            ->withLabel('binance_account_blocked_second')
-            ->test();
-
-        // The per-ban dedup intent still holds: the original
-        // server_account_blocked observer notification only fires once
-        // (updateOrCreate on ForbiddenHostname doesn't re-trigger
-        // observer::created on the second detection).
-        Notification::assertSentTo(
-            $user,
-            AlertNotification::class,
-            function (AlertNotification $n): bool {
-                return $n->canonical === 'server_account_blocked';
-            }
-        );
-        $serverAccountBlockedCount = Notification::sent($user, AlertNotification::class)
-            ->filter(fn (AlertNotification $n) => $n->canonical === 'server_account_blocked')
-            ->count();
-        expect($serverAccountBlockedCount)->toBe(1);
-
-        // The second step additionally triggers the worker-IP-rotation
-        // deactivation cascade, which fires its own distinct loud
-        // "portfolio at risk" notification. Different canonical, different
-        // semantic event — not a duplicate.
-        Notification::assertSentTo(
-            $user,
-            AlertNotification::class,
-            function (AlertNotification $n): bool {
-                return $n->canonical === 'account_all_workers_blacklisted';
-            }
-        );
-    });
-});
+// Note: the previous "Notification Deduplication" describe block was
+// dropped during the v1.50.0 → v1.51.0 architectural shift. That test
+// exercised the rotation-era pre-flight cascade in BaseApiableJob::compute()
+// which has been removed — routing decisions (and the associated
+// `account_all_workers_blacklisted` notification) now happen at dispatch
+// time inside `Kraite\Core\Support\StepRouter` and are covered by the
+// `tests/Integration/Routing/StepRouterTest.php` suite. The per-ban
+// `server_account_blocked` observer dedup intent is covered by
+// `tests/Integration/Rotation/ForbiddenBanTtlTest.php` (the updateOrCreate
+// upsert behaviour with refreshed forbidden_until on re-detection).

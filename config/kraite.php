@@ -493,4 +493,105 @@ return [
             ],
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dispatch-Time Queue Routing
+    |--------------------------------------------------------------------------
+    |
+    | Single source of truth for the worker fleet topology. Both the
+    | StepRouter (which picks the physical per-hostname queue at dispatch
+    | time) AND `config/horizon.php` (which spawns the supervisors that
+    | consume those queues) read from this config block. Keeping them in
+    | one place eliminates the drift risk where horizon.php would
+    | subscribe to a queue name that the router never picks (or vice
+    | versa) — drift would silently wedge steps in queues with no
+    | consumer.
+    |
+    | horizon.workers — per-hostname supervisor configuration. Each
+    | hostname's block lists the LOGICAL queue names it serves (positions,
+    | orders, cronjobs, …) with per-queue overrides (currently just
+    | `processes`). The horizon transformer composes the PHYSICAL queue
+    | name as `{logical}-{hostname}` (e.g. positions-eos) on dispatch
+    | and supervisor spawn. Special case: when the logical name already
+    | equals the hostname (the per-hostname queue like `eos`), no suffix
+    | is added.
+    |
+    | horizon.defaults — supervisor options applied to every block before
+    | the per-queue override is merged. Tunable per-environment if needed
+    | by env-suffixing the keys (e.g. for a slower local box).
+    |
+    | queue_subscriptions — derived view used by StepRouter. For each
+    | logical queue, the list of hostnames that can serve it. Kept as an
+    | explicit map (rather than computed from horizon.workers at runtime)
+    | so the StepRouter doesn't need to walk the full worker block on
+    | every dispatch. The `kraite:verify-horizon-topology` command
+    | asserts the two views stay aligned.
+    */
+    'horizon' => [
+        'defaults' => [
+            'connection' => 'redis',
+            'timeout' => 0,
+            'sleep' => 1,
+            'tries' => 5,
+            'backoff' => 10,
+            'memory' => 256,
+        ],
+        'workers' => [
+            // Local Mac dev box. Subscribes to every logical category so
+            // a single developer can exercise the full pipeline without
+            // spinning up multiple Horizon supervisors. Hostname is the
+            // value gethostname() returns on the dev box, lower-cased
+            // and stripped of dashes (matches StepObserver's hostname
+            // queue allowlist normalisation).
+            'local' => [
+                'positions' => ['processes' => 2],
+                'orders' => ['processes' => 5],
+                'priority' => ['processes' => 2],
+                'cronjobs' => ['processes' => 2],
+                'indicators' => ['processes' => 5],
+                'user-data-stream' => ['processes' => 1],
+                'local' => ['processes' => 1],
+            ],
+            // Ingestion + web box. Only consumes the user-data-stream
+            // queue (5 procs match the per-Binance-account WS daemon
+            // fan) plus its own per-hostname queue used for connectivity
+            // tests during account onboarding.
+            'athena' => [
+                'user-data-stream' => ['processes' => 5],
+                'athena' => ['processes' => 1],
+            ],
+            // Trading workers — interchangeable Horizon consumers on
+            // positions/orders/priority. Three distinct public IPs spread
+            // the per-IP Binance weight budget naturally. No per-account
+            // routing; the StepRouter picks among eos/iris/nyx based on
+            // ban state, not account identity.
+            'eos' => [
+                'positions' => ['processes' => 5],
+                'orders' => ['processes' => 8],
+                'priority' => ['processes' => 3],
+                'eos' => ['processes' => 1],
+            ],
+            'iris' => [
+                'positions' => ['processes' => 5],
+                'orders' => ['processes' => 8],
+                'priority' => ['processes' => 3],
+                'iris' => ['processes' => 1],
+            ],
+            'nyx' => [
+                'positions' => ['processes' => 5],
+                'orders' => ['processes' => 8],
+                'priority' => ['processes' => 3],
+                'nyx' => ['processes' => 1],
+            ],
+            // Indicators + cronjobs worker. Isolated from eos/iris/nyx
+            // so TAAPI throttler waits never starve real-time trading.
+            'tyche' => [
+                'indicators' => ['processes' => 10],
+                'cronjobs' => ['processes' => 3],
+                'tyche' => ['processes' => 1],
+            ],
+        ],
+    ],
+
 ];

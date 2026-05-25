@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.51.0 - 2026-05-25
+
+### Features
+
+- [NEW FEATURE] **`config/kraite.php` is now the single source of truth for fleet topology** — the new `horizon` block (under keys `defaults` + `workers`) declares which logical queues each worker subscribes to with what process counts. The StepRouter (added in kraitebot/core v1.48.0) reads this same block to derive routing candidates, eliminating the previous two-map drift risk that would silently wedge steps in queues with no consumer.
+- [IMPROVED] **`config/horizon.php` is now a thin transformer** that reads `config('kraite.horizon')` and emits one `environments` block per worker, with each supervisor's queue subscription composed as `{logical}-{hostname}` (e.g. `positions-eos`). The hostname's own queue (where logical name == hostname) is NOT suffixed — matches `StepRouter::buildPhysicalQueue()`. Adding a worker = one edit to `config/kraite.php`; both files update in lockstep.
+- [REMOVED] **Legacy `ingestion` / `worker1` / `worker2` environment blocks** in `config/horizon.php` deleted. They referenced the pre-2026-05-24 6-box fleet (athena / apollo / ares / artemis / zeus / helios) and were dead config — no live box has had `APP_ENV` set to any of those values since the fleet rebuild.
+
+### Tests
+
+- [NEW FEATURE] **`tests/Integration/Routing/StepRouterTest.php`** — 14 integration tests pinning the new dispatch-time queue-routing engine. Covers: routing to a per-hostname queue when no bans exist; ban filtering removes a single banned worker from the candidate set; system-wide bans (`account_id IS NULL`) apply to every account on the same api_system; cross-exchange isolation (Binance ban doesn't affect Bybit routing); expired bans (`forbidden_until` in the past) are ignored; orchestrator (no-account) steps skip the ban filter; unknown logical queues return null (defer to step-dispatcher's default); `account_blocked` short-circuits to terminal cascade without rotation; all-permanent-banned terminal cascade fires the `account_all_workers_blacklisted` notification + deactivates the account; temporary-only ban exhaustion returns null (no deactivation, retry naturally); strip-suffix recovers logical category on retries (`positions-eos` → `positions`); unknown hostname suffix is NOT stripped.
+
+### Tests — restructured
+
+- [REMOVED] **`tests/Integration/Rotation/WorkerIpRotationTest.php`** deleted — covered the v1.47.0 pickup-time rotation engine in `BaseApiableJob::compute()`, which has been removed. Same outcomes are now tested in `StepRouterTest` from the dispatch-time entry point.
+- [REMOVED] **`tests/Integration/ForbiddenHostname/ForbiddenHostnameBlockingTest.php`** deleted — its 9 cases tested compute()-time pre-flight ban detection, which has been removed in the kraitebot/core v1.48.0 architectural shift. The ban-filtering behaviours are covered more comprehensively by `StepRouterTest` (which targets the dispatch-time layer where routing decisions now live).
+- [IMPROVED] **`tests/Integration/Notifications/ForbiddenHostnameNotificationTest.php`** — dropped the `Notification Deduplication` describe block (single test) for the same reason; the per-ban observer dedup intent is exercised in `ForbiddenBanTtlTest` via the updateOrCreate upsert behaviour, and the terminal-cascade notification dedup is exercised in `StepRouterTest`. The 5 other describe blocks (User Notifications, Admin Notifications, Notification Data) are untouched and still pass.
+- [IMPROVED] **`tests/Integration/Rotation/ForbiddenBanTtlTest.php`** retained as-is — pins the 1-hour TTL on `ip_not_whitelisted` and `account_blocked` rows + the upsert-refresh-no-double-notify behaviour. Both are orthogonal to where routing decisions live, so they survive the architectural shift unchanged.
+
 ## 1.50.0 - 2026-05-25
 
 ### Tests
