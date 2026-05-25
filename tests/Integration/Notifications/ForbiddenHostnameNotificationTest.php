@@ -313,15 +313,43 @@ describe('Notification Deduplication', function (): void {
             ]],
         ], TestBinanceApiableJob::class)[0];
 
-        // Act: Dispatch second step (ForbiddenHostname already exists)
+        // Act: Dispatch second step (ForbiddenHostname already exists).
+        // Post worker-IP-rotation, the pre-flight gate in BaseApiableJob
+        // sees the existing account_blocked ban and deactivates the
+        // account terminally — the second step fails instead of retrying.
         StepTester::withSteps([$step2])
             ->withStatusMatrix([
-                1 => [$step2->id => 'pending'],
+                1 => [$step2->id => 'failed'],
             ])
             ->withLabel('binance_account_blocked_second')
             ->test();
 
-        // Assert: Still only one notification (no duplicate)
-        Notification::assertSentToTimes($user, AlertNotification::class, 1);
+        // The per-ban dedup intent still holds: the original
+        // server_account_blocked observer notification only fires once
+        // (updateOrCreate on ForbiddenHostname doesn't re-trigger
+        // observer::created on the second detection).
+        Notification::assertSentTo(
+            $user,
+            AlertNotification::class,
+            function (AlertNotification $n): bool {
+                return $n->canonical === 'server_account_blocked';
+            }
+        );
+        $serverAccountBlockedCount = Notification::sent($user, AlertNotification::class)
+            ->filter(fn (AlertNotification $n) => $n->canonical === 'server_account_blocked')
+            ->count();
+        expect($serverAccountBlockedCount)->toBe(1);
+
+        // The second step additionally triggers the worker-IP-rotation
+        // deactivation cascade, which fires its own distinct loud
+        // "portfolio at risk" notification. Different canonical, different
+        // semantic event — not a duplicate.
+        Notification::assertSentTo(
+            $user,
+            AlertNotification::class,
+            function (AlertNotification $n): bool {
+                return $n->canonical === 'account_all_workers_blacklisted';
+            }
+        );
     });
 });

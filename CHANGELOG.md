@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.50.0 - 2026-05-25
+
+### Tests
+
+- [NEW FEATURE] **`tests/Integration/Rotation/WorkerIpRotationTest.php`** — five tests pinning the worker-IP rotation engine added to `BaseApiableJob::compute()` in `kraitebot/core` v1.47.0. Covers: (a) rotation re-dispatches a step to a clean worker's per-hostname queue when the current IP is banned, (b) no-op when the current IP is clean, (c) terminal failure + account deactivation when every fleet IP is exhausted, (d) `account_blocked` short-circuits straight to deactivation without attempting rotation, (e) the `account_all_workers_blacklisted` portfolio-at-risk notification fires to the account owner on the deactivation cascade.
+- [NEW FEATURE] **`tests/Integration/Rotation/ForbiddenBanTtlTest.php`** — three tests pinning the new 1-hour TTL stamped onto `ip_not_whitelisted` and `account_blocked` `forbidden_hostnames` rows (was `null` / sticky-forever pre-rotation), plus the upsert refresh behaviour on re-detection (refreshes `forbidden_until`, leaves the row id stable, doesn't re-fire `ForbiddenHostnameObserver::created()`).
+
+### Test-spec updates
+
+- [IMPROVED] **`tests/Integration/ForbiddenHostname/ForbiddenHostnameBlockingTest.php`** — the two assertions for permanent ban types (`ip_not_whitelisted`, `account_blocked`) updated from "step stays Pending (retry)" to "step is Failed + account is deactivated", matching the v1.47.0 spec change. Temporary ban tests (`ip_rate_limited`, `ip_banned` with expiry, system-wide) unchanged — those still retry naturally because their bans auto-recover.
+- [IMPROVED] **`tests/Integration/Notifications/ForbiddenHostnameNotificationTest.php`** — the "no duplicate notification" dedup test now also asserts the new `account_all_workers_blacklisted` notification fires once on the second step's deactivation cascade. The per-ban `server_account_blocked` dedup intent still holds.
+
 ## 1.49.9 - 2026-05-24
 
 ### Documentation

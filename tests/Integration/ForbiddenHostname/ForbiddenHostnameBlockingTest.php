@@ -24,8 +24,12 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class)->group('integration',
 */
 
 describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function (): void {
-    it('skips API call and retries when account has ip_not_whitelisted ban', function (): void {
-        // Arrange: Create Binance account
+    it('fails terminally and deactivates the account when ip_not_whitelisted has no clean rotation target', function (): void {
+        // Arrange: Create Binance account. No Server rows are seeded — the
+        // rotation engine treats the empty fleet as "no clean alternative",
+        // and ip_not_whitelisted is a permanent (user-actionable) ban, so
+        // the cascade collapses to "deactivate account + fail step" per
+        // the worker-IP-rotation spec (see Rotation/WorkerIpRotationTest).
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $user = User::factory()->create();
         $account = Account::factory()->create([
@@ -33,44 +37,46 @@ describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function
             'api_system_id' => $apiSystem->id,
         ]);
 
-        // Pre-create ForbiddenHostname (user forgot to whitelist IP)
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => $account->id,
             'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_IP_NOT_WHITELISTED,
-            'forbidden_until' => null, // Permanent until user fixes
+            'forbidden_until' => now()->addHour(),
         ]);
 
-        // Create step that would succeed (no exception stub)
         $step = StepTester::createSteps([
             ['arguments' => [
                 'accountId' => $account->id,
-                // No throw_exception_stub - job would succeed normally
             ]],
         ], TestBinanceApiableJob::class)[0];
 
-        // Act: Dispatch step
         StepTester::withSteps([$step])
             ->withStatusMatrix([
-                1 => [$step->id => 'pending'], // Should stay pending (retried)
+                1 => [$step->id => 'failed'],
             ])
-            ->withLabel('forbidden_ip_not_whitelisted_blocks')
+            ->withLabel('forbidden_ip_not_whitelisted_exhausts_rotation')
             ->test();
 
-        // Assert: Step is back to pending (retried)
         $step->refresh();
-        expect($step->state->value())->toBe('pending');
+        $account->refresh();
 
-        // Assert: computeApiable was NEVER called (API call skipped)
+        expect($step->state->value())->toBe('failed')
+            ->and($account->is_active)->toBeFalse();
+
+        // computeApiable was NEVER called — gate fired before the API.
         $executionPath = $step->response['execution_path'] ?? [];
         $events = array_column($executionPath, 'event');
         expect($events)->not->toContain('computeApiable:start');
         expect($events)->not->toContain('computeApiable:success');
     });
 
-    it('skips API call and retries when account has account_blocked ban', function (): void {
-        // Arrange: Create Binance account
+    it('fails terminally and deactivates the account on account_blocked without attempting rotation', function (): void {
+        // Arrange: Create Binance account. account_blocked = bad/revoked
+        // API key — no IP rotation can fix it, so the rotation engine
+        // skips the rotation branch entirely and goes straight to the
+        // deactivation cascade on first detection (see
+        // Rotation/WorkerIpRotationTest for the explicit rotation spec).
         $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
         $user = User::factory()->create();
         $account = Account::factory()->create([
@@ -78,35 +84,34 @@ describe('Account-Specific Bans (IP Not Whitelisted, Account Blocked)', function
             'api_system_id' => $apiSystem->id,
         ]);
 
-        // Pre-create ForbiddenHostname (API key revoked/disabled)
         ForbiddenHostname::create([
             'api_system_id' => $apiSystem->id,
             'account_id' => $account->id,
             'ip_address' => Kraite::ip(),
             'type' => ForbiddenHostname::TYPE_ACCOUNT_BLOCKED,
-            'forbidden_until' => null, // Permanent until user fixes
+            'forbidden_until' => now()->addHour(),
         ]);
 
-        // Create step that would succeed (no exception stub)
         $step = StepTester::createSteps([
             ['arguments' => [
                 'accountId' => $account->id,
             ]],
         ], TestBinanceApiableJob::class)[0];
 
-        // Act: Dispatch step
         StepTester::withSteps([$step])
             ->withStatusMatrix([
-                1 => [$step->id => 'pending'],
+                1 => [$step->id => 'failed'],
             ])
-            ->withLabel('forbidden_account_blocked_blocks')
+            ->withLabel('forbidden_account_blocked_deactivates')
             ->test();
 
-        // Assert: Step is back to pending (retried)
         $step->refresh();
-        expect($step->state->value())->toBe('pending');
+        $account->refresh();
 
-        // Assert: computeApiable was NEVER called
+        expect($step->state->value())->toBe('failed')
+            ->and($account->is_active)->toBeFalse();
+
+        // computeApiable was NEVER called.
         $executionPath = $step->response['execution_path'] ?? [];
         $events = array_column($executionPath, 'event');
         expect($events)->not->toContain('computeApiable:start');
