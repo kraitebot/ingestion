@@ -71,33 +71,13 @@ return [
 
     'defaults' => [],
 
-    'environments' => (static function (): array {
-        $workers = config('kraite.horizon.workers', []);
-        $defaults = config('kraite.horizon.defaults', []);
-
-        $environments = [];
-
-        foreach ($workers as $hostname => $logicalQueues) {
-            $supervisors = [];
-
-            foreach ($logicalQueues as $logical => $overrides) {
-                // Physical queue name: per-hostname suffix, except for the
-                // hostname's own queue (which IS the suffix already — no
-                // double-suffixing). Matches StepRouter::buildPhysicalQueue.
-                $physical = $logical === $hostname ? $hostname : "{$logical}-{$hostname}";
-
-                $supervisorKey = "{$logical}-supervisor";
-
-                $supervisors[$supervisorKey] = array_merge(
-                    $defaults,
-                    ['queue' => [$physical]],
-                    is_array($overrides) ? $overrides : [],
-                );
-            }
-
-            $environments[$hostname] = $supervisors;
-        }
-
-        return $environments;
-    })(),
+    // NOTE: populated at ServiceProvider boot time by
+    // CoreServiceProvider::syncHorizonEnvironmentsFromKraiteConfig() —
+    // NOT inline here. Config files load in alphabetical order, which
+    // means `horizon.php` (h) loads BEFORE `kraite.php` (k); an inline
+    // transformer reading `config('kraite.horizon.workers')` here
+    // would always get an empty array because kraite.php hasn't loaded
+    // yet. Deferring to boot() solves the ordering naturally — by the
+    // time any ServiceProvider boots, every config file has loaded.
+    'environments' => [],
 ];
