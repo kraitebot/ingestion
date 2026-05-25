@@ -236,6 +236,23 @@ chmod 644 "$PROJECT_DIR/bootstrap/cache"/*.php 2>/dev/null || true
 chgrp www-data "$PROJECT_DIR/bootstrap/cache"/*.php 2>/dev/null || true
 echo "[9/9] Caches: rebuilt"
 
+# --- Step 10: Fleet topology drift check ---
+# Hard floor: assert every `config('kraite.horizon.workers')` key has a
+# matching `servers.hostname` row before workers respawn. Drift here
+# means StepRouter cannot translate banned IPs into the hostname that
+# belongs to a config key — ban filtering silently fails for the drifted
+# worker, the deactivation cascade never fires, and steps land on a
+# worker that immediately re-fails the API call. Better to abort the
+# deploy than ship a broken routing fabric.
+#
+# Runs AFTER config:cache so the cached config (the one workers actually
+# read) is the one being verified. Fails with exit code 1 on drift, which
+# aborts deploy.sh under `set -e`.
+echo ""
+echo "--- Step 10: Fleet topology check ---"
+su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:verify-fleet-topology --fail-on-drift --quiet-on-success"
+echo "[10/10] Fleet topology: aligned"
+
 echo ""
 echo "=== Deploy complete ==="
 echo "Commit: $COMMIT"
