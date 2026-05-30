@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.51.1 - 2026-05-30
+## 1.51.2 - 2026-05-30
+
+### Dependencies
+
+- [IMPROVED] **`kraitebot/core` bumped to v1.49.0.** Brings the new `KraiteSeeder::seedServers()` that reads from `config('kraite.fleet.servers')` and writes the full fleet roster (local + hyperion + athena + eos + iris + nyx + tyche) to the `servers` table. Replaces the previous helper pair (`productionApiServers()` / `localApiServer()`) which filtered legacy `servers.json` keys (`ingestion / worker-1 / worker-2`) that haven't existed since the 2026-05-24 fleet rebuild, leaving every fresh DB with only a single `gethostname()` row — which in turn caused the `kraite:verify-fleet-topology` drift gate at deploy step 10 to trip on every box but athena.
+
+### Operations
+
+- [FIX] **Drift gate at deploy step 10 now passes on a fresh seed.** Pre-fix, `php artisan migrate:fresh --seed --force` on athena left the `servers` table with only `athena`, which the gate flagged for every other worker key in `config/kraite.php`. Post-fix, the seed writes 7 rows (the full fleet) and the gate reports `Fleet topology aligned`.
+
+
 
 ### Seeders
 
