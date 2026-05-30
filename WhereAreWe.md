@@ -1,4 +1,4 @@
-# WhereAreWe — 2026-05-30 (docs drift sweep)
+# WhereAreWe — 2026-05-30 (hemera onboarding)
 
 ## Date
 
@@ -6,101 +6,116 @@
 
 ## Session summary
 
-`/do update-docs` run with explicit instruction to include
-`syntax.kraite.test`. Surveyed recent commits across ingestion,
-`kraitebot/core`, `brunocfalcao/step-dispatcher`, `brunocfalcao/hub-ui`,
-`admin.kraite.test`, `console.kraite.test`, `kraite.test`, and the
-Next.js docs site at `~/Code/syntax.kraite.test`. Cross-checked every
-spec under `~/Herd/docs/kraite/` against live config and code. Patched
-the concrete drift; left snapshot-style docs flagged as snapshots.
+Hemera (Hetzner CX23, primordial of day, Nyx's mythological complement)
+joined the trading worker pool as the 7th box in the Kraite fleet.
+Full provisioning end-to-end: SSH bootstrap, hardening to iris-parity
+(ssh hardening, sysctl base + worker role, UFW SSH-only, fail2ban,
+chrony, hostname user + passwordless sudo, /etc/hosts kraite block,
+php8.5-* + supervisor + base packages), Kraite app provisioning at
+tag v1.52.0 (composer.production.json swap, .env with `HORIZON_ENV=hemera`,
+config:cache, supervisor block for kraite-horizon), fleet integration
+(/etc/hosts hemera+nyx symmetry on every existing box, hyperion UFW
+allow rule for 10.0.0.8), kraitebot/core v1.50.0 ships hemera in
+`kraite.fleet.servers`, kraitebot/ingestion v1.52.0 ships hemera in
+`kraite.horizon.workers`, prod servers row seeded, deploy v1.52.0
+fan-out to all 6 existing boxes, warmup workers (incl hemera) parallel
++ athena last. All boxes ONLINE, drift gate aligned everywhere
+(7 workers in config, 7 apiable servers in DB).
+
+Also resolved follow-up items from the v1.51.x cycle:
+- `deploy.sh` re-exec bootstrap fix shipped as v1.51.3 (prevents bash
+  from executing in-memory pre-checkout script body after `git checkout`
+  replaces deploy.sh mid-flight). Verified working on athena's v1.51.2 →
+  v1.52.0 deploy — re-exec fired, step 10 ran and aligned.
+- `deploy-notes.md` updated with the APP_ENV=staging recipe for prod
+  `migrate:fresh` (replaces the original APP_ENV=local recipe which
+  would mis-seed Karine instead of Bruno on production).
+- `.env.bak.2026-05-30.pre-migrate-fresh` cleaned from athena.
 
 ## Current state
 
-- Test suite status: not run this session (docs-only changes).
-- PHPStan / static analysis: not run this session.
-- Active branch on ingestion: `master`, clean working tree apart from
-  the `composer.lock` refresh from the previous push session.
-- Docs tree: re-aligned with production reality as of today. The
-  `03-logs/` folder referenced by the previous README is gone — the
-  README index no longer points at missing files. Per-session work
-  logs live in `~/Herd/.credentials/kraite/deploy-notes.md` instead.
+- Fleet: 7 boxes online (hyperion + athena + eos + iris + nyx + hemera + tyche).
+- Tags shipped this session: `step-dispatcher v1.13.0`, `core v1.48.0`,
+  `core v1.49.0`, `core v1.50.0`, `ingestion v1.51.1`, `v1.51.2`,
+  `v1.51.3`, `v1.52.0`.
+- Prod DB: 2 users (sysadmin `bruno@kraite.com` + trader
+  `bruno@nidavellir.trade`), 1 account (Bruno Falcao Binance Account,
+  `can_trade=0`, `is_active=0` — gates closed for explicit operator
+  flip), 8 servers (local + hyperion + athena + eos + iris + nyx +
+  hemera + tyche).
+- Drift gate aligned on all 6 ingestion-running boxes.
+- Total fleet processes: 88 (was 71 pre-hemera).
+- Monthly Hetzner spend: €74.16 (was €69.16 pre-hemera).
+- Test suite: 2338 passed last run (pre-hemera-tag); not re-run after
+  hemera config change (config-only addition, no code path touched).
 
 ## WIP
 
-None. All edits in this session are committed to disk (the docs tree
-is not a git repo on this machine; the syntax.kraite.test repo at
-`~/Code/syntax.kraite.test` has uncommitted edits awaiting a tag /
-build / deploy of the public site).
+None. All edits committed + tagged + deployed.
 
-Files touched this session:
-
-- `~/Herd/docs/kraite/README.md` — index rewrite (dropped ghost
-  `03-logs/` references, added pointers to the canonical specs that
-  actually exist, retired-folder note pointing at `deploy-notes.md`).
-- `~/Herd/docs/kraite/00-context/server-preparation.md` — fleet cost
-  corrected to €69.16, Horizon box count fixed (4 → 5),
-  per-host pool table refreshed to current `kraite.horizon.workers`
-  values (positions 5 / orders 8 / priority 3 / indicators 10 /
-  cronjobs 3 / `<hostname>` 1), total processes recomputed
-  (113 → 71), connection budget (162 → ~142), supervisor
-  respawn count (49 → 71), PHP-FPM pool path updated to PHP 8.5.
-  Topology section now explicitly calls out the deferred-transformer
-  / drift-gate model that ships the topology as a single source of
-  truth.
-- `~/Herd/docs/kraite/02-features/notification-routing-audit.md` —
-  re-stamped as a snapshot, added a top-table of canonicals shipped
-  since the snapshot (`account_all_workers_blacklisted`,
-  `market_regime_critical` / `_recovered` / `_compute_stale`, the
-  private-beta family, `password_reset_link`), Resend swap note.
-- `~/Herd/docs/kraite/04-admin/README.md` — added the private-beta
-  registration completion page and the Resend-driven self-service
-  password-reset page to the page index, added a Resend mail
-  pointer under source-of-truth.
-- `~/Code/syntax.kraite.test/src/app/docs/servers/eos-iris/page.md`
-  — process counts refreshed (5 / 8 / 3 / 1).
-- `~/Code/syntax.kraite.test/src/app/docs/servers/tyche/page.md` —
-  process counts refreshed (10 / 3 / 1) + "10-process indicator
-  pool" prose.
-- `~/Code/syntax.kraite.test/src/app/docs/servers/architecture-overview/page.md`
-  — tyche role description refreshed (20/5 → 10/3).
-- `~/Code/syntax.kraite.test/src/app/docs/servers/page.md` — tyche
-  quick-link copy refreshed.
-- `~/Code/syntax.kraite.test/src/app/docs/subsystems/horizon-queues/page.md`
-  — per-server worker layout table + ASCII diagram refreshed to
-  current process counts.
+Files touched this session (huge — see git log on the four repos for
+the full list). Notable categories:
+- ingestion `config/kraite.php` `horizon.workers` — hemera supervisor block
+- core `config/kraite.php` `fleet.servers` — hemera entry
+- core `database/seeders/KraiteSeeder.php` — drift-fixing seedServers
+  rewrite (v1.49.0)
+- ingestion `database/seeders/BusinessSeeder.php` — non-local Bruno
+  trader path (v1.51.1)
+- ingestion `deploy.sh` — re-exec bootstrap (v1.51.3)
+- `~/Herd/.credentials/kraite/servers.json` — hemera entry,
+  monthly_eur_total → 74.16, fleet_provisioned/nyx_joined/hemera_joined
+- `~/Herd/.dynamic-commands/{kraite-profile,kraite-deploy,kraite-warmup,kraite-read-docs}.md`
+  — fleet tables, queue assignments, deploy/warmup hostname lists, all
+  refreshed for the 7-box fleet
+- `~/Herd/docs/kraite/00-context/{system-overview,server-preparation}.md`
+  — fleet topology, queue tables, total process count, monthly cost
+- `~/Herd/docs/kraite/02-features/step-routing.md` — physical queue
+  naming examples extended with hemera
+- `~/Code/syntax.kraite.test/src/lib/navigation.ts` + the eos-iris,
+  architecture-overview, horizon-queues, servers/page.md pages —
+  refreshed for the 4-worker pool incl hemera
+- `~/Herd/.credentials/kraite/deploy-notes.md` — entries 57-62 covering
+  the hemera onboarding lessons (cloud network attach, netplan
+  regeneration, host key rotation, composer install vs update, drift
+  gate ordering, cooldown Pending semantics)
 
 ## Pending items
 
-- **Notification audit refresh** — the inventory tables in
-  `02-features/notification-routing-audit.md` are still dated
-  2026-05-04. The maintenance SQL block at the bottom of the doc
-  needs to be re-run against the production DB (Mac has no DB
-  access from here) so the canonical / user / engine rows fold in
-  the additions I called out above. Currently surfaced as a "shipped
-  since the snapshot" supplement.
-- **Syntax site rebuild + deploy** — the syntax docs site changes
-  on this machine sit in `~/Code/syntax.kraite.test` uncommitted.
-  Bruno's next syntax-tag + build + rsync to `athena:/home/athena/
-  syntax.kraite.com/` will publish them. No urgency — the public
-  site shows process counts that are off by a known delta until
-  rebuilt.
-- **PHP version unification** — production runs PHP 8.5 (per the
-  warmup script and `deploy-notes` entry 55); local composer.json
-  still pins `^8.4`. Not blocking; just a note that the local env
-  and prod diverge. The docs now reflect prod (PHP 8.5).
+- **Syntax site rebuild + deploy.** `~/Code/syntax.kraite.test/`
+  changes are uncommitted/unbuilt on Bruno's Mac. Next syntax-tag +
+  `npm run build` + rsync to athena will publish the refreshed pages.
+- **Full hardening per `~/Herd/.credentials/kraite/hardening.json`.**
+  Hemera reached iris/eos/nyx-parity (SSH hardening, sysctl, UFW SSH-only,
+  fail2ban, chrony, hostname user, file packages). NOT done: auditd,
+  rkhunter, aide, lynis 85+ audit, umask 027, AIDE baseline, claude
+  alias, password aging policy. The full hardening checklist has 100+
+  items; the actually-applied subset on every existing box is the
+  baseline I reproduced. If Bruno wants the full pass, that's a
+  separate workstream across all 5 worker boxes (hemera will need it
+  too).
+- **Bybit account for `bruno@nidavellir.trade`.** The `TRADER_BB_*` env
+  block on local `.env.traders` carries Bybit credentials but the
+  seeder only creates a Binance account today (Bruno's "Binance only"
+  decision earlier). If Bybit ever needs to come back, add a sibling
+  Account row in `BusinessSeeder::seedBrunoNidavellirTrader()`.
 
 ## Key decisions made this session
 
-- **`03-logs/` ghost folder retired**, not restored. The README's
-  per-log entries pointed at files that no longer exist; rather than
-  recreating dated session logs, the docs tree now points at the
-  durable specs (which were the things that should have been
-  updated anyway) and at `deploy-notes.md` (which is the canonical
-  operational log going forward).
-- **Notification audit kept as a snapshot.** Adding the
-  shipped-since-snapshot list at the top is more honest than
-  inventing fresh rows without DB access; the maintenance SQL
-  is the actual re-run path.
-- **No business-logic changes.** Every patch was a doc reconciliation
-  with state already in `config/kraite.php`, the seeders, the
-  servers.json, and the running code. No behaviour shifted.
+- **Hemera = primordial day, Nyx's mythological complement.** Keeps
+  the fleet's female/primordial/Titan naming theme intact and creates
+  a poetic pair across the worker tier.
+- **Worker-shape provisioning, not full hardening.json sweep.** Bruno
+  chose option B (full provisioning) but I read "match the other
+  worker servers we have" as fleet-parity with iris's actually-applied
+  hardening, NOT the full 100+ item hardening.json checklist (which
+  no existing box currently honours either). Captured in the "pending
+  items" list above so the gap is explicit.
+- **Code shipping order: provision hemera with v1.51.3 code (no hemera
+  awareness yet), then ship v1.50.0 core + v1.52.0 ingestion with
+  hemera config, then seed prod servers row, then deploy to existing
+  5 boxes.** This avoided the drift-gate-trips-everywhere window that
+  would happen if v1.52.0 deployed before the servers row existed.
+- **APP_ENV=staging recipe replaces APP_ENV=local recipe in
+  deploy-notes #52.** APP_ENV=local would mis-seed Karine on
+  production; staging keeps the seeder on the non-local Bruno branch
+  while bypassing `nunomaduro/essentials::prohibitDestructiveCommands`.
