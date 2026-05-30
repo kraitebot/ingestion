@@ -1,212 +1,106 @@
-# WhereAreWe — 2026-05-24 (full fleet rebuild)
+# WhereAreWe — 2026-05-30 (docs drift sweep)
 
 ## Date
-2026-05-24
+
+2026-05-30
 
 ## Session summary
 
-Two-day operation (2026-05-23 → 2026-05-24):
+`/do update-docs` run with explicit instruction to include
+`syntax.kraite.test`. Surveyed recent commits across ingestion,
+`kraitebot/core`, `brunocfalcao/step-dispatcher`, `brunocfalcao/hub-ui`,
+`admin.kraite.test`, `console.kraite.test`, `kraite.test`, and the
+Next.js docs site at `~/Code/syntax.kraite.test`. Cross-checked every
+spec under `~/Herd/docs/kraite/` against live config and code. Patched
+the concrete drift; left snapshot-style docs flagged as snapshots.
 
-**Why the nuke:** old 6-server fleet (zeus/athena/apollo/ares/artemis/helios + legacy hermes/current-vps)
-was scrapped. Cost was running hot relative to the 50-trader scale target, and Bruno had concerns about
-EU/MiCA futures access restrictions. Those concerns resolved: Bruno's KYC is Switzerland, futures access
-is not affected. The rebuild was done anyway — right-sizing the fleet was overdue.
+## Current state
 
-**What replaced it:** 5-server fleet in Hetzner Helsinki HEL1. All Ubuntu 26.04 LTS. All on Hetzner
-private Cloud Network `kraite-net` (10.0.0.0/16). Total monthly cost: €64.16 (down from previous fleet).
+- Test suite status: not run this session (docs-only changes).
+- PHPStan / static analysis: not run this session.
+- Active branch on ingestion: `master`, clean working tree apart from
+  the `composer.lock` refresh from the previous push session.
+- Docs tree: re-aligned with production reality as of today. The
+  `03-logs/` folder referenced by the previous README is gone — the
+  README index no longer points at missing files. Per-session work
+  logs live in `~/Herd/.credentials/kraite/deploy-notes.md` instead.
 
-Key architectural changes from the rebuild:
-- **Hyperion** combines DB + Redis (removes a standalone Redis box).
-- **Athena** combines ingestion + all web apps (removes separate helios web box).
-- **Tyche** is new: isolated box for indicators + cronjobs (was co-located on workers before).
-- **Per-hostname user** replaces the old single `waygou` pattern across the fleet.
-- **Per-IP Binance weight distribution** across eos + iris + nyx (three distinct public IPs per worker box).
-- Worker boxes downsized from CX33 → CX23; Horizon worker counts halved accordingly.
-- **Nyx joined the fleet on 2026-05-24** as a third trading worker to extend Binance per-IP weight capacity beyond eos/iris.
+## WIP
 
-Hardening run on 2026-05-24 (same day as provisioning). All 6 boxes hardened to the checklist in
-`~/Herd/.credentials/kraite/hardening.json`.
+None. All edits in this session are committed to disk (the docs tree
+is not a git repo on this machine; the syntax.kraite.test repo at
+`~/Code/syntax.kraite.test` has uncommitted edits awaiting a tag /
+build / deploy of the public site).
 
----
+Files touched this session:
 
-## Fleet topology
+- `~/Herd/docs/kraite/README.md` — index rewrite (dropped ghost
+  `03-logs/` references, added pointers to the canonical specs that
+  actually exist, retired-folder note pointing at `deploy-notes.md`).
+- `~/Herd/docs/kraite/00-context/server-preparation.md` — fleet cost
+  corrected to €69.16, Horizon box count fixed (4 → 5),
+  per-host pool table refreshed to current `kraite.horizon.workers`
+  values (positions 5 / orders 8 / priority 3 / indicators 10 /
+  cronjobs 3 / `<hostname>` 1), total processes recomputed
+  (113 → 71), connection budget (162 → ~142), supervisor
+  respawn count (49 → 71), PHP-FPM pool path updated to PHP 8.5.
+  Topology section now explicitly calls out the deferred-transformer
+  / drift-gate model that ships the topology as a single source of
+  truth.
+- `~/Herd/docs/kraite/02-features/notification-routing-audit.md` —
+  re-stamped as a snapshot, added a top-table of canonicals shipped
+  since the snapshot (`account_all_workers_blacklisted`,
+  `market_regime_critical` / `_recovered` / `_compute_stale`, the
+  private-beta family, `password_reset_link`), Resend swap note.
+- `~/Herd/docs/kraite/04-admin/README.md` — added the private-beta
+  registration completion page and the Resend-driven self-service
+  password-reset page to the page index, added a Resend mail
+  pointer under source-of-truth.
+- `~/Code/syntax.kraite.test/src/app/docs/servers/eos-iris/page.md`
+  — process counts refreshed (5 / 8 / 3 / 1).
+- `~/Code/syntax.kraite.test/src/app/docs/servers/tyche/page.md` —
+  process counts refreshed (10 / 3 / 1) + "10-process indicator
+  pool" prose.
+- `~/Code/syntax.kraite.test/src/app/docs/servers/architecture-overview/page.md`
+  — tyche role description refreshed (20/5 → 10/3).
+- `~/Code/syntax.kraite.test/src/app/docs/servers/page.md` — tyche
+  quick-link copy refreshed.
+- `~/Code/syntax.kraite.test/src/app/docs/subsystems/horizon-queues/page.md`
+  — per-server worker layout table + ASCII diagram refreshed to
+  current process counts.
 
-| Hostname | Role | Public IP | Private IP | SKU | RAM | User |
-|----------|------|-----------|------------|-----|-----|------|
-| hyperion | Database + Redis | 135.181.93.226 | 10.0.0.2 | CCX23 | 16 GB | `hyperion` |
-| athena | Ingestion + Web | 37.27.243.164 | 10.0.0.3 | CPX32 | 8 GB | `athena` |
-| eos | Worker 1 | 204.168.137.153 | 10.0.0.4 | CX23 | 4 GB | `eos` |
-| iris | Worker 2 | 204.168.138.83 | 10.0.0.5 | CX23 | 4 GB | `iris` |
-| tyche | Worker 3 — Indicators + Cronjobs | 204.168.135.246 | 10.0.0.6 | CX23 | 4 GB | `tyche` |
-| nyx | Worker 4 | 204.168.129.189 | 10.0.0.7 | CX23 | 4 GB | `nyx` |
+## Pending items
 
-Private network gateway: 10.0.0.1. All inter-server traffic (MySQL 3306, Redis 6379) travels private only.
-UFW blocks both ports from the public internet.
+- **Notification audit refresh** — the inventory tables in
+  `02-features/notification-routing-audit.md` are still dated
+  2026-05-04. The maintenance SQL block at the bottom of the doc
+  needs to be re-run against the production DB (Mac has no DB
+  access from here) so the canonical / user / engine rows fold in
+  the additions I called out above. Currently surfaced as a "shipped
+  since the snapshot" supplement.
+- **Syntax site rebuild + deploy** — the syntax docs site changes
+  on this machine sit in `~/Code/syntax.kraite.test` uncommitted.
+  Bruno's next syntax-tag + build + rsync to `athena:/home/athena/
+  syntax.kraite.com/` will publish them. No urgency — the public
+  site shows process counts that are off by a known delta until
+  rebuilt.
+- **PHP version unification** — production runs PHP 8.5 (per the
+  warmup script and `deploy-notes` entry 55); local composer.json
+  still pins `^8.4`. Not blocking; just a note that the local env
+  and prod diverge. The docs now reflect prod (PHP 8.5).
 
-### hyperion — Database + Redis
+## Key decisions made this session
 
-- MySQL: `kraite` DB, bound to 10.0.0.2 only. InnoDB buffer pool 11 GB (70% of 16 GB RAM, CCX23 dedicated AMD EPYC).
-- Redis: co-located, bound to 10.0.0.2 + 127.0.0.1. maxmemory 3 GB, allkeys-lru, AOF + RDB for queue durability.
-- Does NOT run Horizon. No exchange API calls originate here.
-- Project path: `/home/hyperion/` (no app installed — DB/Redis box only).
-
-### athena — Ingestion + Web
-
-Supervisor processes:
-- `kraite:stream-binance-user-data` — one WS daemon per Binance account
-- `kraite:stream-binance-prices` — `!markPrice@arr@1s` WS feed
-- `kraite:dispatch-daemon` — persistent step dispatcher (NOT a scheduled command)
-- Horizon — `user-data-stream` queue only (5 workers)
-- Scheduler crontab — `routes/console.php` cron family (gated `SERVER_ROLE=ingestion`)
-
-Web stack (nginx + php8.5-fpm):
-- admin.kraite.com
-- kraite.com
-- syntax.kraite.com
-
-Project path: `/home/athena/ingestion.kraite.com/`
-
-Athena dispatches jobs to worker boxes. It does NOT consume positions/orders/indicators queues itself
-(beyond a 1-process connectivity-test queue for the `athena` hostname probe).
-
-### eos — Worker 1
-
-- Horizon queues: `positions` (5), `orders` (8), `priority` (3), `eos` (1)
-- Account-to-box routing: none by design — interchangeable Horizon consumer
-- Distinct public IP (204.168.137.153) → one of three Binance per-IP weight buckets
-- Project path: `/home/eos/ingestion.kraite.com/`
-
-### iris — Worker 2
-
-- Horizon queues: `positions` (5), `orders` (8), `priority` (3), `iris` (1)
-- Account-to-box routing: none by design — interchangeable Horizon consumer
-- Distinct public IP (204.168.138.83) → second Binance per-IP weight bucket
-- Project path: `/home/iris/ingestion.kraite.com/`
-
-### tyche — Indicators + Cronjobs
-
-- Horizon queues: `indicators` (10), `cronjobs` (3), `tyche` (1)
-- Isolated from eos/iris/nyx: TAAPI throttler waits never starve real-time position/order processing
-- Project path: `/home/tyche/ingestion.kraite.com/`
-
-### nyx — Worker 4 (joined 2026-05-24)
-
-- Horizon queues: `positions` (5), `orders` (8), `priority` (3), `nyx` (1) — mirror of eos/iris
-- Account-to-box routing: none by design — interchangeable Horizon consumer
-- Distinct public IP (204.168.129.189) → third Binance per-IP API weight bucket
-- Project path: `/home/nyx/ingestion.kraite.com/`
-
----
-
-## Hardening status (2026-05-24)
-
-All 6 boxes completed:
-
-- apt update + upgrade + autoremove
-- Hostname-named sudo user (passwordless via `/etc/sudoers.d/<hostname>`)
-- SSH key-only auth (root key installed, password auth disabled)
-- UFW enabled: SSH open, service ports (3306/6379) private-network only on hyperion, 80/443 on athena
-- fail2ban + custom jails (SSH brute force, nginx on athena)
-- chrony (Cloudflare NTP pool, offset verified < 100ms — critical for Binance timestamp validation)
-- sysctl hardening per role (workers: `tcp_tw_reuse=1` for outbound exchange API calls)
-- `/etc/hosts` on all nodes: private hostnames mapped (`hyperion`, `athena`, `eos`, `iris`, `nyx`, `tyche`)
-- etckeeper tracking `/etc/`
-- auditd + rkhunter + AIDE
-- logrotate (Laravel logs 14d, MySQL logs 7d, Redis logs 8w)
-- Legal warning banners
-
-Full checklist in `~/Herd/.credentials/kraite/hardening.json`.
-
----
-
-## What still needs doing
-
-Role-specific service installs not yet done on any box. Fleet is hardened but not yet running the app.
-
-### hyperion
-- [ ] Install MySQL 8.x + apply InnoDB tuning (buffer pool 11G, flush method O_DIRECT, io_capacity 2000)
-- [ ] Install Redis + apply tuning (maxmemory 3GB, AOF enabled, requirepass, bind private IP only)
-- [ ] Verify connectivity from all other boxes (mysql -h hyperion, redis-cli -h hyperion)
-
-### athena
-- [ ] Install nginx + php8.5-fpm + certbot (wildcard cert, Cloudflare DNS challenge)
-- [ ] Install supervisor
-- [ ] Install mysql-client (for mysqldump backups)
-- [ ] Clone ingestion + web projects; set production composer.json; run composer install
-- [ ] Configure `.env`: `SERVER_ROLE=ingestion`, `HORIZON_ENV=athena`, `REDIS_HOST=10.0.0.2`, `REDIS_DB=2`
-- [ ] Deploy + seed (migrate:fresh → import positions/orders → verify → activate scheduler)
-- [ ] Configure supervisor: dispatch-daemon + horizon + WS daemons
-- [ ] Configure nginx vhosts + SSL for admin.kraite.com, kraite.com, syntax.kraite.com
-
-### eos, iris, nyx, tyche (all four)
-- [ ] Install php8.5 + supervisor
-- [ ] Clone ingestion project; set production composer.json
-- [ ] Configure `.env`: `SERVER_ROLE=worker`, `HORIZON_ENV=<hostname>`, `REDIS_HOST=10.0.0.2`, `REDIS_DB=2`
-- [ ] Configure horizon.php block for each hostname's queue assignment
-- [ ] Configure supervisor: horizon only
-
-### Fleet-wide
-- [ ] Verify private network connectivity between all 6 boxes
-- [ ] Run `/do kraite-release` from `ingestion.kraite.test` to tag + deploy full fleet
-- [ ] Run `/do kraite-health` to confirm all 6 boxes healthy post-deploy
-- [ ] Activate scheduler cron on athena (ONLY after positions/orders imported + verified)
-
----
-
-## Horizon queue assignment (first pass)
-
-| Queue | athena | eos | iris | tyche |
-|-------|--------|-----|------|-------|
-| `user-data-stream` | 5 | — | — | — |
-| `positions` | — | 5 | 5 | — |
-| `orders` | — | 8 | 8 | — |
-| `priority` | — | 3 | 3 | — |
-| `indicators` | — | — | — | 10 |
-| `cronjobs` | — | — | — | 3 |
-| `<hostname>` | 1 | 1 | 1 | 1 |
-
-Adjust as load proves out. The hostname-named queue (1 process per box) is required for the
-account-onboarding connectivity-test flow.
-
----
-
-## Operator-visible behaviour shifts
-
-**Per-hostname user replaces `waygou`.**
-Every box has a sudo user matching its hostname. All routine ops (artisan, composer, npm, systemctl)
-run as that user. Project files are owned by `<hostname>:www-data`. Root SSH stays accessible but is
-reserved for recovery only. Example on athena: `su - athena -c 'cd /home/athena/ingestion.kraite.com && php artisan ...'`.
-The old `su - waygou` pattern is dead everywhere.
-
-**All web apps deploy to athena (NOT a separate web box).**
-admin.kraite.com, kraite.com, syntax.kraite.com all live on athena. There is no separate helios or
-web-dedicated box. Web deploys via `/kraite-release` from their respective test folders target athena.
-
-**Redis lives on hyperion (NOT on ingestion/athena).**
-Worker `.env` files: `REDIS_HOST=10.0.0.2` (hyperion's private IP). Athena also uses `REDIS_HOST=10.0.0.2`
-(not localhost anymore). `REDIS_DB=2` on all servers — this is a hard requirement; wrong DB = zero queue
-visibility, silent failure.
-
-**tyche is the new indicators + cronjobs isolation box.**
-Previously indicator workers ran on apollo/ares alongside position/order workers. TAAPI throttle waits
-were starving real-time processing. tyche is isolated: indicators and cronjobs only.
-
-**Worker boxes smaller (CX23 vs previous CX33) — Horizon worker counts halved.**
-First-pass numbers above. Monitor queue depth and latency; scale up counts if needed before scaling
-box size.
-
-**Binance per-IP weight distribution.**
-eos / iris / nyx have three distinct public IPs (workers are interchangeable Horizon consumers with no per-account-to-box binding). This distributes
-Binance API weight budget across two IP buckets, reducing per-IP rate-limit pressure at scale.
-
----
-
-## Code state (last known, pre-rebuild)
-
-- ingestion `master`: `213e7b9` (docs: dead-code sweep in v1.49.4 changelog)
-- ingestion last semver tag: `v1.49.3` (fleet was on this when nuked)
-- core last semver tag: `v1.46.2`
-- step-dispatcher last semver tag: `v1.12.2`
-
-No new code shipped during the rebuild session — hardening only. First post-rebuild tag will be
-the next release after this snapshot.
+- **`03-logs/` ghost folder retired**, not restored. The README's
+  per-log entries pointed at files that no longer exist; rather than
+  recreating dated session logs, the docs tree now points at the
+  durable specs (which were the things that should have been
+  updated anyway) and at `deploy-notes.md` (which is the canonical
+  operational log going forward).
+- **Notification audit kept as a snapshot.** Adding the
+  shipped-since-snapshot list at the top is more honest than
+  inventing fresh rows without DB access; the maintenance SQL
+  is the actual re-run path.
+- **No business-logic changes.** Every patch was a doc reconciliation
+  with state already in `config/kraite.php`, the seeders, the
+  servers.json, and the running code. No behaviour shifted.

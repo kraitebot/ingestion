@@ -2,7 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.51.0 - 2026-05-25
+## 1.51.1 - 2026-05-30
+
+### Seeders
+
+- [NEW FEATURE] **`BusinessSeeder::seedBrunoNidavellirTrader()` — non-local seed for `bruno@nidavellir.trade`.** Mirrors the shape of `seedKarineTrader()` but only fires on non-local environments. The previous behaviour was sysadmin-only on production, which left every fresh prod box with no trading user / account at all. Now `php artisan migrate:fresh --seed --force` on athena lands the sysadmin **and** a Binance account belonging to `bruno@nidavellir.trade` — the real trading identity used by the live fleet.
+- [IMPROVED] **Karine + Bruno seeded accounts now land with `can_trade=false` AND `is_active=false`.** Previously the Karine account seeded with `is_active=true` and `can_trade` left unset (defaulting to whatever the schema default was). The new explicit `false / false` makes the seed contract obvious: a freshly-seeded account never trades until an operator explicitly flips the gates via the admin panel. Symmetric for Karine (local|testing) and Bruno @ nidavellir (non-local).
+- [REMOVED] **`seedKarineTrader()` no longer fires on non-local environments.** The local/testing-only gate is now exclusive — `BusinessSeeder::run()` falls through to `seedBrunoNidavellirTrader()` for production / staging / any non-local env via an early-return after the Karine branch. Same overall guarantee: the sysadmin is the only user every env shares; the trader user differs by env.
+
+### Configuration
+
+- [NEW FEATURE] **`config/kraite-ingestion.php` `bruno_nidavellir` block — env→config bridge for the new trader seed.** Reads `TRADER_BB_BINANCE_API_KEY` + `TRADER_BB_BINANCE_API_SECRET` from `.env`. The `TRADER_BB_*` env block previously carried Bybit credentials too — those are intentionally ignored here. If Bybit ever needs to come back for this user, a sibling account-shape entry in `BusinessSeeder` is the right path, not fattening this config block.
+- [IMPROVED] **`config/kraite-ingestion.php` `karine` block comment updated** — wording now says "local-only smoke trader; production seeds bruno_nidavellir instead", matching the actual seeder behaviour after this release.
+
+### Operations
+
+- [NEW FEATURE] **`.env.traders` local credential vault (gitignored).** New file at the project root carries the full inventory of all 5 trader blocks (TRADER_BB, TRADER_KRAITE, TRADER_B, TRADER_KC, TRADER_BG) — identity, pushover keys, and exchange credentials. The `.env` itself now only carries the two prefixes the running seeder actually consumes (`TRADER_B` for Karine on local|testing, `TRADER_KRAITE` for the sysadmin identity overlap). Keeps the active `.env` tight and operational while the wider credential inventory stays available for future seeder code paths without scattering the secrets.
+- [IMPROVED] **`.gitignore` — `.env.traders` added explicitly.** The existing `*.env` pattern only matches files ending in `.env`; `.env.traders` ends in `.traders` so it fell through without an explicit entry. Belt-and-suspenders catch.
+- [IMPROVED] **`TRADER_BB` block renamed in `.env.traders` from "Bruno Falcao (Binance+Bybit)" to "Bruno Falcao (Binance)"** and the two `TRADER_BB_BYBIT_*` lines dropped from the vault. This trader is now Binance-only by design; the rename + drop keeps the credential surface honest.
+
+### Documentation
+
+- [IMPROVED] **`WhereAreWe.md` rewritten as a 2026-05-30 session snapshot.** Captures the docs drift sweep + the seeder rework + the .env restructure. Outdated 2026-05-24 fleet-rebuild content moved out (still in git history for anyone who wants to read the rebuild story).
+- [IMPROVED] **`~/Herd/docs/kraite/*` reconciled with production reality** — fleet cost (€69.16), PHP-FPM pool path (PHP 8.5), Horizon process counts (positions 5 / orders 8 / priority 3 / indicators 10 / cronjobs 3 / `<hostname>` 1 — total 71 procs across the 5 Horizon boxes), 03-logs ghost-folder references removed from the README index, notification-routing-audit re-stamped as a snapshot with a "shipped since" supplement. Syntax site (`~/Code/syntax.kraite.test/`) gets the same process-count refresh across server + subsystem pages.
+
+
 
 ### Features
 

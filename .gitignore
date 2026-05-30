@@ -43,6 +43,7 @@ thoughts/
 # Miscellaneous
 backup-old-project
 .env.testing
+.env.traders
 
 # Local agent tooling (not tracked)
 .serena/
