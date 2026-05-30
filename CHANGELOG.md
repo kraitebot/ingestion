@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.51.3 - 2026-05-30
+
+### Deploy
+
+- [FIX] **`deploy.sh` re-execs from the freshly-checked-out script body after `git checkout $DEPLOY_TAG`.** Bash reads scripts incrementally from disk, so the checkout would replace `deploy.sh` on disk while bash continued executing the in-memory copy from launch — any new steps added in the deployed tag's script body got silently skipped. Concrete incident 2026-05-30 v1.51.2 rollout: athena was on a pre-step-10 `deploy.sh`, its checkout to v1.51.2 contained the fleet-topology drift gate at step 10, but bash never executed step 10 because it kept reading the in-memory 9-step copy. Workers happened to already be on the 10-step shape from the prior partial deploy so they tripped the gate; athena silently "succeeded" with the gate skipped. New step 3.5 re-execs `bash "$PROJECT_DIR/deploy.sh"` once after the checkout + composer.json swap, guarded by `KRAITE_DEPLOY_REEXECED=1` to cap recursion at depth one. Steps 1–3 are idempotent on the second pass (cooldown verifies STATUS:COOLED_DOWN, composer auth check, git already-at-tag checkout) so the extra ~5s of pre-flight is the only cost. The fix lands properly on the FIRST deploy after v1.51.3 — the v1.51.2 → v1.51.3 transition itself still uses the old in-memory v1.51.2 deploy.sh (which has step 10), so that release ships cleanly without the re-exec.
+
 ## 1.51.2 - 2026-05-30
 
 ### Dependencies

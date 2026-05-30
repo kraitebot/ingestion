@@ -98,6 +98,30 @@ fi
 su - $KRAITE_USER -c "cd $PROJECT_DIR && cp composer.production.json composer.json"
 chown $KRAITE_USER:www-data "$PROJECT_DIR/composer.json"
 
+# --- Step 3.5: Re-exec from the freshly-checked-out deploy.sh ---
+# Bash reads scripts incrementally from disk, so the `git checkout` above
+# just replaced deploy.sh on disk while the bash process continues
+# executing the in-memory copy of whatever shape this script had at
+# launch. Any newer steps in the checked-out script body get silently
+# skipped — concrete incident 2026-05-30 v1.51.2 rollout: athena was on a
+# pre-step-10 deploy.sh, ran a v1.51.2 checkout that DID contain the
+# fleet-topology drift gate at step 10, but never executed step 10
+# because bash kept reading from the in-memory 9-step copy. Workers
+# happened to already be on the 10-step shape so they tripped the gate.
+#
+# Re-exec once so bash loads the post-checkout script body from disk.
+# The KRAITE_DEPLOY_REEXECED guard caps recursion at depth one. On the
+# second pass steps 1–3 are idempotent (cooldown re-verifies STATUS:
+# COOLED_DOWN; composer auth check; git fetch + already-at-tag checkout)
+# so no work is duplicated dangerously — just an extra ~5s of pre-flight
+# before the re-exec is detected and skipped.
+if [ "${KRAITE_DEPLOY_REEXECED:-0}" != "1" ]; then
+    export KRAITE_DEPLOY_REEXECED=1
+    echo "[3.5/9] Re-execing deploy.sh from the checked-out tag"
+    exec bash "$PROJECT_DIR/deploy.sh"
+fi
+echo "[3.5/9] Re-exec already done (KRAITE_DEPLOY_REEXECED=1)"
+
 COMMIT=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && git log --oneline -1")
 echo "[3/9] Code: $COMMIT"
 
