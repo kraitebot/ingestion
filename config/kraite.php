@@ -584,6 +584,12 @@ return [
                 'priority' => ['processes' => 3],
                 'nyx' => ['processes' => 1],
             ],
+            'hemera' => [
+                'positions' => ['processes' => 5],
+                'orders' => ['processes' => 8],
+                'priority' => ['processes' => 3],
+                'hemera' => ['processes' => 1],
+            ],
             // Indicators + cronjobs worker. Isolated from eos/iris/nyx
             // so TAAPI throttler waits never starve real-time trading.
             'tyche' => [

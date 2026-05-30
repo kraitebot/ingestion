@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.52.0 - 2026-05-30
+
+### Fleet
+
+- [NEW FEATURE] **`hemera` joins the trading worker pool.** New 7th server (Hetzner CX23, Helsinki HEL1, public IP `77.42.68.254`, private IP `10.0.0.8`). Identical worker shape to eos/iris/nyx: positions (5 procs), orders (8), priority (3), `hemera` per-host queue (1). Same Binance per-IP weight rationale — a fourth distinct IP further spreads exchange API call load. `config/kraite.php` `horizon.workers` block gets the matching supervisor entry; `kraitebot/core` v1.50.0 ships the sibling `kraite.fleet.servers` entry so the drift gate (`kraite:verify-fleet-topology`) stays aligned. Fleet now: 7 boxes (hyperion DB + athena ingestion + eos/iris/nyx/hemera trading workers + tyche indicators).
+
+### Dependencies
+
+- [IMPROVED] **`kraitebot/core` bumped to v1.50.0** — adds hemera to `kraite.fleet.servers` so the rotation engine can translate `77.42.68.254` back to hostname during ban filtering, and the drift gate at deploy step 10 sees the matching servers-table row.
+
 ## 1.51.3 - 2026-05-30
 
 ### Deploy
