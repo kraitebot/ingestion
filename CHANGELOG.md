@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.1 - 2026-05-31
+
+### Routing
+
+- [IMPROVED] **`tyche` worker now subscribes to the `priority` lane (5 procs).** Without it, every stale `tyche-cronjobs` / `tyche-indicators` step promoted by `steps:recover-stale --recover-dispatched` (which rewrites `queue='priority'`) routed exclusively to a trading worker (eos/iris/nyx/hemera) because tyche wasn't in the priority candidate pool. That broke the tyche-isolation principle — TAAPI throttler waits + heavy cron fetches could starve real-time trading on the trading workers' priority supervisors. Tyche being in the pool gives it a 1/5 share of promoted steps. Known imperfection: the resolver still picks among the 5 candidates at random, so 4/5 promoted steps continue to leak to trading workers. A full fix would split the logical `priority` queue into per-category lanes (`priority-trading` vs `priority-cron`) so the StepObserver promotion targets the right pool based on the step's original queue — tracked as follow-up.
+
+### Capacity
+
+- [IMPROVED] **`tyche` process counts bumped to handle the realistic indicator + cron load.** `indicators` 10 → 20, `cronjobs` 3 → 20, per-host `tyche` 1 → 5, plus the new `priority` 5. The previous values were the original "single worker, single fan-out" sizing from the early fleet; the actual hourly indicator + per-symbol cron batches have grown well past what 10 + 3 procs can drain inside a one-minute scheduler tick without queue depth accumulating.
+
 ## 1.53.0 - 2026-05-31
 
 ### Routing

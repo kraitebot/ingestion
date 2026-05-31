@@ -591,11 +591,20 @@ return [
                 'hemera' => ['processes' => 1],
             ],
             // Indicators + cronjobs worker. Isolated from eos/iris/nyx
-            // so TAAPI throttler waits never starve real-time trading.
+            // so TAAPI throttler waits never starve real-time trading. The
+            // `priority` lane is included so stale tyche-bound steps that
+            // get promoted by `steps:recover-stale --recover-dispatched`
+            // (which rewrites `queue='priority'`) can land back on tyche
+            // instead of leaking to a trading worker. Known imperfection:
+            // the resolver picks the priority candidate at random from a
+            // 5-worker pool so 4/5 promoted steps still leak to trading;
+            // a per-category split (`priority-trading` vs `priority-cron`)
+            // would close the leak fully and is tracked as follow-up.
             'tyche' => [
-                'indicators' => ['processes' => 10],
-                'cronjobs' => ['processes' => 3],
-                'tyche' => ['processes' => 1],
+                'indicators' => ['processes' => 20],
+                'cronjobs' => ['processes' => 20],
+                'priority' => ['processes' => 5],
+                'tyche' => ['processes' => 5],
             ],
         ],
     ],
