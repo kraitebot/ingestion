@@ -15,10 +15,10 @@ use Illuminate\Support\Str;
 | declared in `config/kraite.php` under the `horizon` key — see that file
 | for the source of truth.
 |
-| The transformer composes the PHYSICAL queue name as `{logical}-{hostname}`
-| for each declared (worker, logical-queue) pair (e.g. `positions-eos`),
+| The transformer composes the PHYSICAL queue name as `{hostname}-{logical}`
+| for each declared (worker, logical-queue) pair (e.g. `eos-positions`),
 | with the special case that when the logical name already equals the
-| hostname (the per-hostname queue like `eos`), no suffix is added. This
+| hostname (the per-hostname queue like `eos`), no prefix is added. This
 | matches the StepRouter's `buildPhysicalQueue()` logic so the dispatcher
 | and Horizon agree on the queue namespace.
 |

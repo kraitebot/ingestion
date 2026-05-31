@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.0 - 2026-05-31
+
+### Routing
+
+- [BREAKING] **Physical queue convention flipped from `{logical}-{hostname}` to `{hostname}-{logical}`.** A `positions` step now routes to `eos-positions` (not `positions-eos`); `cronjobs` to `tyche-cronjobs`; etc. The flip applies symmetrically to both ends: `Kraite\Core\Support\StepRouter::buildPhysicalQueue()` composes the new shape on dispatch, and the deferred transformer in `CoreServiceProvider::syncHorizonEnvironmentsFromKraiteConfig()` emits matching `horizon.environments` supervisor blocks so every Horizon worker subscribes to the right physical queue. `extractLogicalQueue()` strips the `{hostname}-` prefix on retry passes (was suffix stripping). Pairs naturally with the per-hostname-prefix convention used everywhere else in the fleet (per-host logs, per-host supervisors, per-host backup paths).
+- [NEW FEATURE] **`StepRouter::candidateMap()` is now env-aware.** Pool composition by `HORIZON_ENV` (fallback `APP_ENV`): `local` → pool is `[local]` only; `production`-style envs (HORIZON_ENV set to a hostname like `eos`, `athena`) → pool drops the `local` key; `testing` → no filter, the seeded config wins. Without this filter Bruno's Mac would happily pick a prod-only hostname (e.g. `eos`) for a step, push it onto `eos-positions`, and no local Horizon supervisor would ever consume it — the orphan loop that materialised yesterday as 1.96M zombie Redis jobs on the dev box, plus the wedged `kraite:cron-refresh-exchange-symbols` symptom that drove the investigation.
+- [IMPROVED] **Routing integration tests (`StepRouterTest`) updated to the new convention** — every assertion that referenced `positions-eos` / `cronjobs-tyche` / etc. now reads `eos-positions` / `tyche-cronjobs`. 14 tests still green.
+
+### Deploy
+
+- [NEW FEATURE] **`deploy.sh` step 11 — force-restart long-running PHP daemons after every deploy.** Long-running `kraite:dispatch-daemon`, Horizon supervisors, and WS streamers (`kraite-stream-binance-prices`, `kraite-stream-binance-user-data`) load class definitions into memory at process start. Without an explicit restart, a code change on disk goes unseen by these daemons even though CLI invocations (artisan, schedule:run children) pick it up immediately. Concrete reproduction 2026-05-31: the queue convention flip above shipped successfully but the local `kraite:dispatch-daemon` (started days earlier) kept dispatching to OLD-convention queues that no Horizon supervisor subscribed to — recover-stale then promoted the stuck steps to the literal `priority` queue (also unconsumed) and the loop accumulated until the Mac ran out of Redis memory. Per-role unit list: ingestion = horizon + dispatch-daemon + 2 WS streamers; everything else = horizon only. Server is cooled down by step 1 so the restart is safe.
+
+### Dependencies
+
+- [IMPROVED] **`kraitebot/core` bumped to v1.51.0** — ships the queue-convention flip and env-aware candidate pool described above. Required for the queue rename to compose correctly end-to-end.
+
 ## 1.52.0 - 2026-05-30
 
 ### Fleet

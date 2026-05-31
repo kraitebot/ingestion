@@ -25,10 +25,10 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class)->group('integration',
 |
 | StepRouter is registered as the step-dispatcher v1.13.0 queue resolver
 | in `CoreServiceProvider::boot()`. At dispatch time the router decides
-| the physical per-hostname queue (e.g. `positions-eos`) for a step based
+| the physical per-hostname queue (e.g. `eos-positions`) for a step based
 | on:
 |
-|   - the step's logical queue (stripped of any prior hostname suffix
+|   - the step's logical queue (stripped of any prior hostname prefix
 |     when re-resolving on a retry)
 |   - the candidate workers for that logical queue (read from
 |     `config('kraite.horizon.workers')`)
@@ -52,13 +52,13 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class)->group('integration',
 beforeEach(function (): void {
     // step-dispatcher's StepObserver demotes any queue name not on the
     // allowlist back to 'default'. The router pushes onto per-hostname
-    // queues (`positions-eos` etc), so they must be declared valid.
+    // queues (`eos-positions` etc), so they must be declared valid.
     config()->set('step-dispatcher.queues.valid', [
         'default',
         'positions',
-        'positions-eos', 'positions-iris', 'positions-nyx',
-        'orders', 'orders-eos', 'orders-iris', 'orders-nyx',
-        'cronjobs', 'cronjobs-tyche',
+        'eos-positions', 'iris-positions', 'nyx-positions',
+        'orders', 'eos-orders', 'iris-orders', 'nyx-orders',
+        'cronjobs', 'tyche-cronjobs',
         'eos', 'iris', 'nyx', 'tyche', 'athena',
     ]);
 
@@ -151,7 +151,7 @@ describe('Routing — unbanned scenarios', function (): void {
 
         $resolved = $router->resolveQueueName($step);
 
-        expect($resolved)->toBeIn(['positions-eos', 'positions-iris', 'positions-nyx']);
+        expect($resolved)->toBeIn(['eos-positions', 'iris-positions', 'nyx-positions']);
     });
 
     it('keeps a step on its existing per-hostname queue when no ban is active for that worker', function (): void {
@@ -162,13 +162,13 @@ describe('Routing — unbanned scenarios', function (): void {
         $account = Account::factory()->create(['user_id' => $user->id, 'api_system_id' => $apiSystem->id]);
 
         // Step already carries a physical queue from a prior dispatch
-        // (positions-eos). The router strips the hostname suffix to
+        // (eos-positions). The router strips the hostname prefix to
         // recover the logical (positions) then re-picks. With no bans
         // any of the 3 candidates is valid; the resolved queue can be
         // any of them including the original.
         $router = new StepRouter;
         $step = Step::factory()->create([
-            'queue' => 'positions-eos',
+            'queue' => 'eos-positions',
             'state' => Pending::class,
             'class' => TestBinanceApiableJob::class,
             'arguments' => ['accountId' => $account->id],
@@ -176,7 +176,7 @@ describe('Routing — unbanned scenarios', function (): void {
 
         $resolved = $router->resolveQueueName($step);
 
-        expect($resolved)->toBeIn(['positions-eos', 'positions-iris', 'positions-nyx']);
+        expect($resolved)->toBeIn(['eos-positions', 'iris-positions', 'nyx-positions']);
     });
 
     it('routes orchestrator (no-account) steps to any eligible worker without ban filtering', function (): void {
@@ -205,7 +205,7 @@ describe('Routing — unbanned scenarios', function (): void {
 
         // Without an account context the ban filter doesn't fire — any
         // candidate, including eos, is valid.
-        expect($resolved)->toBeIn(['positions-eos', 'positions-iris', 'positions-nyx']);
+        expect($resolved)->toBeIn(['eos-positions', 'iris-positions', 'nyx-positions']);
     });
 
     it('returns null for an unknown logical queue with no subscribers', function (): void {
@@ -258,8 +258,8 @@ describe('Routing — ban filtering', function (): void {
         $resolved = $router->resolveQueueName($step);
 
         // eos is banned, iris and nyx are clean.
-        expect($resolved)->toBeIn(['positions-iris', 'positions-nyx'])
-            ->and($resolved)->not->toBe('positions-eos');
+        expect($resolved)->toBeIn(['iris-positions', 'nyx-positions'])
+            ->and($resolved)->not->toBe('eos-positions');
     });
 
     it('honours system-wide bans (account_id=NULL) for every account on the same api_system', function (): void {
@@ -289,8 +289,8 @@ describe('Routing — ban filtering', function (): void {
 
         $resolved = $router->resolveQueueName($step);
 
-        expect($resolved)->toBeIn(['positions-eos', 'positions-nyx'])
-            ->and($resolved)->not->toBe('positions-iris');
+        expect($resolved)->toBeIn(['eos-positions', 'nyx-positions'])
+            ->and($resolved)->not->toBe('iris-positions');
     });
 
     it('does not apply a ban from a different api_system (cross-exchange isolation)', function (): void {
@@ -322,7 +322,7 @@ describe('Routing — ban filtering', function (): void {
         $resolved = $router->resolveQueueName($step);
 
         // Bybit ban doesn't affect Binance — all 3 workers eligible.
-        expect($resolved)->toBeIn(['positions-eos', 'positions-iris', 'positions-nyx']);
+        expect($resolved)->toBeIn(['eos-positions', 'iris-positions', 'nyx-positions']);
     });
 
     it('ignores expired bans (forbidden_until in the past)', function (): void {
@@ -351,7 +351,7 @@ describe('Routing — ban filtering', function (): void {
         $resolved = $router->resolveQueueName($step);
 
         // Ban expired → all 3 workers eligible again.
-        expect($resolved)->toBeIn(['positions-eos', 'positions-iris', 'positions-nyx']);
+        expect($resolved)->toBeIn(['eos-positions', 'iris-positions', 'nyx-positions']);
     });
 });
 
@@ -526,7 +526,7 @@ describe('Strip-suffix on retry', function (): void {
 
         $router = new StepRouter;
         $step = Step::factory()->create([
-            'queue' => 'positions-eos', // physical from a prior dispatch
+            'queue' => 'eos-positions', // physical from a prior dispatch
             'state' => Pending::class,
             'class' => TestBinanceApiableJob::class,
             'arguments' => ['accountId' => $account->id],
@@ -537,7 +537,7 @@ describe('Strip-suffix on retry', function (): void {
         // Router strips '-eos', recovers 'positions', re-picks among
         // the 3 trading workers. The result is one of the per-hostname
         // queues (the previous eos OR a fresh iris/nyx pick).
-        expect($resolved)->toBeIn(['positions-eos', 'positions-iris', 'positions-nyx']);
+        expect($resolved)->toBeIn(['eos-positions', 'iris-positions', 'nyx-positions']);
     });
 
     it('does NOT strip a suffix that does not match any registered hostname', function (): void {

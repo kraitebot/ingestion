@@ -512,9 +512,9 @@ return [
     | hostname's block lists the LOGICAL queue names it serves (positions,
     | orders, cronjobs, …) with per-queue overrides (currently just
     | `processes`). The horizon transformer composes the PHYSICAL queue
-    | name as `{logical}-{hostname}` (e.g. positions-eos) on dispatch
+    | name as `{hostname}-{logical}` (e.g. eos-positions) on dispatch
     | and supervisor spawn. Special case: when the logical name already
-    | equals the hostname (the per-hostname queue like `eos`), no suffix
+    | equals the hostname (the per-hostname queue like `eos`), no prefix
     | is added.
     |
     | horizon.defaults — supervisor options applied to every block before

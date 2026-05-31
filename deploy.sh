@@ -275,7 +275,49 @@ echo "[9/9] Caches: rebuilt"
 echo ""
 echo "--- Step 10: Fleet topology check ---"
 su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:verify-fleet-topology --fail-on-drift --quiet-on-success"
-echo "[10/10] Fleet topology: aligned"
+echo "[10/11] Fleet topology: aligned"
+
+# --- Step 11: Force-restart long-running PHP daemons ---
+# Long-running PHP processes (Horizon supervisors, kraite:dispatch-daemon,
+# WS streams) hold class definitions in memory for their entire lifetime.
+# After a code change, without an explicit restart they continue executing
+# the OLD opcode even though the new files are already on disk. CLI
+# opcache is off, so any FRESH PHP invocation (artisan, schedule:run
+# children) picks up new code immediately — but long-lived daemons do not.
+#
+# Concrete incident 2026-05-31: queue-name convention flip
+# ({logical}-{hostname} → {hostname}-{logical}) shipped successfully, but
+# kraite:dispatch-daemon (started days earlier) kept dispatching to
+# OLD-convention queues that no Horizon supervisor subscribed to under
+# the new naming. Steps stayed Dispatched until recover-stale promoted
+# them to the literal 'priority' queue (also unconsumed because workers
+# now subscribe to {hostname}-priority), and the loop accumulated 1.96M
+# orphan Redis jobs locally before the trap was identified.
+#
+# Server is cooled down by Step 1 gate at this point — no in-flight
+# work, no ongoing API calls. Restart is safe across the role unit set.
+# Each restart is best-effort (`|| true`): a unit missing from this host's
+# supervisor config is normal (workers don't run dispatch-daemon or WS
+# streams) and must not abort the deploy.
+echo ""
+echo "--- Step 11: Restart long-running daemons ---"
+case "$SERVER_ROLE" in
+    ingestion)
+        UNITS="kraite-horizon kraite-dispatch-daemon kraite-stream-binance-prices kraite-stream-binance-user-data"
+        ;;
+    *)
+        UNITS="kraite-horizon"
+        ;;
+esac
+
+for unit in $UNITS; do
+    if supervisorctl status "$unit" 2>/dev/null | grep -qE "RUNNING|STOPPED|FATAL|EXITED"; then
+        supervisorctl restart "$unit" 2>&1 | sed 's/^/    /' || true
+    else
+        echo "    $unit: not configured on this host, skipping"
+    fi
+done
+echo "[11/11] Daemons: restarted with fresh opcode"
 
 echo ""
 echo "=== Deploy complete ==="
