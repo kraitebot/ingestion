@@ -398,11 +398,11 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/brunocfalcao/blade-feather-icons",
-                "reference": "53f30ee48f02c6359d69dd3de3c331b5fc9ff6b4"
+                "reference": "8a0bba330404f941213d98c11c7ae69946cb57e4"
             },
             "require": {
                 "blade-ui-kit/blade-icons": "^1.0",
-                "illuminate/support": "^12.0",
+                "illuminate/support": "^12.0|^13.0",
                 "php": "^8.4"
             },
             "require-dev": {
@@ -519,7 +519,7 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/brunocfalcao/step-dispatcher",
-                "reference": "3ac6ef281168ee2e31ce0943a55ada9c5c18a0d4"
+                "reference": "a7b8f7be59791a729a334cddb3986f01e888850e"
             },
             "require": {
                 "illuminate/console": "^11.0|^12.0|^13.0",
@@ -1655,7 +1655,7 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/kraitebot/core",
-                "reference": "bec6f8a4938a95cf4a2eeefe96734ffb91bedcc8"
+                "reference": "0ba27f1ee82bbd06b0b04d010cc5d92e853be0aa"
             },
             "require": {
                 "angle/chrono": "^1.0",
