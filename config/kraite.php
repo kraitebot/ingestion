@@ -590,6 +590,18 @@ return [
                 'priority' => ['processes' => 3],
                 'hemera' => ['processes' => 1],
             ],
+            // Dedicated web host. nginx + php8.5-fpm serves admin /
+            // console / kraite.com / syntax. Single `pheme-web` queue
+            // for web-originated background jobs (notifications, mail,
+            // billing webhooks, etc.). NOT part of the StepRouter
+            // candidate pool — trading work is never dispatched here.
+            // Per-hostname connectivity-probe queue retained as 1 proc
+            // for symmetry with the rest of the fleet, even though
+            // pheme doesn't make exchange API calls.
+            'pheme' => [
+                'pheme-web' => ['processes' => 2],
+                'pheme' => ['processes' => 1],
+            ],
             // Indicators + cronjobs worker. Isolated from eos/iris/nyx
             // so TAAPI throttler waits never starve real-time trading. The
             // `priority` lane is included so stale tyche-bound steps that
