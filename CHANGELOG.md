@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.2 - 2026-06-02
+
+### Fleet topology
+
+- [IMPROVED] **`kraite.horizon.workers.pheme` block added.** Pheme — the new dedicated web host that joined the fleet on 2026-06-01 — gets a 2-supervisor declaration: `pheme-web` (2 procs, web-originated background jobs) and `pheme` (1 proc, per-hostname connectivity probe slot). Pheme is structurally excluded from the StepRouter candidate pool because its block does not declare any of the trading logical queues (`positions / orders / priority / cronjobs / indicators / user-data-stream`). The drift gate in `kraite:verify-fleet-topology --fail-on-drift` now accepts pheme because the matching `fleet.servers.pheme` entry shipped in `kraitebot/core 1.51.1`.
+- [IMPROVED] **`composer.lock` pinned to `kraitebot/core 1.51.2`.** Picks up the package-level `kraite.horizon` block (mirrors ingestion's project-level config) so non-ingestion web apps (admin/console/kraite.com on pheme) see the full topology without a project-level override.
+
 ## 1.53.1 - 2026-05-31
 
 ### Routing
