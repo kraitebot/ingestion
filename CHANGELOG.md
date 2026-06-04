@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.3 - 2026-06-05
+
+### Fleet topology
+
+- [FIXED] **`kraite.horizon.workers.pheme` logical queue renamed `pheme-web` → `web`.** The `{hostname}-{logical}` composer double-prefixed the physical queue to `pheme-pheme-web`; logical `web` now composes to the documented `pheme-web`. Same rename ships in `kraitebot/core 1.51.3` (package-level copy of the workers map) — the drift gate asserts both stay aligned.
+
+### Dependencies
+
+- [CHANGED] **`composer.lock` minor/patch refresh (15 packages).** laravel/framework 12.61.1, horizon 5.47.2, guzzle 7.11.0 (+ promises 2.5.0 / psr7 2.11.0), pest 4.7.2, phpunit 12.5.28, laravel/mcp 0.7.2, boost 2.4.9, aws-sdk 3.384.3, et al. Constraint chain verified internally consistent; zero dev-* additions; kraitebot/core, step-dispatcher, laravel-helpers untouched. Full suite green post-bump (2338 passed, 7471 assertions).
+
+### Housekeeping
+
+- [FIXED] **Retro tag `kraitebot/core v1.51.1` created** — the 1.51.1 release (2026-06-01) shipped with a CHANGELOG entry and a lock-pin commit but the tag itself was never pushed; the sequence jumped v1.51.0 → v1.51.2. Tagged on the original release commit so history matches the CHANGELOG.
+- [IMPROVED] **Docs reconciled to live pheme wiring** — per-app Horizon supervisors (admin / console / kraite), `QUEUE_CONNECTION=redis` everywhere, latent default-queue gap + pending `REDIS_QUEUE=pheme-web` fix captured in deploy-notes entry 68; stale queue counts and the obsolete deferred-Horizon posture corrected across servers.json, system-overview, server-preparation, and the syntax site.
+
 ## 1.53.2 - 2026-06-02
 
 ### Fleet topology

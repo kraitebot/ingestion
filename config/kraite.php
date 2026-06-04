@@ -591,15 +591,16 @@ return [
                 'hemera' => ['processes' => 1],
             ],
             // Dedicated web host. nginx + php8.5-fpm serves admin /
-            // console / kraite.com / syntax. Single `pheme-web` queue
-            // for web-originated background jobs (notifications, mail,
-            // billing webhooks, etc.). NOT part of the StepRouter
+            // console / kraite.com / syntax. Single logical `web` queue
+            // (physical: `pheme-web` after the {hostname}-{logical}
+            // prefix) for web-originated background jobs (notifications,
+            // mail, billing webhooks, etc.). NOT part of the StepRouter
             // candidate pool — trading work is never dispatched here.
             // Per-hostname connectivity-probe queue retained as 1 proc
             // for symmetry with the rest of the fleet, even though
             // pheme doesn't make exchange API calls.
             'pheme' => [
-                'pheme-web' => ['processes' => 2],
+                'web' => ['processes' => 2],
                 'pheme' => ['processes' => 1],
             ],
             // Indicators + cronjobs worker. Isolated from eos/iris/nyx
