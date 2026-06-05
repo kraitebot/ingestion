@@ -78,7 +78,11 @@ fi
 
 # Reset to HEAD first to clean any dirty index state (staged changes from
 # prior composer update, migration cruft, etc.) that would block the checkout.
-su - $KRAITE_USER -c "cd $PROJECT_DIR && git reset --hard HEAD && git clean -fd"
+# db-backups/ is excluded from the clean — it holds the pre-deploy DB
+# snapshots (point-in-time rollback history); without the exclusion every
+# deploy wiped all previous backups, leaving only its own (caught 2026-06-05
+# during the v1.53.3 release).
+su - $KRAITE_USER -c "cd $PROJECT_DIR && git reset --hard HEAD && git clean -fd -e db-backups"
 su - $KRAITE_USER -c "cd $PROJECT_DIR && git fetch origin --tags"
 su - $KRAITE_USER -c "cd $PROJECT_DIR && git checkout $DEPLOY_TAG"
 

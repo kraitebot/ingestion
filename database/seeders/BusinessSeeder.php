@@ -16,10 +16,19 @@ final class BusinessSeeder extends Seeder
     {
         $this->seedSysadmin();
 
-        if (app()->environment(['local', 'testing'])) {
+        // Testing keeps the minimal fixture shape: Karine only.
+        if (app()->environment('testing')) {
             $this->seedKarineTrader();
 
             return;
+        }
+
+        // Local gets BOTH traders: Karine as the disabled smoke fixture,
+        // and Bruno's real Binance account so local trading smoke tests
+        // run against the same account shape production uses (gates stay
+        // closed until the operator flips them).
+        if (app()->environment('local')) {
+            $this->seedKarineTrader();
         }
 
         $this->seedBrunoNidavellirTrader();

@@ -48,3 +48,7 @@ backup-old-project
 # Local agent tooling (not tracked)
 .serena/
 .codex/
+
+# Pre-deploy DB snapshots on servers — point-in-time rollback history.
+# Ignored so deploy.sh's `git clean -fd` never wipes them (2026-06-05).
+db-backups/

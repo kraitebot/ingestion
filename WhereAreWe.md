@@ -46,16 +46,17 @@ Triggering changes since the last refresh (hemera onboarding,
   console doesn't load kraitebot/core, has no `HORIZON_ENV`, and runs
   its stock `production` block on the `default` queue (self-consistent).
   Pheme stays out of the StepRouter candidate pool, so trading work
-  never lands there. Latent gap: admin + kraite.com dispatch to their
-  `default` queue, which their Horizon doesn't consume —
-  `REDIS_QUEUE=pheme-web` pending (deploy-notes entry 68). All web
-  queues empty today; nothing rotting.
+  never lands there. The default-queue wiring gap was closed on
+  2026-06-05: `REDIS_QUEUE=pheme-web` on admin + kraite.com, verified
+  dispatch ↔ consumption aligned (deploy-notes entry 68).
 - **Logical queue rename `pheme-web` → `web` (2026-06-04)** — the old
   logical name double-prefixed through `{hostname}-{logical}` to
   physical `pheme-pheme-web`. Renamed in ingestion `config/kraite.php`
   + core package config so the physical queue is `pheme-web` — the
-  name every doc already used. Ships with the next core tag + deploy;
-  pheme's Horizons subscribe to the old physical name until then.
+  name every doc already used. Shipped as core v1.51.3 / ingestion
+  v1.53.3 (released + deployed fleet-wide 2026-06-05); pheme pulled
+  the new core the same day and all three per-app Horizons restarted
+  onto the new physical name.
 
 ## Docs updated
 
@@ -144,25 +145,32 @@ Review-fix pass additions (2026-06-04):
 
 ## Pending items
 
-- **Tag + deploy the `web` logical-queue rename.** Core package config
-  + ingestion config both renamed; pheme's per-app Horizons keep
-  subscribing to `pheme-pheme-web` until their checkouts pull the new
-  core and restart.
-- **`REDIS_QUEUE=pheme-web` on admin + kraite.com (pheme).** Closes the
-  latent default-queue gap once the rename is deployed. Prod `.env`
-  edit + horizon restart — needs explicit approval.
-- **kraite.com Redis namespace decision.** `APP_NAME=Kraite` + no
-  `REDIS_PREFIX` = shares the trading fleet's queue/cache namespace.
-  Decide whether it gets its own prefix before it ever dispatches jobs.
-- **Full hardening per `~/Herd/.credentials/kraite/hardening.json`.**
-  Carried over from the hemera session: auditd, rkhunter, aide, lynis
-  85+ audit, umask 027 baseline verification, password aging — not yet
-  applied fleet-wide (hemera included). Separate workstream.
-- **Bybit account for `bruno@nidavellir.trade`.** Carried over: local
-  `.env.traders` has `TRADER_BB_*` credentials but the seeder only
-  creates the Binance account (Bruno's "Binance only" decision). If
-  Bybit comes back, add a sibling Account row in
-  `BusinessSeeder::seedBrunoNidavellirTrader()`.
+- **SHIP BEFORE PROD GO-LIVE: step-dispatcher + core fixes from the
+  2026-06-05 live smoke test.** Two trading-blocking bugs found and
+  fixed locally, both dormant-but-present on prod (deploy-notes
+  entries 69-70): (1) StepObserver clobbered router-resolved queues on
+  priority='high' steps — closes stranded on a consumer-less queue;
+  (2) dispatch-daemon idle gate read only the default-prefix local
+  flag file — trading ladders crawled at one hop per minute. Needs
+  step-dispatcher tag (v1.13.3), core tag (v1.51.4), ingestion release
+  + fleet deploy. Smoke test itself PASSED end-to-end after the fixes:
+  open → fills → TP → close → rung cancellation, 0 failed steps,
+  index hops 1-4s.
+- ~~kraite.com Redis namespace decision~~ — **decided 2026-06-05: keep
+  shared** (Bruno). Rationale + revisit triggers recorded in
+  deploy-notes entry 68.
+- **Detection-tier hardening — decided 2026-06-05: deferred** (Bruno).
+  Prevention baseline (SSH lockdown, UFW, fail2ban, private-net DB)
+  stays as is; the detection tier (auditd, rkhunter, AIDE, lynis 85+,
+  password aging) is parked until multi-user go-live raises the
+  stakes. Revisit trigger: go-live preparation sprint.
+- **Bybit — confirmed 2026-06-05: Binance-only stands** (Bruno). The
+  pointer stays as a map reference: if Bybit ever returns, add a
+  sibling Account row in `BusinessSeeder::seedBrunoNidavellirTrader()`.
+  (Correction: `TRADER_BB_*` in the vault is Bruno's BINANCE key pair —
+  the config maps it to `bruno_nidavellir.binance_api_*`. No Bybit
+  credentials exist in the vault today; Bitget is `TRADER_BG_*`,
+  KuCoin `TRADER_KC_*`.)
 
 ## Next session pointers
 

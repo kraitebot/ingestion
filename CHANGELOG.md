@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.4 - 2026-06-05
+
+### Trading-path bug fixes (first live smoke test)
+
+- [FIXED] **Pin `brunocfalcao/step-dispatcher 1.13.3` — StepObserver no longer clobbers router-resolved queues on `priority='high'` steps.** Every high-priority workflow (closes, corrections, recover-stale promotions) was being pushed to the consumer-less logical `priority` queue since the v1.53.0 naming flip; closes stranded with live limit rungs left on the exchange. Auto-route now fires at creation only.
+- [FIXED] **Pin `kraitebot/core 1.51.4` — dispatch daemon idle gate reads per-prefix DB truth, not the default-prefix flag file.** Trading ladders crawled at one index hop per minute (flag-starvation, woken only by the next minute-cron); a full open took ~6 minutes. Verified post-fix: hops 1-4s, full open ~30s.
+- Both bugs are present-but-dormant on prod (`can_trade=0`) — this release ships the fixes ahead of go-live. Full forensics in deploy-notes entries 69-70.
+
+### Operations
+
+- [FIXED] **`deploy.sh` no longer wipes `db-backups/` on every deploy.** `git clean -fd` now excludes the directory (`-e db-backups`) and `db-backups/` is gitignored — pre-deploy snapshots accumulate as point-in-time rollback history instead of being destroyed by the next release. Tonight's snapshot was also archived to `/home/athena/db-backups-archive/` to cover the transitional deploy that still runs the old script pre-checkout.
+
 ## 1.53.3 - 2026-06-05
 
 ### Fleet topology
