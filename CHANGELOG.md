@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.8 - 2026-06-06
+
+### Bug fixes
+
+- [FIXED] **`config/services.php` Resend key read the wrong env var.** Mapped `resend.key` to `env('RESEND_KEY')` while every `.env` uses `RESEND_API_KEY` (the `resend-laravel` convention) — so `config('services.resend.key')` was always null and mail threw `Resend::client(): $apiKey null given`. Now `env('RESEND_API_KEY')`. (admin/console/kraite.com already had the correct mapping; only ingestion carried the typo.) Patched live across the fleet on 2026-06-06; this commits it so a future deploy can't revert it. Full Resend wiring write-up in deploy-notes entry 71.
+
 ## 1.53.7 - 2026-06-06
 
 ### Bug fixes
