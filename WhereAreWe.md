@@ -1,183 +1,114 @@
-# WhereAreWe — 2026-06-04 (docs refresh + review fixes, post-v1.53.2)
+# WhereAreWe — 2026-06-06 (localhost real-money test → dual-system cross-fire + close-path bug)
 
 ## Date
 
-2026-06-04
+2026-06-06
 
 ## Session summary
 
-Documentation refresh (2026-06-02) — reconciled the functional docs in
-`~/Herd/docs/kraite/` and the syntax docs site at
-`~/Code/syntax.kraite.test/` against the v1.53.x series and the
-pheme web-host split.
+Attempted a localhost 3-long / 3-short real-money test on Binance **mainnet**
+(local account 2 = Bruno Falcao). The test exposed two real issues — one
+environmental, one a genuine code bug — both now understood, one fixed.
 
-Review-fix pass (2026-06-04) — an xhigh code review of the docs refresh
-surfaced 12 findings; all were fixed: logical queue `pheme-web` renamed
-to `web` (double-prefix bug), local `servers` row for pheme seeded,
-retro tag `core v1.51.1` created, prod pheme wiring verified live over
-SSH (claims below corrected to match), stale doc fragments repaired,
-syntax repo committed, test suite re-run after the composer.lock bump.
+Key reminder learned this session: **localhost is NOT a sandbox.** The Binance
+connector points at `https://fapi.binance.com` and the local accounts carry
+real keys. Opening positions locally places real-money orders, identical to
+prod. There is no testnet path in this codebase.
 
-Triggering changes since the last refresh (hemera onboarding,
-2026-05-30):
+## What happened
 
-- **v1.52.0** — hemera joined the trading pool (already covered by the
-  previous WhereAreWe snapshot).
-- **v1.53.0** — queue convention flipped to `{hostname}-{logical}`,
-  env-aware StepRouter candidate pool, `deploy.sh` daemon-restart step.
-- **v1.53.1** — tyche capacity bump: `indicators` 10→20, `cronjobs`
-  3→20, `tyche` 1→5; tyche subscribed to the `priority` lane (5 procs)
-  so stale tyche-bound steps promoted by
-  `steps:recover-stale --recover-dispatched` can land back home instead
-  of leaking 100% to trading workers.
-- **v1.53.2** — changelog tag.
-- **kraitebot/core v1.51.1 / v1.51.2** — `kraite.fleet.servers.pheme`
-  added (web role split off athena) + full `kraite.horizon.workers`
-  map including pheme. (v1.51.1 retro-tagged 2026-06-04: the release
-  shipped 2026-06-01 with a CHANGELOG entry + ingestion lock pin
-  `429e02a`, but the tag was never created — sequence jumped
-  v1.51.0 → v1.51.2.)
-- **Pheme horizon block (ingestion `4e73af6`)** — web pool (2 procs)
-  + `pheme` probe queue (1 proc) added to `config/kraite.php`.
-  Verified live on pheme 2026-06-04: all three web apps run
-  `QUEUE_CONNECTION=redis` with PER-APP Horizon supervisors
-  (`kraite-horizon-admin` / `-console` / `-kraite`), each under its
-  own Redis prefix. Admin + kraite.com resolve `HORIZON_ENV=pheme`;
-  console doesn't load kraitebot/core, has no `HORIZON_ENV`, and runs
-  its stock `production` block on the `default` queue (self-consistent).
-  Pheme stays out of the StepRouter candidate pool, so trading work
-  never lands there. The default-queue wiring gap was closed on
-  2026-06-05: `REDIS_QUEUE=pheme-web` on admin + kraite.com, verified
-  dispatch ↔ consumption aligned (deploy-notes entry 68).
-- **Logical queue rename `pheme-web` → `web` (2026-06-04)** — the old
-  logical name double-prefixed through `{hostname}-{logical}` to
-  physical `pheme-pheme-web`. Renamed in ingestion `config/kraite.php`
-  + core package config so the physical queue is `pheme-web` — the
-  name every doc already used. Shipped as core v1.51.3 / ingestion
-  v1.53.3 (released + deployed fleet-wide 2026-06-05); pheme pulled
-  the new core the same day and all three per-app Horizons restarted
-  onto the new physical name.
+1. Enabled local account 2, kicked `kraite:cron-create-positions`.
+2. Market was fully bearish — all 35 tradeable Binance symbols concluded
+   `direction=SHORT`, **zero LONG candidates**. So only the 3 short slots
+   could fill.
+3. First batch opened cleanly on Binance (pos RUNE / SOL / LINK — real
+   exchange order IDs, market filled + DCA ladder + SL + TP).
+4. ~90s later the positions were **closed and a fresh batch re-opened** —
+   real-fee churn. Investigated.
 
-## Docs updated
+## Root causes
 
-- `~/Herd/docs/kraite/00-context/server-preparation.md` — Horizon
-  topology table now includes pheme column + `pheme-web` row, tyche
-  numbers corrected (indicators 20, cronjobs 20, priority 5, tyche 5),
-  fleet-wide total recomputed (88 → 127 procs ≈ 254 sustained
-  hyperion-side connections), tyche priority-leak rationale inlined,
-  pheme-web pool documented.
-- `~/Herd/docs/kraite/00-context/system-overview.md` — pheme row in the
-  hostname matrix updated (HORIZON_ENV=pheme, pheme-web pool 2 procs),
-  queue-and-worker layout table now carries pheme column.
-- `~/Code/syntax.kraite.test/src/app/docs/subsystems/horizon-queues/page.md`
-  — “seven boxes” framing, eight-queue list (added `pheme-web`),
-  per-server table refreshed, fleet process total recomputed, callout
-  added for the priority-lane leak and the tracked
-  `priority-trading`/`priority-cron` split.
-- `~/Code/syntax.kraite.test/src/app/docs/servers/tyche/page.md` —
-  Process counts updated (20/20/5/5), capacity-bump rationale (v1.53.1)
-  noted, dedicated `Why tyche subscribes to priority` callout added.
-- `~/Code/syntax.kraite.test/src/app/docs/servers/pheme/page.md` —
-  Flipped the “No Horizon (deferred)” framing to reflect the live
-  `pheme` supervisor; pheme-web and pheme pools documented.
-- `~/Code/syntax.kraite.test/out/` — rebuilt via `npm run build`.
-  Smoke-checked: horizon-queues, tyche, pheme all return 200 from
-  https://syntax.kraite.test/. Committed in the syntax repo on
-  2026-06-04 (was sitting uncommitted in the working tree).
+### 1. BSCS BlackSwan cooldown (expected gate, not a bug)
+`canOpenPositions()` was returning false because `kraite.bscs_cooldown_until`
+was in the future (BlackSwan regime gate). Opens were parked fleet-wide.
+Forced through with an operator override (`bscs_override_until` on the local
+Kraite singleton, +2h). That override expires ~23:19 tonight.
 
-Review-fix pass additions (2026-06-04):
+### 2. Dual-system cross-fire (THE churn cause — environmental, fixed)
+Prod (athena fleet) and localhost run the **same Binance API keys** (Bruno
+Falcao exists in both the prod hyperion DB and the local DB). Binance
+broadcasts every order/position event to **both** user-data WS listeners.
 
-- `~/Herd/.credentials/kraite/servers.json` — pheme services list now
-  carries the three per-app Horizon supervisors; pheme notes rewritten
-  for the live redis/per-app posture (deferred/sync note was stale);
-  stale queue counts fixed (eos/iris → 5/8/3/1, tyche → 20/20/5/5).
-- `~/Herd/.credentials/kraite/deploy-notes.md` — "Horizon for pheme-web
-  is deferred" section rewritten to the live per-app model; entry 68
-  added (double-prefix rename, latent default-queue gap, kraite.com
-  Redis-namespace sharing, local servers-row drift, retro tag).
-- `~/Herd/docs/kraite/00-context/system-overview.md` — Applications
-  table corrected (admin / kraite.com / syntax now hosted on pheme, not
-  athena; console row added), pheme fleet row rewritten for per-app
-  Horizons, queue-table row relabelled ``web (physical `pheme-web`)``,
-  latent-gap paragraph added.
-- `~/Herd/docs/kraite/00-context/server-preparation.md` — stray
-  "respawn all 88 workers" corrected to 127 (missed in the 06-02 pass).
+- Prod's orphan watchdog (`CheckSystemHealthCommand` → `OrphanReconciler`,
+  scheduled `cron-check-system-health`) saw local's orders/positions as
+  orphans (absent from prod's DB) and **cancelled/closed them**.
+- Local then saw those cancels (order-gone events) and its
+  `PreparePositionReplacementJob` reacted — close + reopen. That was the churn.
 
-## Docs NOT touched
+**Fix applied (prod hyperion DB, account 1 Bruno Falcao only):**
+set `allow_other_orders=true` + `allow_other_positions=true`. With both true,
+`OrphanReconciler` cancels only orders matched to prod's *own* recently-closed
+positions and ignores unknown positions — so prod no longer touches anything
+local opens. Effective next watchdog tick (flags read from the DB row each run,
+no restart needed). Local accounts keep `allow_other_*` = false (strict
+self-management — local's own orders are never orphans to it).
 
-- `~/Herd/.credentials/kraite/hardening.json` — no hardening change in
-  this cycle.
-- Lifecycle / domain chapters on the syntax site — v1.53.x changes are
-  infrastructure-shape only; position / order / token lifecycles are
-  unchanged.
-- Dynamic-command library files — no behaviour changes since the
-  `kraite-tag` / `kraite-update-docs` / `kraite-profile` family already
-  cover the pheme profile and the `{hostname}-{logical}` queue
-  convention.
+User-data path verified benign on prod: `maybeDetectManualPositionClose`
+requires a reduce-only/close FILL + an order not local + prod owning an active
+position on that symbol — none true for local's tokens, so it no-ops.
 
-## Current state
+### 3. `Array to string conversion` in `ClosePositionAtomicallyJob` (real bug — FIXED locally)
+The pump-cooldown block (runs *before* the actual `apiClose()`) read
+`$dailyIndicator->data['close']` expecting a scalar. The 1d indicator is the
+TAAPI **`candle`** indicator (`indicator_id=2`, construct
+`binancefutures_<sym>_1d_candle_2_0`, **results=2**), which returns OHLCV as
+arrays ordered oldest→newest (TAAPI: "most recent value returned last"). So
+`data['close']` is e.g. `[9.053, 8.848]` — `(string)` on the array threw, the
+close failed, and the position was left `failed` with its TP/SL already
+cancelled (naked-ish).
 
-- Fleet: 8 boxes online (hyperion + athena + eos + iris + nyx + hemera +
-  tyche + pheme).
-- Latest tags: `ingestion v1.53.2`, `kraitebot/core v1.51.2` (plus the
-  retro `v1.51.1`).
-- Horizon pools live on athena, eos, iris, nyx, hemera, tyche, pheme
-  (pheme = three per-app instances, not one ingestion-checkout pool).
-- Total Horizon procs: 127 fleet-wide; ~254 sustained hyperion-side
-  connections against `max_connections=256`. **Risk: 2-connection
-  headroom.** One tinker session + one mysqldump can exhaust the pool
-  fleet-wide. Raise `max_connections` (or trim pools) before the next
-  capacity bump.
-- Uncommitted in this repo: composer.lock minor/patch bumps (15
-  packages, constraint chain verified internally consistent, zero
-  dev-* additions, core/step-dispatcher/helpers untouched) + the
-  `web` logical-queue rename in `config/kraite.php`. Test suite re-run
-  after the bump: 2164 passed, 4 todos, 0 failures (`composer
-  test:unit`, kraite_tests DB).
-- Local `servers` table re-seeded via `KraiteSeeder::seedServers()` —
-  pheme row was missing and the drift gate failed locally. Prod table
-  verified complete over SSH.
-- Known imperfection: `priority` queue resolver randomly picks among
-  5 supervisors (4 trading + tyche), so a tyche-bound stale step
-  promoted via `steps:recover-stale --recover-dispatched` still leaks
-  to a trading worker 4/5 of the time. Tracked follow-up:
-  `priority-trading` vs `priority-cron` per-category split.
+Fix: normalize `data['close']` to the **most recent** value (last array
+element) before the numeric comparison, handling both array (results≥2) and
+scalar (single-result) shapes. `php -l` clean, `pint` passed. **LOCAL
+`kraitebot/core` path repo only — prod core has NOT received this yet.**
 
-## Pending items
+## Current state (EOD 2026-06-06)
 
-- **SHIP BEFORE PROD GO-LIVE: step-dispatcher + core fixes from the
-  2026-06-05 live smoke test.** Two trading-blocking bugs found and
-  fixed locally, both dormant-but-present on prod (deploy-notes
-  entries 69-70): (1) StepObserver clobbered router-resolved queues on
-  priority='high' steps — closes stranded on a consumer-less queue;
-  (2) dispatch-daemon idle gate read only the default-prefix local
-  flag file — trading ladders crawled at one hop per minute. Needs
-  step-dispatcher tag (v1.13.3), core tag (v1.51.4), ingestion release
-  + fleet deploy. Smoke test itself PASSED end-to-end after the fixes:
-  open → fills → TP → close → rung cancellation, 0 failed steps,
-  index hops 1-4s.
-- ~~kraite.com Redis namespace decision~~ — **decided 2026-06-05: keep
-  shared** (Bruno). Rationale + revisit triggers recorded in
-  deploy-notes entry 68.
-- **Detection-tier hardening — decided 2026-06-05: deferred** (Bruno).
-  Prevention baseline (SSH lockdown, UFW, fail2ban, private-net DB)
-  stays as is; the detection tier (auditd, rkhunter, AIDE, lynis 85+,
-  password aging) is parked until multi-user go-live raises the
-  stakes. Revisit trigger: go-live preparation sprint.
-- **Bybit — confirmed 2026-06-05: Binance-only stands** (Bruno). The
-  pointer stays as a map reference: if Bybit ever returns, add a
-  sibling Account row in `BusinessSeeder::seedBrunoNidavellirTrader()`.
-  (Correction: `TRADER_BB_*` in the vault is Bruno's BINANCE key pair —
-  the config maps it to `bruno_nidavellir.binance_api_*`. No Bybit
-  credentials exist in the vault today; Bitget is `TRADER_BG_*`,
-  KuCoin `TRADER_KC_*`.)
+- **Local:** both accounts disabled (`can_trade=false`, `is_active=false`,
+  reason "EOD stop - resume tomorrow"). Horizon restarted (PID rolled —
+  loaded the close fix). `dispatch-daemon`, `stream-binance-prices`,
+  `stream-binance-user-data` all running. Local `steps` / `trading_steps` /
+  `positions` / `orders` / `model_logs` / `api_request_logs` were truncated
+  mid-session (clean slate). Local BSCS override expires ~23:19.
+- **Prod:** account 1 Bruno Falcao `can_trade=false`, `is_active=true`,
+  `allow_other_orders=true`, `allow_other_positions=true`, sign filter
+  (`require_matching_correlation_sign`) = true on athena+tyche. Not trading.
+  Earlier test config already reverted (TP 0.360, SL 3%, margin 5/5, max 3/3,
+  BAS+FLOKI tlo 4 / gaps 8.5–9.5).
+- **Uncommitted (local, NOT pushed/deployed):** the `ClosePositionAtomicallyJob`
+  close-path fix (core). Plus the still-open `composer.lock` bump + `web`
+  logical-queue rename from the 06-04 session.
 
-## Next session pointers
+## Pending / tomorrow
 
-- If/when the `priority-trading` / `priority-cron` split lands, refresh
-  the same three syntax chapters (`horizon-queues`, `tyche`, `eos-iris`)
-  and the two functional docs (`server-preparation`, `system-overview`)
-  to drop the leak callout.
-- If the pheme queue wiring changes (REDIS_QUEUE fix, console
-  HORIZON_ENV, kraite.com prefix), update the pheme server chapter and
-  deploy-notes entry 68 accordingly.
+- **Resume the localhost 3L/3S test:** re-enable local account 2, kick
+  create-positions, watch the full open lifecycle now that the cross-fire and
+  the close bug are addressed. Verify a clean close (no array-to-string).
+- **0-LONG market:** likely still bearish tomorrow. Decide shorts-only vs
+  force-flipping a few symbols' `direction` to LONG for a balanced run.
+- **DEPLOY the close fix to prod:** `ClosePositionAtomicallyJob` array-close
+  bug breaks prod closes whenever a symbol's 1d candle `close` is an array —
+  needs a core tag + fleet deploy before prod relies on it.
+- **Still pending from 06-04/06-05 (unchanged):** ship step-dispatcher
+  v1.13.3 + core v1.51.4 (StepObserver queue clobber + dispatch-daemon
+  idle-gate) before prod go-live (deploy-notes 69-70); commit composer.lock
+  bump + `web` queue rename.
+
+## Notes for next session
+
+- The dual-system rule: **never run prod + localhost against the same Binance
+  keys without `allow_other_*`=true on the passive side.** Prod is now set;
+  if a third environment ever shares the keys, it needs the same treatment.
+- The `bscs_override_until` lever forces opens through a BlackSwan cooldown —
+  remember it's a real-money risk assertion, and it expires (re-set if a test
+  spans past the window).

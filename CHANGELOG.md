@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.11 - 2026-06-06
+
+### Bug fixes
+
+- [FIXED] **Pin `kraitebot/core 1.51.10`** — `ClosePositionAtomicallyJob` pump-cooldown check cast the 1d TAAPI `candle` close to string, but that indicator is queried with `results=2`, so `data['close']` is an oldest→newest array (e.g. `[9.053, 8.848]`). The cast threw `Array to string conversion` *before* `apiClose()` ran, leaving the position `failed` with its TP/SL already cancelled (naked). Now normalized to the most recent (last) array element; scalar single-result responses handled too. Surfaced during the localhost real-money test while investigating the prod↔localhost shared-key cross-fire. See core changelog.
+
 ## 1.53.10 - 2026-06-06
 
 ### Bug fixes
