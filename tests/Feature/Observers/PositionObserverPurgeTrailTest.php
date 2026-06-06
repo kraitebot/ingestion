@@ -85,3 +85,25 @@ it('does NOT fire on flips between non-terminal statuses (active → closing →
 
     expect(purgeTrailStepsForPosition($position->id))->toHaveCount(0);
 });
+
+it('does NOT fire the purge on closed when a trail retention window is configured', function (): void {
+    config()->set('kraite.positions.trail_retention_hours', 24);
+
+    $position = Position::factory()->long()->create(['status' => 'closing']);
+
+    $position->update(['status' => 'closed']);
+
+    // Deferred-retention mode: the kraite:cron-purge-position-trails
+    // sweeper owns the purge once closed_at ages past the window.
+    expect(purgeTrailStepsForPosition($position->id))->toHaveCount(0);
+});
+
+it('fires the purge on closed when retention is explicitly zero', function (): void {
+    config()->set('kraite.positions.trail_retention_hours', 0);
+
+    $position = Position::factory()->long()->create(['status' => 'closing']);
+
+    $position->update(['status' => 'closed']);
+
+    expect(purgeTrailStepsForPosition($position->id))->toHaveCount(1);
+});

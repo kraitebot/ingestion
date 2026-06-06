@@ -255,6 +255,16 @@ if (! $isCoolingDown()) {
     Schedule::command('kraite:purge-candles')
         ->dailyAt('03:00');
 
+    // Sweep breadcrumb trails of positions whose clean close has aged past
+    // the configured retention window (kraite.positions.trail_retention_hours).
+    // With retention 0 the PositionObserver purges on close and this sweep
+    // finds nothing — it only carries the deferred-retention mode, where the
+    // trail must survive long enough for the every-3-hours DB backup
+    // (cron 7 */3) to capture it before reclamation. Slotted before the
+    // 03:30 generic log purges.
+    Schedule::command('kraite:cron-purge-position-trails')
+        ->dailyAt('03:20');
+
     // Purge candles for ExchangeSymbols whose backtest review was rejected.
     // Runs hourly so a fresh reject quickly drops dead candle weight.
     Schedule::command('kraite:cron-purge-failed-backtested-klines')

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.5 - 2026-06-06
+
+### Features
+
+- [NEW FEATURE] **Deferred position-trail retention.** Pins `kraitebot/core 1.51.5`: configurable `kraite.positions.trail_retention_hours` (default 0 = purge-on-close, production intent 24) + the `kraite:cron-purge-position-trails` sweeper. Scheduled daily at 03:20 — after the every-3-hours DB backups have captured the trail, before the 03:30 generic log purges. Config copy + schedule entry + 8 tests (6 sweeper contract, 2 observer retention gate) in this project.
+
 ## 1.53.4 - 2026-06-05
 
 ### Trading-path bug fixes (first live smoke test)
