@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.10 - 2026-06-06
+
+### Bug fixes
+
+- [CHANGED] **Pin `kraitebot/core 1.51.9`** — position-mode auto-flip oscillation fix. Concurrent -4061s from a simultaneous LONG+SHORT open flipped `on_hedge_mode` twice (net-zero) and stuck the account on the wrong mode; the cooldown re-check now lives inside the row lock. Surfaced + fixed during the first live go-live. See core changelog + deploy-notes entry 73. Regression test added (`PositionModeAutoFlipTest`).
+
 ## 1.53.9 - 2026-06-06
 
 ### Bug fixes

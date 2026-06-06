@@ -221,3 +221,37 @@ it('does NOT flip on an unrelated RequestException (-2015 IP not whitelisted)', 
         .'Other RequestExceptions must not poison the flag.'
     );
 });
+
+it('does NOT flip again while the cooldown is active — oscillation guard', function (): void {
+    // Regression for the 2026-06-06 go-live incident: a LONG and a SHORT
+    // order opened on two workers, both hit -4061 in the same second, both
+    // passed the cooldown check (which was OUTSIDE the row lock) and flipped
+    // on_hedge_mode 0→1→0 — netting back to the wrong mode against a
+    // hedge-mode exchange, so every order kept failing. The cooldown re-check
+    // now lives INSIDE the lock, so once one flip stamps the cooldown, any
+    // concurrent/subsequent -4061 within the window no-ops instead of
+    // inverting the value the first flip just set.
+    $account = buildOneWayAccount();
+    expect($account->on_hedge_mode)->toBeFalse();
+
+    // Simulate "a flip already happened this window" by stamping the cooldown
+    // the handler keys on.
+    Illuminate\Support\Facades\Cache::put("position_mode_auto_flip:cooldown:{$account->id}", true, 600);
+
+    $step = StepTester::createSteps([
+        ['arguments' => [
+            'accountId' => $account->id,
+            'throw_exception_stub' => 'binancePositionSideMismatch',
+        ]],
+    ], TestBinanceApiableJob::class)[0];
+
+    StepTester::withSteps([$step])
+        ->withStatusMatrix([1 => [$step->id => 'pending']])
+        ->withLabel('position_mode_cooldown_no_oscillation')
+        ->test();
+
+    expect($account->fresh()->on_hedge_mode)->toBeFalse(
+        'With the cooldown active, a second -4061 must NOT flip the flag — '
+        .'otherwise concurrent sibling failures oscillate it back to the wrong mode.'
+    );
+});
