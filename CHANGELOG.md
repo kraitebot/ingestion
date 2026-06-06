@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.6 - 2026-06-06
+
+### Go-live preparation
+
+- [NEW FEATURE] **Pin `kraitebot/core 1.51.6` — `ProfitableTokensBacktestApprovalSeeder`.** 141 profitable tokens from the operator's 12-month Binance history, ready to backfill `was_backtesting_approved` on production (the approvals were lost in the 2026-05-31 `migrate:fresh`). Run explicitly via `db:seed --class` — not wired into any automatic seed path.
+
 ## 1.53.5 - 2026-06-06
 
 ### Features

@@ -1659,7 +1659,7 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/kraitebot/core",
-                "reference": "342c4c30181530638d15fbc70b34df972393cd5f"
+                "reference": "fac85df95b0daf29cac0f0dba667d23c2531638f"
             },
             "require": {
                 "angle/chrono": "^1.0",
