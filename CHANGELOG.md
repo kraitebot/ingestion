@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.7 - 2026-06-06
+
+### Bug fixes
+
+- [FIXED] **Trader Pushover channel never delivered.** `BusinessSeeder::seedBrunoNidavellirTrader()` listed the Pushover channel but never set `pushover_key` (the key was in `.env.traders` as `TRADER_BB_PUSHOVER_KEY`, just unmapped), and wrote the bare string `'pushover'` into `notification_channels` instead of `PushoverChannel::class` — which `AlertNotification::via()` hands verbatim to Laravel's channel manager, so it never resolved. Every notification threw a swallowed TypeError on the Pushover channel (mail still delivered). Fixed the seeder + added `pushover_key` to `config/kraite-ingestion.php`; live trader rows backfilled on prod + local.
+- [CHANGED] **Pin `kraitebot/core 1.51.7`** — `position_opening_failed` throttle now per-account/1h (see core changelog). Live `notifications` row updated on prod + local.
+
 ## 1.53.6 - 2026-06-06
 
 ### Go-live preparation

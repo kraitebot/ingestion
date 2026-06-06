@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\User;
+use NotificationChannels\Pushover\PushoverChannel;
 
 final class BusinessSeeder extends Seeder
 {
@@ -108,7 +109,11 @@ final class BusinessSeeder extends Seeder
                 'status' => 'active',
                 'is_active' => true,
                 'is_admin' => false,
-                'notification_channels' => ['mail', 'pushover'],
+                // Full channel class — AlertNotification::via() returns this
+                // array verbatim to Laravel's channel manager, which resolves
+                // class names, not the bare string 'pushover'.
+                'notification_channels' => ['mail', PushoverChannel::class],
+                'pushover_key' => config('kraite-ingestion.bruno_nidavellir.pushover_key'),
             ]
         );
 

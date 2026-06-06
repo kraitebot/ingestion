@@ -31,5 +31,6 @@ return [
     'bruno_nidavellir' => [
         'binance_api_key' => env('TRADER_BB_BINANCE_API_KEY'),
         'binance_api_secret' => env('TRADER_BB_BINANCE_API_SECRET'),
+        'pushover_key' => env('TRADER_BB_PUSHOVER_KEY'),
     ],
 ];
