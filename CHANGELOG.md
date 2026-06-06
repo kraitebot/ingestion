@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.53.9 - 2026-06-06
+
+### Bug fixes
+
+- [CHANGED] **Pin `kraitebot/core 1.51.8`** — per-IP notification subjects now embed the IP so mail providers stop deduping the rotation alerts (one email per banned worker arrives). Surfaced during live rotation testing: 4 workers banned, 4 alerts fired, only 2 reached the inbox due to identical subjects. See core changelog + deploy-notes entry 72.
+
 ## 1.53.8 - 2026-06-06
 
 ### Bug fixes
