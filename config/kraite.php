@@ -42,8 +42,6 @@ return [
     | notifications_enabled:       If false, no notifications will be sent (useful for testing).
     */
     'slow_query_threshold_ms' => env('SLOW_QUERY_THRESHOLD_MS', 45000),
-    'can_trade' => env('CAN_TRADE', false),
-    'can_open_positions' => env('CAN_OPEN_POSITIONS', false),
     'notifications_enabled' => env('NOTIFICATIONS_ENABLED', true),
 
     'positions' => [
@@ -562,12 +560,19 @@ return [
                 'user-data-stream' => ['processes' => 1],
                 'local' => ['processes' => 1],
             ],
-            // Ingestion + web box. Only consumes the user-data-stream
-            // queue (5 procs match the per-Binance-account WS daemon
-            // fan) plus its own per-hostname queue used for connectivity
-            // tests during account onboarding.
+            // Ingestion box (scheduler + dispatch-daemon + Binance WS
+            // daemons). Consumes user-data-stream (5 procs match the
+            // per-Binance-account WS daemon fan) plus its own per-hostname
+            // connectivity-probe queue. Also a SECOND indicators consumer:
+            // athena's public IP joins tyche's as a candidate for the
+            // kline/indicator lane, so StepRouter spreads the per-IP Bybit
+            // burst across two IPs (cuts retCode 10006) and can rotate the
+            // lane off a rate-limited tyche IP. Sized at 10 vs tyche's 20 to
+            // leave the scheduler + WS streams ample air on athena's 4
+            // cores. Web stack moved to pheme on 2026-06-01.
             'athena' => [
                 'user-data-stream' => ['processes' => 5],
+                'indicators' => ['processes' => 10],
                 'athena' => ['processes' => 1],
             ],
             // Trading workers — interchangeable Horizon consumers on

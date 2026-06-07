@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Carbon\CarbonImmutable;
+use Kraite\Core\Models\Account;
 use Kraite\Core\Models\Kraite as KraiteModel;
 use Kraite\Core\Trading\Kraite;
 
@@ -24,10 +25,11 @@ use Kraite\Core\Trading\Kraite;
  */
 function makeEngineForGate(): Kraite
 {
-    // Engine ctor requires an Account; the canOpenPositions guard
-    // doesn't read it (global gate). Bypass the ctor to keep the test
-    // focused on the guard contract.
-    return (new ReflectionClass(Kraite::class))->newInstanceWithoutConstructor();
+    // The canOpenPositions BSCS gate is now per-account (respect_bscs).
+    // A default account (respect_bscs=true) honours the global cooldown,
+    // so the global-gate contract below is unchanged — but the engine now
+    // needs a real account.
+    return Kraite::withAccount(Account::factory()->create());
 }
 
 function setKraiteForGateTest(bool $allowOpens, ?CarbonImmutable $cooldown = null, ?CarbonImmutable $override = null): KraiteModel

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.54.0 - 2026-06-07
+
+### Infrastructure
+
+- athena now consumes a secondary `indicators` Horizon pool (10 procs) in `kraite.horizon.workers`. Gives the kline/indicator lane a second outbound public IP so StepRouter spreads the per-IP Bybit kline burst (retCode 10006) across athena + tyche and can rotate the lane off a rate-limited IP. Sized below tyche's 20 to protect the scheduler + dispatch daemon.
+
+### Features
+
+- TDD coverage for the new kraitebot/core runtime configuration: account-config gates, kraite-singleton settings, notification cascade, per-account `respect_bscs`, and the dispatcher-group drain recheck.
+
+### Config
+
+- Removed the dead `CAN_TRADE` / `CAN_OPEN_POSITIONS` env keys.
+- Ships kraitebot/core v1.52.0.
+
 ## 1.53.11 - 2026-06-06
 
 ### Bug fixes
