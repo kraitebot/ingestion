@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.55.0 - 2026-06-08
+
+### Features
+
+- [NEW FEATURE] **Notification Threshold** (kraitebot/core 1.53.0) — opt-in escalation gate on top of the throttler; a flagged notification is only delivered once it recurs N times within a window, sub-threshold occurrences are recorded-not-sent. Inert by default. Feature coverage in `tests/Unit/Notifications/NotificationThresholdTest.php` (re-earn, window expiry, multi-count, no-threshold passthrough).
+- [NEW FEATURE] **Phase 3 — regime-scaled leverage + position-count ramps** (kraitebot/core 1.53.0); Critical BSCS is now absolute (respect_bscs + operator override removed). Open-time-only. TDD coverage shipped in 1.54.0's follow-up commit.
+
+### Bug fixes
+
+- [FIXED] **Group-progress watchdog no longer pages on throttle backpressure** (brunocfalcao/step-dispatcher 1.13.4) — `steps:recover-stale --watchdog-progress` now excludes `is_throttled` (rate-limit-waiting) steps from the "can't drain" tally, killing the chronic phantom `group_no_progress` alerts on athena's gamma/kappa/epsilon groups under TAAPI 429 saturation. Propagates fleet-wide with this deploy.
+
+### Config
+
+- [CONFIG] **TAAPI throttle tightened for headroom + pacing** — `TAAPI_THROTTLER_REQUESTS_PER_WINDOW` 75→65 and `TAAPI_THROTTLER_MIN_DELAY_MS` 50→200 on the indicator consumers (athena, tyche). Per-box `.env` (not in VCS); applied + Horizon-restarted out of band. Reduces the ~20% chronic 429 reject rate driven by the non-atomic shared window counter firing in unspaced bursts.
+- [CONFIG] **Prod-only DB backup gating** — `backup:run`/`clean`/`monitor` schedule wrapped in `app()->isProduction()` so localhost no longer pollutes the shared B2 bucket (shipped in 1.54.0's follow-up commit).
+
 ## 1.54.0 - 2026-06-07
 
 ### Infrastructure
