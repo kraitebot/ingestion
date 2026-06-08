@@ -78,7 +78,6 @@ beforeEach(function (): void {
 
     Kraite::find(1)->updateSaving([
         'bscs_cooldown_until' => null,
-        'bscs_override_until' => null,
         'bscs_score' => 20,
         'bscs_band' => 'calm',
         'bscs_synced_at' => now(),
@@ -168,32 +167,6 @@ it('silent no-op when a cooldown is already active (no double-arm, no double-not
     expect($result['action'])->toBe('cooldown_already_active')
         ->and($kraite->bscs_cooldown_until?->toIso8601String())
         ->toBe($existingCooldown->toIso8601String());
-});
-
-it('no-op when an operator override is active', function (): void {
-    Kraite::find(1)->updateSaving([
-        'bscs_override_until' => CarbonImmutable::now()->addHours(2),
-    ]);
-
-    seedReferenceCandlesFor($this->binance->id, ['BTC', 'ETH', 'SOL', 'BNB', 'XRP'],
-        function (string $token, int $i): float {
-            $base = match ($token) {
-                'BTC' => 50000.0, 'ETH' => 3000.0, 'SOL' => 100.0, 'BNB' => 600.0, 'XRP' => 0.5,
-            };
-            if ($token === 'BTC' && $i === 19) {
-                return $base * 0.96;
-            }
-
-            return $base;
-        }
-    );
-
-    $result = (new DetectMarketShockJob)->compute();
-
-    $kraite = Kraite::find(1)->refresh();
-
-    expect($result['action'])->toBe('noop_override_active')
-        ->and($kraite->bscs_cooldown_until)->toBeNull();
 });
 
 it('no-op when no rule fires on calm market data', function (): void {

@@ -34,7 +34,7 @@ use Kraite\Core\Support\MarketRegime\BlackSwanIndex;
  * Distinct from `ComputeMarketRegimeJob`. Compute writes the score
  * snapshot. Analyse acts on it.
  */
-function setBscsState(int $score, ?CarbonImmutable $cooldownUntil = null, ?CarbonImmutable $overrideUntil = null): void
+function setBscsState(int $score, ?CarbonImmutable $cooldownUntil = null): void
 {
     Kraite::find(1)->updateSaving([
         'bscs_score' => $score,
@@ -44,7 +44,6 @@ function setBscsState(int $score, ?CarbonImmutable $cooldownUntil = null, ?Carbo
         'bscs_block_threshold' => 80,
         'bscs_freshness_max_seconds' => 6900,
         'bscs_cooldown_until' => $cooldownUntil,
-        'bscs_override_until' => $overrideUntil,
     ]);
 }
 
@@ -137,24 +136,6 @@ it('no-ops when score is below threshold and no cooldown was active', function (
     $kraite = Kraite::find(1)->refresh();
 
     expect($result['action'])->toBe('noop_below_threshold')
-        ->and($kraite->bscs_cooldown_until)->toBeNull();
-});
-
-it('does not arm cooldown when an operator override is currently active', function (): void {
-    setBscsState(
-        score: 100,
-        overrideUntil: CarbonImmutable::now()->addHours(2),
-    );
-
-    $job = new AnalyseBscsJob;
-    $result = $job->compute();
-
-    $kraite = Kraite::find(1)->refresh();
-
-    // Operator says "I've manually assessed this is fine" — analyse
-    // respects the escape hatch and does NOT arm a cooldown that
-    // would just be ignored anyway. Saves a phantom notification.
-    expect($result['action'])->toBe('noop_override_active')
         ->and($kraite->bscs_cooldown_until)->toBeNull();
 });
 

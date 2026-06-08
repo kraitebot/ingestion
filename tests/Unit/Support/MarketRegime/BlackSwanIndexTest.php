@@ -12,18 +12,15 @@ use Kraite\Core\Support\MarketRegime\BlackSwanIndex;
  *
  *   - Admin dashboard widget — reads score, band, sub-state for display.
  *   - HasTradingGuards::canOpenPositions() — calls shouldBlockOpens() to
- *     decide if the global opens-gate is closed (system cooldown active
- *     OR an operator override forces opens through, depending on state).
+ *     decide if the global opens-gate is closed (system cooldown active).
  *
  * Resolution rule for `shouldBlockOpens()`:
  *
- *   if  bscs_override_until > now()  →  false  (operator escape hatch)
- *   elif bscs_cooldown_until > now() →  true   (system cooldown active)
- *   else                              →  false (no block)
+ *   if  bscs_cooldown_until > now() →  true   (system cooldown active)
+ *   else                            →  false  (no block)
  *
- * The override beats the cooldown so an operator can manually force
- * opens through during a system-set cooldown window if they decide the
- * regime is mis-reading the market.
+ * Critical is absolute — the operator override was removed in Phase 3, so
+ * an armed cooldown can no longer be bypassed by anyone.
  */
 function setKraiteBscs(array $attrs): void
 {
@@ -34,7 +31,6 @@ function setKraiteBscs(array $attrs): void
         'bscs_block_active' => false,
         'bscs_block_threshold' => 80,
         'bscs_freshness_max_seconds' => 6900,
-        'bscs_override_until' => null,
         'bscs_cooldown_until' => null,
     ], $attrs));
 }
@@ -79,35 +75,6 @@ it('shouldBlockOpens returns false when no cooldown is set', function (): void {
     expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeFalse();
 });
 
-it('operator override beats an active system cooldown', function (): void {
-    // Both timestamps in the future — override wins. Lets ops force
-    // opens through if they've manually assessed the market as safe
-    // despite the cooldown being on.
-    setKraiteBscs([
-        'bscs_score' => 80,
-        'bscs_band' => RegimeBand::Critical->value,
-        'bscs_cooldown_until' => now()->addHours(12),
-        'bscs_override_until' => now()->addHours(2),
-    ]);
-
-    $index = BlackSwanIndex::current();
-
-    expect($index->shouldBlockOpens())->toBeFalse()
-        ->and($index->isOverrideActive())->toBeTrue()
-        ->and($index->isCooldownActive())->toBeTrue();
-});
-
-it('expired override does not bypass an active cooldown', function (): void {
-    setKraiteBscs([
-        'bscs_score' => 80,
-        'bscs_band' => RegimeBand::Critical->value,
-        'bscs_cooldown_until' => now()->addHours(12),
-        'bscs_override_until' => now()->subHour(),
-    ]);
-
-    expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeTrue();
-});
-
 it('isStale reports true when synced_at is older than freshness_max_seconds', function (): void {
     setKraiteBscs([
         'bscs_synced_at' => now()->subSeconds(7200),  // 2h
@@ -142,7 +109,6 @@ it('toArray exposes a full payload for dashboards', function (): void {
         ->and($payload)->toHaveKey('band', 'critical')
         ->and($payload)->toHaveKey('should_block_opens', true)
         ->and($payload)->toHaveKey('cooldown_active', true)
-        ->and($payload)->toHaveKey('override_active', false)
         ->and($payload)->toHaveKey('is_stale', false);
 });
 

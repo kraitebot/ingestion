@@ -373,21 +373,30 @@ if (! $isCoolingDown()) {
     // vendor/). Cleanup chained immediately after — TieredStrategy
     // (hourly=3, daily=0, weekly=0) keeps a rolling window of the
     // latest 3 backups; the 4th run evicts the oldest.
-    Schedule::command('backup:run --only-db --disable-notifications')
-        ->cron('7 */3 * * *')
-        ->withoutOverlapping()
-        ->onOneServer()
-        ->then(function (): void {
-            Artisan::call('backup:clean', ['--disable-notifications' => true]);
-        });
+    // PRODUCTION ONLY. Every box in the fleet runs server_role=ingestion
+    // (including the local dev box, so the full pipeline can be exercised
+    // locally), so the server_role gate above does NOT separate dev from
+    // prod — APP_ENV does. Backups must never run off a dev box: localhost
+    // carries the same B2 credentials, and the keep-latest-3 cleanup would
+    // upload a local dump into the shared bucket and evict a real prod
+    // snapshot. Gate strictly on APP_ENV=production.
+    if (app()->isProduction()) {
+        Schedule::command('backup:run --only-db --disable-notifications')
+            ->cron('7 */3 * * *')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->then(function (): void {
+                Artisan::call('backup:clean', ['--disable-notifications' => true]);
+            });
 
-    // Backup-freshness watchdog every 6 hours. Fires
-    // `UnhealthyBackupWasFound` event when the newest B2 backup is
-    // older than the configured threshold or bucket usage exceeds
-    // configured cap. Bridge listener routes the event to the
-    // `system_health_alert` Pushover canonical.
-    Schedule::command('backup:monitor')
-        ->cron('15 */6 * * *')
-        ->withoutOverlapping()
-        ->onOneServer();
+        // Backup-freshness watchdog every 6 hours. Fires
+        // `UnhealthyBackupWasFound` event when the newest B2 backup is
+        // older than the configured threshold or bucket usage exceeds
+        // configured cap. Bridge listener routes the event to the
+        // `system_health_alert` Pushover canonical.
+        Schedule::command('backup:monitor')
+            ->cron('15 */6 * * *')
+            ->withoutOverlapping()
+            ->onOneServer();
+    }
 }

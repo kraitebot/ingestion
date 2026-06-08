@@ -8,42 +8,34 @@ use Kraite\Core\Models\Kraite as KraiteModel;
 use Kraite\Core\Trading\Kraite;
 
 /**
- * The BSCS cooldown is a global gate that flows through
+ * The BSCS cooldown is a global, ABSOLUTE gate that flows through
  * `HasTradingGuards::canOpenPositions()`. When BlackSwanIndex says
- * shouldBlockOpens=true, every direction-specific guard
- * (canOpenLongs / canOpenShorts) and the broader `canOpenNewPositions`
- * cascade through canOpenPositions and inherit the block.
+ * shouldBlockOpens=true (a Critical-armed cooldown in the future), every
+ * account is blocked. As of Phase 3 there is no per-account opt-out
+ * (`respect_bscs` removed) and no operator override (`bscs_override_until`
+ * removed) — Critical is un-overridable. canOpenLongs / canOpenShorts /
+ * canOpenNewPositions all cascade through canOpenPositions.
  *
  * Wiring contract:
- *
- *   1. allow_opening_positions=false  → false (existing behaviour, unchanged)
- *   2. cooldown_until in the future   → false (BSCS gate active)
- *   3. override_until in the future   → true  (operator escape hatch wins)
- *   4. cooldown_until in the past
- *      AND override_until null/past  → true  (no block, opens allowed)
- *   5. no kraite row at all           → false (existing edge case, unchanged)
+ *   1. allow_opening_positions=false  → false
+ *   2. cooldown_until in the future   → false (absolute, every account)
+ *   3. cooldown_until in the past     → true
  */
 function makeEngineForGate(): Kraite
 {
-    // The canOpenPositions BSCS gate is now per-account (respect_bscs).
-    // A default account (respect_bscs=true) honours the global cooldown,
-    // so the global-gate contract below is unchanged — but the engine now
-    // needs a real account.
     return Kraite::withAccount(Account::factory()->create());
 }
 
-function setKraiteForGateTest(bool $allowOpens, ?CarbonImmutable $cooldown = null, ?CarbonImmutable $override = null): KraiteModel
+function setKraiteForGateTest(bool $allowOpens, ?CarbonImmutable $cooldown = null): KraiteModel
 {
     $kraite = KraiteModel::find(1);
     $kraite->updateSaving([
         'allow_opening_positions' => $allowOpens,
         'bscs_cooldown_until' => $cooldown,
-        'bscs_override_until' => $override,
-        // Fresh synced_at so the 3-tier staleness model returns Fresh
-        // and shouldBlockOpens() doesn't bypass the cooldown via the
-        // StaleHard fail-open clause. The gate-specific cases here
-        // exercise cooldown semantics, not staleness — keep that
-        // orthogonal axis at its happy-path value.
+        // Fresh synced_at so the 3-tier staleness model returns Fresh and
+        // shouldBlockOpens() doesn't bypass the cooldown via the StaleHard
+        // fail-open clause. These cases exercise cooldown semantics, not
+        // staleness — keep that orthogonal axis at its happy-path value.
         'bscs_synced_at' => now(),
         'bscs_freshness_max_seconds' => 6900,
     ]);
@@ -58,10 +50,7 @@ it('allows opens when no BSCS cooldown is set', function (): void {
 });
 
 it('blocks opens when BSCS cooldown is in the future', function (): void {
-    setKraiteForGateTest(
-        allowOpens: true,
-        cooldown: CarbonImmutable::now()->addHours(20),
-    );
+    setKraiteForGateTest(allowOpens: true, cooldown: CarbonImmutable::now()->addHours(20));
 
     expect(makeEngineForGate()->canOpenPositions())->toBeFalse();
 });
@@ -72,21 +61,18 @@ it('still respects allow_opening_positions=false even without a cooldown', funct
     expect(makeEngineForGate()->canOpenPositions())->toBeFalse();
 });
 
-it('lets operator override bypass an active BSCS cooldown', function (): void {
-    setKraiteForGateTest(
-        allowOpens: true,
-        cooldown: CarbonImmutable::now()->addHours(20),
-        override: CarbonImmutable::now()->addHours(2),
-    );
+it('blocks every account during an active cooldown — no per-account opt-out, no override', function (): void {
+    setKraiteForGateTest(allowOpens: true, cooldown: CarbonImmutable::now()->addHours(20));
 
-    expect(makeEngineForGate()->canOpenPositions())->toBeTrue();
+    $a = Kraite::withAccount(Account::factory()->create());
+    $b = Kraite::withAccount(Account::factory()->create());
+
+    expect($a->canOpenPositions())->toBeFalse()
+        ->and($b->canOpenPositions())->toBeFalse();
 });
 
 it('opens resume once the BSCS cooldown timestamp is in the past', function (): void {
-    setKraiteForGateTest(
-        allowOpens: true,
-        cooldown: CarbonImmutable::now()->subHour(),
-    );
+    setKraiteForGateTest(allowOpens: true, cooldown: CarbonImmutable::now()->subHour());
 
     expect(makeEngineForGate()->canOpenPositions())->toBeTrue();
 });
