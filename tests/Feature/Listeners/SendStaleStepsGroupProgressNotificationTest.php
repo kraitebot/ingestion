@@ -8,6 +8,7 @@ use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Notification as NotificationModel;
 use Kraite\Core\Notifications\AlertNotification;
 use StepDispatcher\Events\StaleStepsDetected;
+use StepDispatcher\Support\RuntimeContext;
 
 beforeEach(function (): void {
     config(['kraite.notifications_enabled' => true]);
@@ -31,6 +32,12 @@ beforeEach(function (): void {
         ['canonical' => 'group_no_progress_detected'],
         NotificationModel::factory()->groupNoProgress()->raw()
     );
+});
+
+afterEach(function (): void {
+    // The watchdog runs under a runtime table prefix pushed onto RuntimeContext;
+    // wipe the stack so a prefix pushed by one test never leaks into the next.
+    app(RuntimeContext::class)->reset();
 });
 
 /**
@@ -110,6 +117,75 @@ it('does not route an unrelated reason to the group canonical', function (): voi
         AlertNotification::class,
         function (AlertNotification $notification): bool {
             return $notification->canonical === 'group_no_progress_detected';
+        }
+    );
+});
+
+/**
+ * The watchdog runs once per dispatcher prefix (`steps:recover-stale` for the
+ * default set, `--prefix=trading` for the trading set). The active
+ * RuntimeContext at handle time tells the listener which table set actually
+ * stalled, so the resolution SQL embedded in the alert must point the operator
+ * at THAT set. Before this fix the template hardcoded `FROM steps`, so a
+ * trading_steps wedge (the 2026-06-09 gamma false positive) printed default-set
+ * diagnostics and sent the responder to the wrong table.
+ */
+it('renders the trading_steps tables in the resolution SQL when the watchdog fired under the trading prefix', function (): void {
+    LaravelNotification::fake();
+    app(RuntimeContext::class)->push('trading_');
+
+    (new SendStaleStepsNotification)->handle(new StaleStepsDetected(
+        severity: 'critical',
+        reason: 'group_no_progress',
+        count: 1,
+        context: [
+            'group' => 'gamma',
+            'pending_count' => 1,
+            'last_terminal_update' => '2026-06-09 16:48:38',
+            'progress_threshold_seconds' => 600,
+            'hostname' => 'athena',
+        ],
+    ));
+
+    LaravelNotification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        function (AlertNotification $notification): bool {
+            return $notification->canonical === 'group_no_progress_detected'
+                && str_contains($notification->message, 'FROM trading_steps_dispatcher WHERE')
+                && str_contains($notification->message, 'FROM trading_steps WHERE')
+                && ! str_contains($notification->message, 'FROM steps_dispatcher WHERE')
+                && ! str_contains($notification->message, 'FROM steps WHERE');
+        }
+    );
+});
+
+it('renders the default steps tables in the resolution SQL when no prefix is active', function (): void {
+    LaravelNotification::fake();
+    // No RuntimeContext push — the default ('') prefix resolves to the
+    // unprefixed `steps` / `steps_dispatcher` tables.
+
+    (new SendStaleStepsNotification)->handle(new StaleStepsDetected(
+        severity: 'critical',
+        reason: 'group_no_progress',
+        count: 1,
+        context: [
+            'group' => 'gamma',
+            'pending_count' => 1,
+            'last_terminal_update' => '2026-06-09 16:48:38',
+            'progress_threshold_seconds' => 600,
+            'hostname' => 'athena',
+        ],
+    ));
+
+    LaravelNotification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        function (AlertNotification $notification): bool {
+            return $notification->canonical === 'group_no_progress_detected'
+                && str_contains($notification->message, 'FROM steps_dispatcher WHERE')
+                && str_contains($notification->message, 'FROM steps WHERE')
+                && ! str_contains($notification->message, 'trading_steps');
         }
     );
 });

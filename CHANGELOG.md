@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.55.2 - 2026-06-09
+
+### Bug fixes
+
+- [FIXED] **Dispatcher-stall alert now names the correct table set** (kraitebot/core 1.53.2). The `group_no_progress_detected` resolution SQL hardcoded `FROM steps`; a `trading_steps` group stall printed default-set diagnostics. The listener now threads the active dispatcher prefix into the message so a `trading_steps` wedge prints `trading_steps` queries (with a "Table set:" line). Coverage: two prefix cases in `tests/Feature/Listeners/SendStaleStepsGroupProgressNotificationTest.php`.
+
 ## 1.55.1 - 2026-06-09
 
 ### Bug fixes
