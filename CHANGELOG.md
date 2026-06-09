@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.55.1 - 2026-06-09
+
+### Bug fixes
+
+- [FIXED] **Group-progress watchdog false positive on sparse, event-driven dispatcher groups** (brunocfalcao/step-dispatcher 1.13.5). `detectGroupNoProgress` measured staleness only against a group's last terminal step, never against how long the pending work had itself been waiting, so the `trading_*` set (fed by hours-apart Binance user-data events) false-fired a CRITICAL `group_no_progress_detected` page whenever the every-minute watchdog tick read a freshly-created step in the ~1s window before its dispatch. Observed 2026-06-09: `trading_steps` group `gamma` paged "wedged 72 minutes" on a `ProcessUserDataEventJob` that lived one second. The watchdog now also gates on the oldest non-throttled Pending step's age. See deploy-notes Entry 76.
+- [FIXED] **`kraite:recover-positions` deferred forever on healthy positions** (kraitebot/core 1.53.1). `RecoverPositionsCommand::hasInflightStepFor` counted the parked `NotRunnable` rescue step that every opened position leaves behind as in-flight work, so recovery never proceeded — the case that blocked rescuing 8 positions wedged in `syncing` on 2026-06-09. Now excludes `NotRunnable` alongside terminal states. Coverage in `tests/Feature/Commands/RecoverPositionsNotRunnableInflightTest.php`.
+- [FIXED] **Stale-steps notification throttle is now row-driven** (kraitebot/core 1.53.1). `SendStaleStepsNotification` reads the notification row's `cache_duration` instead of a hardcoded 600s, so a Notification Threshold armed on `group_no_progress_detected` is no longer starved by the throttle. Defaults to 600 — unchanged until a threshold is switched on.
+
 ## 1.55.0 - 2026-06-08
 
 ### Features
