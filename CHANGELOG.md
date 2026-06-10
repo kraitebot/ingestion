@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.55.3 - 2026-06-10
+
+### Bug fixes
+
+- [BUG FIX] **A delisted/closed exchange symbol no longer fails the whole leverage-bracket batch** (kraitebot/core 1.53.3). The per-symbol atomic now flags a closed/invalid symbol for delisting and completes cleanly instead of throwing and poisoning the shared parent `SyncLeverageBracketsJob` every hourly refresh. Applies to Bybit, KuCoin and Bitget (shared atomic + per-exchange `isSymbolDelisted`). New regression `tests/Feature/Jobs/Atomic/ExchangeSymbol/SyncLeverageBracketJobDelistingTest.php` drives the real `Http::fake` pipeline (closed symbol → flagged + completes; genuine errors still surface).
+
 ## 1.55.2 - 2026-06-09
 
 ### Bug fixes
