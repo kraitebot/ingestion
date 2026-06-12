@@ -627,11 +627,17 @@ return [
             // 5-worker pool so 4/5 promoted steps still leak to trading;
             // a per-category split (`priority-trading` vs `priority-cron`)
             // would close the leak fully and is tracked as follow-up.
+            // Right-sized for 2 vCPU / 4GB (2026-06-12). Indicator + cronjob
+            // throughput is gated by the shared TAAPI throttle (75 req / 15s,
+            // coordinated across workers), NOT by process count — so 20+20
+            // procs only oversubscribed the 2 cores and pinned CPU at 100%
+            // during burst auto-scale without moving more work. These counts
+            // keep tyche's share of the TAAPI pipe full with compute overlap.
             'tyche' => [
-                'indicators' => ['processes' => 20],
-                'cronjobs' => ['processes' => 20],
-                'priority' => ['processes' => 5],
-                'tyche' => ['processes' => 5],
+                'indicators' => ['processes' => 8],
+                'cronjobs' => ['processes' => 6],
+                'priority' => ['processes' => 3],
+                'tyche' => ['processes' => 2],
             ],
         ],
     ],
