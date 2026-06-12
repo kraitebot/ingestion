@@ -551,15 +551,23 @@ return [
             // value gethostname() returns on the dev box, lower-cased
             // and stripped of dashes (matches StepObserver's hostname
             // queue allowlist normalisation).
-            'local' => [
-                'positions' => ['processes' => 2],
-                'orders' => ['processes' => 5],
-                'priority' => ['processes' => 2],
-                'cronjobs' => ['processes' => 2],
-                'indicators' => ['processes' => 5],
-                'user-data-stream' => ['processes' => 1],
-                'local' => ['processes' => 1],
-            ],
+            //
+            // ENV-SCOPED: present only when APP_ENV=local. In production there
+            // is no `local` box, so the deploy-time fleet-topology drift gate
+            // (`verify-fleet-topology --fail-on-drift`) must NOT expect a
+            // `local` row in the prod `servers` table. Spread-merged so the
+            // production workers map below is left exactly as-is.
+            ...(env('APP_ENV', 'production') === 'local' ? [
+                'local' => [
+                    'positions' => ['processes' => 2],
+                    'orders' => ['processes' => 5],
+                    'priority' => ['processes' => 2],
+                    'cronjobs' => ['processes' => 2],
+                    'indicators' => ['processes' => 5],
+                    'user-data-stream' => ['processes' => 1],
+                    'local' => ['processes' => 1],
+                ],
+            ] : []),
             // Ingestion box (scheduler + dispatch-daemon + Binance WS
             // daemons). Consumes user-data-stream (5 procs match the
             // per-Binance-account WS daemon fan) plus its own per-hostname
