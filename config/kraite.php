@@ -612,6 +612,21 @@ return [
                 'priority' => ['processes' => 3],
                 'hemera' => ['processes' => 1],
             ],
+            // Trading workers — interchangeable consumers on
+            // positions/orders/priority, distinct public IPs for the
+            // Binance per-IP weight budget. Joined 2026-06-12.
+            'palaemon' => [
+                'positions' => ['processes' => 5],
+                'orders' => ['processes' => 8],
+                'priority' => ['processes' => 3],
+                'palaemon' => ['processes' => 1],
+            ],
+            'aristaeus' => [
+                'positions' => ['processes' => 5],
+                'orders' => ['processes' => 8],
+                'priority' => ['processes' => 3],
+                'aristaeus' => ['processes' => 1],
+            ],
             // Dedicated web host. nginx + php8.5-fpm serves admin /
             // console / kraite.com / syntax. Single logical `web` queue
             // (physical: `pheme-web` after the {hostname}-{logical}
