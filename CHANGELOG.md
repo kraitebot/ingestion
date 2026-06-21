@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.56.1 - 2026-06-21
+
+### Bug fixes
+
+- [BUG FIX] **A delisted BitGet symbol's kline fetch self-heals on the first failure** (kraitebot/core 1.55.1). BitGet's kline endpoint reports a gone contract with code 40034, which the delisting classifier did not recognise (only 40309), so `FetchKlinesJob` failed every cycle for a delisted BitGet symbol until the hourly proactive sweep caught it. Exposed by the 2026-06 TON→GRAM rebrand (BitGet pulled TONUSDT → 40034 each kline cycle; reference data only, no trading impact). New `tests/Unit/Support/SymbolDelistedClassifierTest.php` coverage (40034 → delisted, 40808 malformed-param → not) plus a `bitgetSymbolNotFound40034()` fixture. Lock repinned to kraitebot/core 1.55.1.
+
 ## 1.56.0 - 2026-06-21
 
 ### Features

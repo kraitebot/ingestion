@@ -68,9 +68,23 @@ it('BitGet: code 40309 "contract has been removed" is flagged as delisted', func
     expect($handler->isSymbolDelisted(ResponseException::bitgetSymbolDelisted()))->toBeTrue();
 });
 
+it('BitGet: code 40034 "Parameter {symbol} does not exist" is flagged as delisted', function (): void {
+    // The kline / market-data endpoints answer with 40034 once a contract is
+    // gone (the 2026-06 TON→GRAM rebrand: BitGet pulled TONUSDT and every
+    // kline fetch returned 40034). Without this, FetchKlinesJob's reactive
+    // self-heal never fires and the dead symbol fails every refresh cycle.
+    $handler = new BitgetExceptionHandler;
+
+    expect($handler->isSymbolDelisted(ResponseException::bitgetSymbolNotFound40034()))->toBeTrue();
+});
+
 it('BitGet: unrelated codes are not flagged as delisted', function (): void {
     $handler = new BitgetExceptionHandler;
 
+    // 40808 "Parameter verification exception" is a malformed/invalid param
+    // (e.g. a bad granularity) — a request-shape bug, NOT a delisting. It must
+    // stay false so a regression can never mass-delist the universe; it is the
+    // exact code 40034 is deliberately distinguished from.
     expect($handler->isSymbolDelisted(ResponseException::bitgetParameterVerificationException()))->toBeFalse();
     expect($handler->isSymbolDelisted(ResponseException::bitgetSystemMaintenance()))->toBeFalse();
 });

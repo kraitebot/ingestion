@@ -1214,6 +1214,17 @@ final class ResponseException
     }
 
     /**
+     * BitGet: the kline / market-data endpoints' "symbol gone" response.
+     * HTTP 400 with vendor code "40034" ("Parameter {symbol} does not
+     * exist") — what BitGet returned for every TONUSDT kline fetch after
+     * the 2026-06 TON→GRAM rebrand pulled the contract.
+     */
+    public static function bitgetSymbolNotFound40034(): RequestException
+    {
+        return self::bitget(400, '40034', 'Parameter TONUSDT does not exist');
+    }
+
+    /**
      * BitGet: position-side mismatch — payload assumes the wrong position
      * mode for the account (e.g. tradeSide=open sent on a one-way account,
      * or holdSide sent on a one-way leverage call). Triggers the same
