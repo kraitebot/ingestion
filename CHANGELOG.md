@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.56.0 - 2026-06-21
+
+### Features
+
+- [NEW FEATURE] **Fleet observability goes live — silence watchdog + roster-identity IP resolution** (kraitebot/core 1.55.0). The system-health watchdog's fleet-silence check is now lifecycle-aware: a box mid-provision (roster row younger than `FLEET_METRICS_PROVISIONING_GRACE_SECONDS`, default 86400) no longer pages, a `stale` box always does, and an alertable box re-pages once per `FLEET_METRICS_ALERT_THROTTLE_SECONDS` (default 3600) instead of on every 7-minute tick. `Kraite::ip()` now resolves the box's public IP through its logical roster identity (`FLEET_METRICS_HOSTNAME`) before `gethostname()`, closing the silent ipify-fallback blackout (deploy-notes #86). `phpunit.xml` pins `FLEET_METRICS_HOSTNAME=""` so the dev `local` identity never leaks into the suite. New `tests/Feature/Cronjobs/CheckSystemHealthFleetSilenceTest.php` covers the grace / throttle / stale / corrupt-stamp paths; `tests/Unit/Models/KraiteIpTest.php` extended for the roster-override resolution. Composer lock repinned to kraitebot/core 1.55.0 + brunocfalcao/step-dispatcher 1.14.1 (the job-engine regression-coverage release), alongside routine third-party dependency refreshes resolved and validated by the full suite.
+
+## 1.55.6 - 2026-06-12
+
+### Infrastructure
+
+- [IMPROVED] **palaemon + aristaeus trading workers added to `horizon.workers`.** The fifth and sixth interchangeable trading workers consume `positions` / `orders` / `priority` plus their per-host probe queue.
+
+## 1.55.5 - 2026-06-12
+
+### Bug fixes
+
+- [FIXED] **Local Horizon worker env-scoped to clear the prod fleet-topology drift gate.** The dev box's worker block is scoped to `local` so `kraite:verify-fleet-topology --fail-on-drift` stays green on production without the Mac's row polluting the prod roster.
+
+## 1.55.4 - 2026-06-12
+
+### Infrastructure
+
+- [IMPROVED] **tyche Horizon workers right-sized for 2 vCPU.** The indicators / cronjobs pools are throttle-bound (TAAPI window), so process counts were tuned to the box's two cores rather than over-provisioned.
+
 ## 1.55.3 - 2026-06-10
 
 ### Bug fixes

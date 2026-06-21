@@ -12,7 +12,11 @@ use Kraite\Core\Models\Server;
  * `127.0.1.1` from `gethostbyname()` on Ubuntu boxes, which poisoned every
  * IP-scoped downstream check (ForbiddenHostname, whitelist diagnostics,
  * per-IP rate-limit ledgers). The resolver now reaches for the `servers`
- * row keyed by OS hostname, falling back to a cached external lookup.
+ * row keyed by the box's logical roster identity —
+ * `kraite.fleet_metrics.hostname` when set, else the OS hostname — falling
+ * back to a cached external lookup. The override exists for boxes whose OS
+ * hostname is not their roster name (a dev Mac whose roster row is `local`);
+ * without it every IP-scoped call there hit the live external resolver.
  */
 uses()->group('unit', 'kraite', 'server-ip');
 
@@ -61,4 +65,55 @@ it('reads from the cached fallback without hitting the external resolver when pr
     Http::preventStrayRequests();
 
     expect(Kraite::ip())->toBe('203.0.113.99');
+});
+
+it('prefers the fleet_metrics.hostname roster identity over the OS hostname', function (): void {
+    config(['kraite.fleet_metrics.hostname' => 'local']);
+
+    Server::create([
+        'hostname' => 'local',
+        'ip_address' => '127.0.0.1',
+        'is_apiable' => false,
+        'needs_whitelisting' => false,
+        'own_queue_name' => 'local',
+        'type' => 'local',
+    ]);
+
+    // A row for the OS hostname must NOT win when the override is set.
+    Server::create([
+        'hostname' => gethostname(),
+        'ip_address' => '203.0.113.42',
+        'is_apiable' => true,
+        'needs_whitelisting' => false,
+        'own_queue_name' => 'default',
+        'type' => 'ingestion',
+    ]);
+
+    Http::preventStrayRequests();
+
+    expect(Kraite::ip())->toBe('127.0.0.1');
+});
+
+it('falls back to the cached external lookup when the configured roster identity has no row', function (): void {
+    config(['kraite.fleet_metrics.hostname' => 'ghost-host']);
+
+    Cache::put(Kraite::IP_CACHE_KEY, '203.0.113.99', Kraite::IP_CACHE_TTL_SECONDS);
+    Http::preventStrayRequests();
+
+    expect(Kraite::ip())->toBe('203.0.113.99');
+});
+
+it('treats an empty fleet_metrics.hostname as unset and resolves via the OS hostname', function (): void {
+    config(['kraite.fleet_metrics.hostname' => '']);
+
+    Server::create([
+        'hostname' => gethostname(),
+        'ip_address' => '203.0.113.42',
+        'is_apiable' => true,
+        'needs_whitelisting' => false,
+        'own_queue_name' => 'default',
+        'type' => 'ingestion',
+    ]);
+
+    expect(Kraite::ip())->toBe('203.0.113.42');
 });

@@ -1,93 +1,89 @@
-# WhereAreWe — 2026-06-09 (step-dispatcher v1.13.5 — group-progress watchdog oldest-pending gate)
+# WhereAreWe — 2026-06-13 (fleet-watchdog lifecycle + Kraite::ip() identity — RELEASE PAUSED, step-dispatcher mid-refactor)
 
 ## Date
 
-2026-06-09
+2026-06-13
 
-## Latest change — step-dispatcher v1.13.5 (group-progress watchdog false positive)
+## RELEASE PAUSED
 
-The `group_no_progress` watchdog paged CRITICAL on athena for `trading_steps`
-group `gamma` — a `ProcessUserDataEventJob` that lived one second (created
-18:00:01, done 18:00:02). Nothing was wedged. Root cause: the watchdog measured
-staleness only against a group's last terminal step, never against how long the
-pending work had itself been waiting, so sparse event-driven groups (the
-`trading_*` set, fed by hours-apart Binance user-data events) false-fired
-whenever the every-minute tick read a freshly-created step mid-flight. Fix adds
-an oldest-pending gate: a group only trips once its oldest non-throttled Pending
-step has aged past the 600s threshold. Genuine wedges (2026-04-25 16h shape)
-still fire. Regression test added to `GroupProgressWatchdogTest`; full hard gate
-green (step-dispatcher 75, ingestion 2392). Follow-up parked: thread the table
-prefix into the `StaleStepsDetected` event + notification so trading-set stalls
-stop printing `steps` diagnostics. See deploy-notes Entry 76.
+Bruno halted `/do kraite-release` at 00:00 because the step-dispatcher
+package is under active refactor (dirty working tree: exception-handler
+split into per-driver `DatabaseExceptionHandlers`, lifecycle/observer/
+transition touches, new cancelled-step cascade test). Pipeline ran
+docs + tests only; NOTHING tagged, pushed, or deployed. Resume with
+`/do kraite-release` once the refactor lands — step-dispatcher Feature
+tests are hard gate 1a.
 
-## Session summary
+## Unreleased work queued (live on localhost, NOT on prod)
 
-Shipped a full fleet release overnight. Three headline changes:
+**kraitebot/core (since v1.54.1)**
+- Fleet-silence alert lifecycle: provisioning grace
+  (`provisioning_grace_seconds`, 24h default, `missing`-only, anchored
+  on `servers.created_at` now written insert-only by the seeder) +
+  per-check re-page throttle (`alert_throttle_seconds`, 1h default —
+  the canonical's 300s window was shorter than the 7-min cadence, so a
+  down box paged every tick) + null-age alert wording fix ("stale with
+  an unreadable reported_at stamp" instead of "is s stale").
+- `Kraite::ip()` resolves the box's logical roster identity
+  (`kraite.fleet_metrics.hostname`) before the OS hostname — fixes the
+  localhost ipify blackout (deploy-notes entry 86: Mac hostname has no
+  roster row → every IP-scoped call hit live ipify → SSL break killed
+  ALL localhost notifications silently, ~1,200 swallowed errors).
+- `FleetMetricsRepository` rows carry `registered_at`;
+  `fleet.servers` palaemon/aristaeus entries (commit 61e1a7a).
 
-1. **Notification Threshold** (new, opt-in) — an escalation gate on top of the
-   throttler: a flagged notification is only delivered once it recurs N times
-   within a window; sub-threshold occurrences are recorded (`passed_threshold`)
-   but not sent. Inert by default. Built for the Bybit `retCode 10006` noise.
-2. **Phase 3 BSCS** — regime-scaled leverage + position-count ramps; Critical
-   is now absolute (per-account `respect_bscs` + operator override removed).
-3. **TAAPI throttle tuning** — cap 75→65, min-delay 50→200ms on the indicator
-   consumers (athena + tyche), after diagnosing the chronic ~20% 429 rate as a
-   shared-bucket + zero-headroom + non-atomic-counter problem.
+**ingestion (since v1.55.6)**
+- New `CheckSystemHealthFleetSilenceTest` (5 tests: grace, post-grace
+  page, stale-never-graced, unreadable-stamp wording, throttle) +
+  `KraiteIpTest` extended (override wins, ghost-host fallback, empty
+  string = unset).
+- `phpunit.xml` pins `FLEET_METRICS_HOSTNAME=""` (dev `.env` now
+  carries `FLEET_METRICS_HOSTNAME=local`; tests must resolve like a
+  prod box).
+- Dirty `composer.lock` (core bump) rides along.
 
-Also propagated **step-dispatcher 1.13.4** fleet-wide: the group-progress
-watchdog now excludes `is_throttled` steps, killing the phantom
-`group_no_progress` pages under TAAPI 429 backpressure.
+**brunocfalcao/step-dispatcher (since v1.13.5)**
+- PostgreSQL grammar-quoting in recover-stale + archive (188a9bc,
+  pushed untagged) — being absorbed by the ongoing refactor.
 
-## What shipped
+## Session summary (2026-06-12 → 13)
 
-**kraitebot/core v1.53.0**
-- Notification Threshold (3 cols on `notifications`, `passed_threshold` on
-  `notification_logs`; throttler-first → threshold gate; re-earn via id
-  high-water-mark cache anchor; per-scope lock; fail-open). DB-throttle window
-  narrowed to count only delivered rows.
-- Phase 3 regime ramps (leverage `floor(base×ratio)`, count `floor(max×ratio)`,
-  gate-only; `positions.bscs_band` + `bscs_score`; override/respect_bscs drops).
-
-**brunocfalcao/step-dispatcher v1.13.4** (released earlier, now fleet-wide)
-- Group-progress watchdog ignores throttle-waiting steps.
-
-**ingestion v1.55.0**
-- Notification threshold feature tests; pins core via `^1.36` (prod manifest).
-- TAAPI throttle `.env` tuning (per-box, not in VCS).
-
-## Release facts
-
-- Tests: step-dispatcher 74, ingestion 2389 (0 failures). CI green.
-- Deploy: all 6 boxes on v1.55.0 / core v1.53.0, dev-master CLEAN. athena ran
-  migrations (notification threshold + Phase 3) behind a 752M pre-deploy DB
-  backup hard-gate. athena needed `FORCE_DEPLOY=1` — cooldown wouldn't drain 70
-  non-trading stuck steps (69 ConcludeSymbolDirection + 1 SyncLeverageBrackets,
-  classified safe; see deploy-notes entry 75).
-- Overnight watch (18× 30-min passes): 0 failed steps throughout, 8 open
-  positions stable, Horizon RUNNING on all 6. TAAPI 429-rate dropped to a
-  steady ~9-14% band during waves (was ~20%); group_no_progress fired only
-  twice (02:00) on a genuine non-throttled SyncLeverageBracket bulk wave —
-  correct behaviour, self-recovered.
-- Docs: raw specs (`02-features/notification-threshold.md`,
-  `step-dispatcher.md` watchdog, README), deploy-notes 74+75, and the syntax
-  site (`subsystems/notifications` new, `domains/indicators` throttle table
-  fixed) refreshed + rebuilt + live on pheme.
+1. palaemon + aristaeus joined as trading workers 5 + 6 (fleet now 10
+   boxes); deploy-notes entries 79–85.
+2. xhigh code review over the unreleased work (9 finder angles, 15
+   findings: 1 high, 8 medium, 6 low). Fixed the high (#1 alert-storm
+   lifecycle) + the top medium (#2 null-age string) on Bruno's order;
+   the rest are triaged in the review table (this conversation,
+   2026-06-12).
+3. Localhost ipify blackout discovered during verification, root-caused
+   and fixed live (entry 86). All localhost LaunchAgents kickstarted;
+   post-fix log confirmed quiet.
+4. Docs refreshed: new `02-features/fleet-metrics.md`, watchdog spec
+   (cadence 7-min, 14 checks, fleet row), README index, entry 86.
+   Syntax site refresh deferred to the actual release (behavior not on
+   prod yet).
 
 ## Key architecture notes (still true)
 
-- TAAPI/Bybit throttle budget is NOT raised by the 2nd IP — single global Redis
-  buckets keyed without IP. The cap+pacing tuning reduces 429s ~40% but doesn't
-  zero them (non-atomic race + window-phase mismatch remain).
-- Notification Threshold counting is per `(notification, relatable)` over
-  held rows; the throttler must be loose (`cache_duration=0`) for a threshold
-  to ever fire.
-- Non-Binance klines feed per-exchange semaphores — never gate by active acct.
+- TAAPI/Bybit throttle budget is NOT raised by the 2nd IP — single
+  global Redis buckets keyed without IP.
+- Notification Threshold counting is per `(notification, relatable)`
+  over held rows; throttler must be loose for a threshold to fire.
+- Non-Binance klines feed per-exchange semaphores — never gate by
+  active account.
+- Fleet-metrics hyperion bash agent hardcodes key prefix / Redis DB /
+  TTL — changing `FLEET_METRICS_*` env desynchronises it (review
+  finding #4, open).
 
 ## Open / deferred
 
+- Code-review findings #3–#15 (core config horizon.workers drift, bash
+  agent set -e abort paths, heartbeat-loop death modes, hostname-queue
+  guard, tyche threshold recalibration, MGET batching, etc.) — table
+  in the 2026-06-12 review session.
 - Atomic throttle reservation fix (parked — would zero the 429s).
-- `priority-trading` vs `priority-cron` split (long-standing follow-up).
-- `SyncLeverageBracketJob` bulk wave (~1700-1830 rows) briefly spikes pending +
-  can trip the backlog watchdog — candidate for smaller bulk creation.
-- Bybit `min_delay_ms` env is wired but the bybit config block never reads it
-  (dead knob) — noted, not fixed.
+- `priority-trading` vs `priority-cron` split (long-standing).
+- `SyncLeverageBracketJob` bulk wave watchdog spikes — smaller bulks.
+- Bybit `min_delay_ms` dead knob.
+- Thread table prefix into `StaleStepsDetected` notification (entry 76
+  follow-up).

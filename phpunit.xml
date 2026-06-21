@@ -35,6 +35,11 @@
         <env name="DB_DATABASE" value="kraite_tests"/>
         <env name="DB_USERNAME" value="root"/>
         <env name="DB_PASSWORD" value=""/>
+        <!-- Dev .env carries FLEET_METRICS_HOSTNAME=local (the Mac's roster
+             identity); tests must resolve via the OS hostname like a prod box,
+             so pin it empty here. Empty string reads as "not set" everywhere
+             the key is consumed (Kraite::ip(), ReportFleetMetricsJob). -->
+        <env name="FLEET_METRICS_HOSTNAME" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="NOTIFICATIONS_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
