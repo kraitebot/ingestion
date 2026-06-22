@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.56.2 - 2026-06-22
+
+### Bug fixes
+
+- [BUG FIX] **Naming-divergent symbols bridge their Binance direction by canonical `symbol_id`** (kraitebot/core 1.57.0). BitGet FLOKI / SHIB and Bybit SKYAI1 are the same assets as Binance 1000FLOKI / 1000SHIB / SKYAI but had no hand-seeded `token_mapper` row, so they never received a direction and perpetually tripped the indicator-stale watchdog. Overlap detection + the conclude-cycle direction copy now match on `symbol_id` (naming-agnostic identity), with exact-token + token_mapper kept as the fallback. New `tests/Feature/SymbolIdIdentityBridgeTest.php` covers the bridge, the ticker-collision guard, and the token-fallback no-regression case. Lock repinned to kraitebot/core 1.57.0.
+
 ## 1.56.1 - 2026-06-21
 
 ### Bug fixes
