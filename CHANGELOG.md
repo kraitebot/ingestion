@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.56.3 - 2026-06-23
+
+### Features
+
+- [NEW FEATURE] **Unit-divergent cross-exchange contracts are switched off and kept out of trading** (kraitebot/core 1.58.0). A symbol that lists the same asset under a different contract unit than Binance (KuCoin/Bybit `FLOKI` vs Binance `1000FLOKI`) carried a replicated mark_price wrong by the contract ratio (~1000×). The symbol refresh now runs an index-4 price-alignment check: each naming-divergent `symbol_id` sibling's live exchange price is compared to its Binance sibling within tolerance, and a divergent one is flagged `is_price_aligned=false` + `is_manually_enabled=false` (excluded from `scopeTradeable`) with one deduped notification. New `tests/Feature/PriceAlignmentTest.php` covers the divergent-disable, same-unit-stays, and parent-candidate-selection paths. Lock repinned to kraitebot/core 1.58.0.
+
 ## 1.56.2 - 2026-06-22
 
 ### Bug fixes
