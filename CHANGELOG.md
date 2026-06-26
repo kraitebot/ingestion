@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.56.4 - 2026-06-26
+
+### Dependencies
+
+- [DEPENDENCIES] **Routine third-party vendor refresh** — `composer update` repinned several upstream packages (aws-sdk-php 3.385.3 → 3.386.1, guzzle 7.12.1 → 7.12.3, and their peers). No Kraite source, schema, or contract change: kraitebot/core stays 1.58.0 and brunocfalcao/step-dispatcher stays 1.14.1. Shipped fleet-wide so every trading box runs the identical ingestion tag (version-parity rule). Full Pest suite green (2411 passed) before tag.
+
 ## 1.56.3 - 2026-06-23
 
 ### Features
