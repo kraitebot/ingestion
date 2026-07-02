@@ -1,4 +1,4 @@
-# WhereAreWe — 2026-07-02 (WS self-heal release v1.56.5)
+# WhereAreWe — 2026-07-02 (user-data scale-hardening release v1.56.6)
 
 ## Date
 
@@ -9,11 +9,25 @@
 All three Kraite repos are live and tagged — fleet runs identical
 versions across all 10 boxes:
 
-- **ingestion** — shipping **v1.56.5** (this release)
-- **kraitebot/core** — v1.58.1 (this release)
+- **ingestion** — shipping **v1.56.6** (this release)
+- **kraitebot/core** — v1.58.2 (this release)
 - **brunocfalcao/step-dispatcher** — v1.14.1 (unchanged)
 
-## This release (v1.56.5 / core 1.58.1)
+## This release (v1.56.6 / core 1.58.2)
+
+**User-data stream no longer storms at fleet scale.** The daemon is one
+process hosting one WebSocket per account, so a restart resets every
+account together. Three amplifiers would have made that a storm at 100
+accounts, now bounded: (A) one boot-summary notification per restart
+instead of one "connected" per account (connect is log-only; failures
+still page); (B) staggered connects (~4/sec ramp) so N handshakes never
+fire from athena's IP at once; (C) an account-aware memory ceiling
+(200MB + 25MB/account) replacing a fixed 512MB that normal load crossed
+around ~43 accounts and crash-looped the daemon. See deploy-notes entry
+92. Follow-up (not shipped): shard the daemon into K processes to cap
+one-restart blast radius further.
+
+## Prior release (v1.56.5 / core 1.58.1)
 
 **Price-feed daemon self-heals a wedged event loop.** On the morning of
 2026-07-02 a transient network blip froze the mark-price daemon's

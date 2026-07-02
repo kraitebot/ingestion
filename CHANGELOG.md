@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.56.6 - 2026-07-02
+
+### Bug fixes
+
+- [FIXED] **User-data stream no longer storms at fleet scale (core 1.58.2).** The daemon is one process hosting one WebSocket per account, so a restart resets every account together. At 100 accounts that meant 100 "connected" notifications, 100 simultaneous reconnect handshakes from one IP, and — worst — a fixed 512MB memory ceiling that normal load crossed around ~43 accounts, crash-looping the whole daemon. Now: one boot-summary notification per restart (per-account connect is log-only; failures still page), staggered connects (~4/sec ramp) to avoid the thundering herd, and an account-aware memory ceiling that scales with the fleet. Added `StreamBinanceUserDataScaleTest`; full Pest suite green before tag.
+
 ## 1.56.5 - 2026-07-02
 
 ### Bug fixes
