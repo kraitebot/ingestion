@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.56.5 - 2026-07-02
+
+### Bug fixes
+
+- [FIXED] **Price-feed daemon self-heals a wedged event loop (core 1.58.1).** A transient network blip on 2026-07-02 froze the mark-price daemon's DNS resolver on athena; "reconnect forever" kept the process alive but never recovered — ~46,000 failed reconnects over ~4 hours, no fresh prices, until a manual restart. Strict-data WebSocket streams now self-exit after 5 minutes with no data frame so supervisor respawns a clean process (the only reliable way to clear a loop-level ReactPHP DNS/UDP wedge), turning a multi-hour price blackout into a ~10-second blip. Zero money impact from the incident (no open positions; BASUSDT was flagged as a *tradeable* symbol, not a held one). Added `BaseWebsocketClientSelfExitTest` (6 cases); full Pest suite green (2417 passed) before tag.
+
+### Dependencies
+
+- [DEPENDENCIES] **Routine third-party vendor refresh** — `composer update` repinned several upstream packages (aws-sdk-php, guzzle, symfony peers) to their latest patch versions. No Kraite schema or contract change. Shipped fleet-wide so every trading box runs the identical ingestion tag (version-parity rule).
+
 ## 1.56.4 - 2026-06-26
 
 ### Dependencies
