@@ -126,9 +126,17 @@ Schedule::command('kraite:cron-check-binance-listen-keys-stale')
 // queue depth). Every alert routes through the shared
 // `system_health_alert` notification with a per-signal cache key
 // (5-minute throttle) so distinct failures dedupe independently.
+// evenInMaintenanceMode: the scheduler skips every event while the app
+// is down, so without this flag the watchdog dies together with the
+// failure class it should report (2026-07-02: athena sat in maintenance
+// for two days after an interrupted release warmup — keepalive, sync
+// fallback and backups all silent, zero pages). While down, the command
+// runs ONLY its stuck-maintenance check; the full pass is skipped so a
+// normal deploy window never produces transient alerts.
 Schedule::command('kraite:cron-check-system-health')
     ->cron('*/7 * * * *')
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->evenInMaintenanceMode();
 
 // Scheduled jobs that create NEW steps should NOT run during cooldown
 // This prevents new work from being added while we wait for existing steps to finish

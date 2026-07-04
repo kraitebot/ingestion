@@ -1,60 +1,62 @@
-# WhereAreWe — 2026-07-02 (user-data scale-hardening release v1.56.6)
+# WhereAreWe — 2026-07-05 (stuck-maintenance sentinel release v1.57.0)
 
 ## Date
 
-2026-07-02
+2026-07-05
 
 ## Current fleet state
 
-All three Kraite repos are live and tagged — fleet runs identical
-versions across all 10 boxes:
+All three Kraite repos are tagged — deploy of v1.57.0 to the fleet is
+PENDING (`/do kraite-deploy` when Bruno decides):
 
-- **ingestion** — shipping **v1.56.6** (this release)
-- **kraitebot/core** — v1.58.2 (this release)
+- **ingestion** — **v1.57.0** tagged (this release, not yet deployed)
+- **kraitebot/core** — v1.59.0 tagged (this release, not yet deployed)
 - **brunocfalcao/step-dispatcher** — v1.14.1 (unchanged)
+- Fleet currently runs v1.56.6 / core 1.58.2.
 
-## This release (v1.56.6 / core 1.58.2)
+## This release (v1.57.0 / core 1.59.0)
 
-**User-data stream no longer storms at fleet scale.** The daemon is one
-process hosting one WebSocket per account, so a restart resets every
-account together. Three amplifiers would have made that a storm at 100
-accounts, now bounded: (A) one boot-summary notification per restart
-instead of one "connected" per account (connect is log-only; failures
-still page); (B) staggered connects (~4/sec ramp) so N handshakes never
-fire from athena's IP at once; (C) an account-aware memory ceiling
-(200MB + 25MB/account) replacing a fixed 512MB that normal load crossed
-around ~43 accounts and crash-looped the daemon. See deploy-notes entry
-92. Follow-up (not shipped): shard the daemon into K processes to cap
-one-restart blast radius further.
+**Health watchdog survives maintenance mode + stuck-maintenance
+sentinel.** Incident 2026-07-02→04: the v1.56.6 release warmup never
+ran on athena, leaving the box in maintenance mode for 53 hours.
+Laravel's scheduler skips every event while the app is down, so the
+whole cron chain died silently — listen-key keepalive, sync fallback,
+DB backups, and every watchdog INCLUDING the health command itself.
+Only symptom: Binance `listenKeyExpired` pages every 70 minutes
+(metronome-precise = key expiring with zero keepalives). Zero money
+impact (no open positions since 2026-06-06); backups silently dead
+for two days. Recovery was one `php artisan up`.
 
-## Prior release (v1.56.5 / core 1.58.1)
+Shipped:
 
-**Price-feed daemon self-heals a wedged event loop.** On the morning of
-2026-07-02 a transient network blip froze the mark-price daemon's
-ReactPHP DNS resolver on athena. "Reconnect forever" kept the process
-alive but never recovered — ~46,000 failed reconnects over ~4 hours,
-zero fresh prices — until a manual restart cleared it in seconds. Only
-a fresh PROCESS clears a loop-level ReactPHP DNS/UDP wedge; the existing
-1.1.1.1 + fresh-connector-per-attempt mitigations do not.
+- `kraite:cron-check-system-health` is now scheduled
+  `evenInMaintenanceMode()`. While the app is down it runs exactly ONE
+  check — `maintenance_mode_stuck` (new, #14) — and skips the full
+  pass so normal deploy windows never produce transient pages.
+- The new check pages CRITICAL when the down-marker is older than
+  `kraite.health_watchdog.maintenance_stuck_minutes` (default 45),
+  re-paging every 30 minutes. Unreadable marker fails open.
+- Runbook gates: warmup Step 5b hard-verifies the box answers "UP"
+  after warming; kraite-health grid gained a **Maint** column that
+  hard-fails on any down-marker; kraite-release rule — a release is
+  not done until every deployed box is out of maintenance.
+- Regression: `CheckSystemHealthMaintenanceStuckTest` (5 cases).
+- Also carries a routine vendor `composer update` (aws-sdk, horizon
+  v5.7→v5.8 + peers).
 
-Fix: strict-data WebSocket streams (mark-price) now self-exit after 5
-minutes with no *data* frame so supervisor respawns a clean process,
-turning a multi-hour price blackout into a ~10s blip. Tracks
-last-data-frame time separately (never reset by a reconnect or ping) so
-both failure phases trip it. User-data stream is exempt (silence is
-normal on a quiet account). Also carries a routine vendor `composer
-update` (aws/guzzle/symfony peers). Zero money impact from the incident
-— no open positions; BASUSDT was tradeable, not held.
-
-See deploy-notes entry 91.
+See deploy-notes entries 93 (this incident) and 91-92 (the 2026-07-02
+daemon incidents from the same release window).
 
 ## Nothing else pending
 
-Working tree clean after this release. No queued features, no paused
-refactor, no open release.
+No queued features, no paused refactor. v1.57.0 awaits deploy.
 
 ## Key architecture notes (still true)
 
+- The scheduler skips EVERYTHING in maintenance mode — any watchdog
+  scheduled through the same scheduler it monitors is blind to
+  scheduler-wide failure modes. At least one check must run
+  `evenInMaintenanceMode()`.
 - "Reconnect forever" is availability, NOT recovery — long-lived
   ReactPHP daemons need a sustained-failure self-exit so a fresh
   process can clear a loop-level wedge.
@@ -75,3 +77,5 @@ refactor, no open release.
 - `SyncLeverageBracketJob` bulk wave watchdog spikes — smaller bulks.
 - Bybit `min_delay_ms` dead knob.
 - Thread table prefix into `StaleStepsDetected` notification.
+- Out-of-band scheduler dead-man on hyperion (proposed post-Entry-93,
+  Bruno declined for now — runbook + sentinel layers deemed enough).

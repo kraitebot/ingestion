@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.57.0 - 2026-07-05
+
+### Features
+
+- [NEW FEATURE] **Health watchdog survives maintenance mode + stuck-maintenance sentinel (core 1.59.0).** Laravel's scheduler skips every event while a box is in maintenance mode, so a box accidentally left down loses its whole cron chain silently — listen-key keepalive, sync fallback, DB backups, and every watchdog including the health command itself. That happened for real: the v1.56.6 release warmup never ran on athena and the box sat in maintenance for 53 hours (2026-07-02→04), paged only by Binance's own `listenKeyExpired` side-effect every 70 minutes; zero money impact, but backups were dead for two days. The health watchdog is now scheduled `evenInMaintenanceMode()` and, while the app is down, runs exactly one check — `maintenance_mode_stuck`, paging CRITICAL when the maintenance marker is older than 45 minutes (configurable), re-paging every 30 minutes. The full check pass stays skipped during maintenance so normal deploy windows never produce transient pages. Release runbooks gained matching gates (warmup hard-verifies "UP"; fleet health grid has a Maint column; a release is not done until every box is out of maintenance). Added `CheckSystemHealthMaintenanceStuckTest` (5 cases). See deploy-notes Entry 93.
+
+### Dependencies
+
+- [DEPENDENCIES] **Routine third-party vendor refresh** — `composer update` repinned upstream patch/minor versions (aws-sdk-php 3.387.1 → 3.387.2, laravel/horizon v5.7.0 → v5.8.0, and peers). No Kraite schema or contract change. Shipped fleet-wide so every trading box runs the identical ingestion tag (version-parity rule).
+
 ## 1.56.6 - 2026-07-02
 
 ### Bug fixes
