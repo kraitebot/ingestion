@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.58.0 - 2026-07-08
+
+### Improvements
+
+- [IMPROVED] **Backtest grade can no longer contradict the stop-loss decision rule (core 1.61.0).** The overall score weighs stops as a percentage of resolved sims, so a large sample diluted absolute failures — 16 stop-loss hits over ~1400 sims still graded "B — mostly fine to run" while the decision proposal (absolute rule: <5 approve · 5–10 adjust · >10 reject) said "recommend reject" right below it. The grade is now capped by the decision band: >10 stops grades at best D, 5–10 at best C. Formula ordering below the cap unchanged. Pairs with core 1.60.0: sizing-skipped sims are counted and surfaced (`totals.skipped`) and `days_to_ignore` is exposed in meta, so the evidence floor can tell "nothing simulated" from "simulated and failed".
+- [IMPROVED] **Fleet heartbeat reports the running core version (core 1.62.0).** Each PHP box's vitals snapshot now carries the `kraitebot/core` pretty version, so the admin deploy panel can surface rollout drift across the fleet (a box lagging the release is visible without SSH). Silent hosts and hyperion's bash agent classify as `null`, never as drift.
+- [IMPROVED] **Canonical workflow-state aggregation (step-dispatcher 1.15.0).** `workflowState(uuid)` returns the one-word global state of a workflow (`unknown/pending/running/failed/completed`) with the aggregation semantics defined in exactly one place — consumers stop hand-rolling their own step-tree queries. Also carries 1.14.x: DB-engine portability (unknown engines get a pattern-less generic exception handler instead of wedging every job pre-compute) and PostgreSQL identifier-quoting fixes in recover-stale/archive.
+
+### Bug fixes
+
+- [FIXED] **TAAPI 404 "no candle data" no longer fails the symbol-verification probe forever (core 1.62.0).** New Binance listings with exotic quote assets (BTC/U, ETH/U, ETH/USD1, DATAIP/USDC) don't exist on TAAPI, which answers 404 "No candle data found" instead of the expected 400 "invalid symbol"/"no candles". The unrecognised shape hard-failed the step, the symbol never got marked verified, and every hourly run re-picked it — 80-92 failed steps/day paging the health grid. The probe now treats 404 + "no candle data" as a legitimate verified-with-no-data answer (same handling as the 400 shape); any 404 with a different body still fails loudly. Regression suite added (`TouchTaapiDataForExchangeSymbolJobIgnoreExceptionTest`, 4 cases). See deploy-notes Entry 96.
+
+### Dependencies
+
+- [CHANGED] Routine vendor `composer update` (aws-sdk, laravel/framework 12.63, peers). No source change.
+
 ## 1.57.0 - 2026-07-05
 
 ### Features

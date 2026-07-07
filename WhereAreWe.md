@@ -1,55 +1,49 @@
-# WhereAreWe — 2026-07-05 (stuck-maintenance sentinel release v1.57.0)
+# WhereAreWe — 2026-07-08 (backtest-grade cap + TAAPI 404 fix release v1.58.0)
 
 ## Date
 
-2026-07-05
+2026-07-08
 
 ## Current fleet state
 
-All three Kraite repos are tagged — deploy of v1.57.0 to the fleet is
-PENDING (`/do kraite-deploy` when Bruno decides):
+v1.58.0 release in flight (tag + deploy this session):
 
-- **ingestion** — **v1.57.0** tagged (this release, not yet deployed)
-- **kraitebot/core** — v1.59.0 tagged (this release, not yet deployed)
-- **brunocfalcao/step-dispatcher** — v1.14.1 (unchanged)
-- Fleet currently runs v1.56.6 / core 1.58.2.
+- **ingestion** — **v1.58.0** (this release)
+- **kraitebot/core** — v1.62.0 (ships 1.60.0 + 1.61.0 + 1.62.0)
+- **brunocfalcao/step-dispatcher** — v1.15.0 (ships 1.14.x + 1.15.0)
+- Fleet ran v1.57.0 / core 1.59.0 before this release.
 
-## This release (v1.57.0 / core 1.59.0)
+## This release (v1.58.0 / core 1.62.0 / step-dispatcher 1.15.0)
 
-**Health watchdog survives maintenance mode + stuck-maintenance
-sentinel.** Incident 2026-07-02→04: the v1.56.6 release warmup never
-ran on athena, leaving the box in maintenance mode for 53 hours.
-Laravel's scheduler skips every event while the app is down, so the
-whole cron chain died silently — listen-key keepalive, sync fallback,
-DB backups, and every watchdog INCLUDING the health command itself.
-Only symptom: Binance `listenKeyExpired` pages every 70 minutes
-(metronome-precise = key expiring with zero keepalives). Zero money
-impact (no open positions since 2026-06-06); backups silently dead
-for two days. Recovery was one `php artisan up`.
+Bundles three core releases and one step-dispatcher release that were
+tagged across 2026-07-06/08 sessions:
 
-Shipped:
+- **Backtest grade capped by the decision band (core 1.61.0).** The
+  percentage-weighted score diluted absolute stop failures on large
+  samples (16 stops / ~1400 sims still graded B while the proposal
+  said reject). Now >10 stops grades at best D, 5–10 at best C.
+- **Sizing-skipped sims counted + `days_to_ignore` in meta (core
+  1.60.0)** — feeds the evidence floor on the admin backtesting page.
+- **Fleet heartbeat carries the running core version (core 1.62.0)**
+  — admin deploy panel can see rollout drift without SSH.
+- **TAAPI 404 "no candle data" is a legitimate no-data answer (core
+  1.62.0).** New exotic-quote Binance listings (BTC/U, ETH/USD1,
+  DATAIP/USDC…) hard-failed the verification probe hourly (80-92
+  failed steps/day). 404 + "no candle data" now marks
+  verified-with-no-data, same as the 400 shape; other 404s still
+  fail. Regression: `TouchTaapiDataForExchangeSymbolJobIgnoreExceptionTest`
+  (4 cases). Deploy-notes Entry 96.
+- **step-dispatcher 1.15.0** — canonical `workflowState(uuid)`
+  aggregation + `WorkflowState` enum; 1.14.x DB-engine portability +
+  pgsql identifier quoting; suite now 192 Feature tests.
+- Routine vendor refresh (aws-sdk, laravel 12.63, peers).
 
-- `kraite:cron-check-system-health` is now scheduled
-  `evenInMaintenanceMode()`. While the app is down it runs exactly ONE
-  check — `maintenance_mode_stuck` (new, #14) — and skips the full
-  pass so normal deploy windows never produce transient pages.
-- The new check pages CRITICAL when the down-marker is older than
-  `kraite.health_watchdog.maintenance_stuck_minutes` (default 45),
-  re-paging every 30 minutes. Unreadable marker fails open.
-- Runbook gates: warmup Step 5b hard-verifies the box answers "UP"
-  after warming; kraite-health grid gained a **Maint** column that
-  hard-fails on any down-marker; kraite-release rule — a release is
-  not done until every deployed box is out of maintenance.
-- Regression: `CheckSystemHealthMaintenanceStuckTest` (5 cases).
-- Also carries a routine vendor `composer update` (aws-sdk, horizon
-  v5.7→v5.8 + peers).
+## Product state (unchanged this release)
 
-See deploy-notes entries 93 (this incident) and 91-92 (the 2026-07-02
-daemon incidents from the same release window).
-
-## Nothing else pending
-
-No queued features, no paused refactor. v1.57.0 awaits deploy.
+Tradeable Binance pool is deliberately 3 tokens (ATOM/AVAX/BNB, all
+SHORT as of 2026-07-07) — Bruno curates enablement one-by-one via the
+admin backtesting console. 131 more candidates pass every automatic
+gate and await his review. Low count is intentional, never a bug.
 
 ## Key architecture notes (still true)
 
@@ -69,6 +63,9 @@ No queued features, no paused refactor. v1.57.0 awaits deploy.
 - Fleet is 10 boxes: hyperion (DB+Redis), athena (ingestion), pheme
   (web), eos/iris/nyx/hemera/palaemon/aristaeus (interchangeable
   trading workers), tyche (indicators+cronjobs).
+- Providers can signal one semantic outcome via multiple status
+  codes — gate on (code, body-pattern) pairs, and never let a
+  "couldn't check" path re-select forever (Entry 96).
 
 ## Open / deferred (long-standing, not blocking)
 
@@ -79,3 +76,6 @@ No queued features, no paused refactor. v1.57.0 awaits deploy.
 - Thread table prefix into `StaleStepsDetected` notification.
 - Out-of-band scheduler dead-man on hyperion (proposed post-Entry-93,
   Bruno declined for now — runbook + sentinel layers deemed enough).
+- No backtesting chapter on the syntax docs site — the v1.61.0 grade
+  cap landed in `domains/token-selection`; a dedicated chapter needs
+  Bruno's call.
