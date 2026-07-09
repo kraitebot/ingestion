@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.58.2 - 2026-07-10
+
+### Bug fixes
+
+- [FIXED] **Failed-backtest kline purge exempts market-reference symbols (core 1.62.1) — the go-live blocker.** Rejecting BTC in admin backtesting caused the daily purge to delete BTC's entire candle history; BTC is the alignment series for every correlation/elasticity computation AND the BTC-bias direction source, so token selection silently starved — account activation opened zero positions with 11 tradeable tokens and no visible error (workflow Stopped, stop_reason null). The purge now exempts the BTC reference token + market-regime basket majors regardless of review status; NULL-asset rows still purge. Regression suite added (`PurgeFailedBacktestedKlinesReferenceExemptionTest`, 5 cases). Production was repaired data-side same night (BTC re-approved with trading flags off + 500-candle backfill on all 4 exchanges + pool recompute) — first live positions opened minutes later: BCH/FIL/QNT LONG + CC SHORT, drift-checked 100% synced. See deploy-notes Entry 97.
+
 ## 1.58.1 - 2026-07-09
 
 ### Dependencies

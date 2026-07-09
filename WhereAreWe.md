@@ -1,81 +1,77 @@
-# WhereAreWe — 2026-07-08 (backtest-grade cap + TAAPI 404 fix release v1.58.0)
+# WhereAreWe — 2026-07-10 (GO-LIVE + reference-symbol purge exemption v1.58.2)
 
 ## Date
 
-2026-07-08
+2026-07-10
 
 ## Current fleet state
 
-v1.58.0 release in flight (tag + deploy this session):
+**LIVE TRADING SINCE 2026-07-10 00:27.** Bruno's Binance account
+(account 1) is active: 6 LONG + 6 SHORT slots, 5% margin per position,
+20x/15x leverage, divider 32. First positions: BCH/FIL/QNT LONG +
+CC SHORT — all verified 100% synced against Binance via
+DriftCheckService (28/28 orders exact).
 
-- **ingestion** — **v1.58.0** (this release)
-- **kraitebot/core** — v1.62.0 (ships 1.60.0 + 1.61.0 + 1.62.0)
-- **brunocfalcao/step-dispatcher** — v1.15.0 (ships 1.14.x + 1.15.0)
-- Fleet ran v1.57.0 / core 1.59.0 before this release.
+v1.58.2 release in flight:
 
-## This release (v1.58.0 / core 1.62.0 / step-dispatcher 1.15.0)
+- **ingestion** — v1.58.2 (this release)
+- **kraitebot/core** — v1.62.1 (purge exemption + CandleFactory schema fix)
+- **brunocfalcao/step-dispatcher** — v1.16.1 (unchanged)
+- Fleet ran v1.58.1 / core v1.62.0 before this release.
 
-Bundles three core releases and one step-dispatcher release that were
-tagged across 2026-07-06/08 sessions:
+## This release (v1.58.2 / core 1.62.1)
 
-- **Backtest grade capped by the decision band (core 1.61.0).** The
-  percentage-weighted score diluted absolute stop failures on large
-  samples (16 stops / ~1400 sims still graded B while the proposal
-  said reject). Now >10 stops grades at best D, 5–10 at best C.
-- **Sizing-skipped sims counted + `days_to_ignore` in meta (core
-  1.60.0)** — feeds the evidence floor on the admin backtesting page.
-- **Fleet heartbeat carries the running core version (core 1.62.0)**
-  — admin deploy panel can see rollout drift without SSH.
-- **TAAPI 404 "no candle data" is a legitimate no-data answer (core
-  1.62.0).** New exotic-quote Binance listings (BTC/U, ETH/USD1,
-  DATAIP/USDC…) hard-failed the verification probe hourly (80-92
-  failed steps/day). 404 + "no candle data" now marks
-  verified-with-no-data, same as the 400 shape; other 404s still
-  fail. Regression: `TouchTaapiDataForExchangeSymbolJobIgnoreExceptionTest`
-  (4 cases). Deploy-notes Entry 96.
-- **step-dispatcher 1.15.0** — canonical `workflowState(uuid)`
-  aggregation + `WorkflowState` enum; 1.14.x DB-engine portability +
-  pgsql identifier quoting; suite now 192 Feature tests.
-- Routine vendor refresh (aws-sdk, laravel 12.63, peers).
+**Reference-symbol candle-purge exemption** — the go-live blocker fix.
+Rejecting BTC in admin backtesting caused the daily failed-backtest
+kline purge to delete BTC's entire price history; BTC is the alignment
+series for every correlation/elasticity computation, so token selection
+silently starved (zero positions opened, no error, stop_reason null).
+The purge now exempts the BTC reference token + market-regime basket
+regardless of review status. NULL-asset rows still purge (three-valued
+NOT IN guard). 5 regression tests. Also fixes CandleFactory schema
+drift (candle_time → candle_time_utc/local). Deploy-notes Entry 97.
 
-## Product state (unchanged this release)
+**First deploy with open positions.** Cooldown/warmup with live
+real-money positions on the exchange: positions live exchange-side
+during the maintenance window; user-data stream + 5-min polling sync
+catch up any fills that land mid-deploy. Post-warmup drift check is
+mandatory before calling the release done.
 
-Tradeable Binance pool is deliberately 3 tokens (ATOM/AVAX/BNB, all
-SHORT as of 2026-07-07) — Bruno curates enablement one-by-one via the
-admin backtesting console. 131 more candidates pass every automatic
-gate and await his review. Low count is intentional, never a bug.
+## Product state
+
+- Account 1 live: trial restarted 2026-07-10 (expires 2026-07-17!) —
+  **owner-account billing question open**: trial re-expiry silently
+  stops trading via the closing-mode gate. Bruno must decide exemption
+  vs wallet before Jul 17.
+- BTC/USDT sits approved + trading flags OFF on all exchanges —
+  protects its candles, keeps it untradeable. Never re-reject it.
+- Tradeable pool ~15 tokens and growing as Bruno approves in admin.
+- SHORT slots fill only when BTC signal flips or negative-correlation
+  candidates exist — sign filter working as designed, not a fault.
 
 ## Key architecture notes (still true)
 
-- The scheduler skips EVERYTHING in maintenance mode — any watchdog
-  scheduled through the same scheduler it monitors is blind to
-  scheduler-wide failure modes. At least one check must run
-  `evenInMaintenanceMode()`.
-- "Reconnect forever" is availability, NOT recovery — long-lived
-  ReactPHP daemons need a sustained-failure self-exit so a fresh
-  process can clear a loop-level wedge.
-- TAAPI/Bybit throttle budget is NOT raised by the 2nd IP — single
-  global Redis buckets keyed without IP.
-- Notification Threshold counting is per `(notification, relatable)`
-  over held rows; throttler must be loose for a threshold to fire.
-- Non-Binance klines feed per-exchange semaphores — never gate by
-  active account.
-- Fleet is 10 boxes: hyperion (DB+Redis), athena (ingestion), pheme
-  (web), eos/iris/nyx/hemera/palaemon/aristaeus (interchangeable
-  trading workers), tyche (indicators+cronjobs).
-- Providers can signal one semantic outcome via multiple status
-  codes — gate on (code, body-pattern) pairs, and never let a
-  "couldn't check" path re-select forever (Entry 96).
+- The scheduler skips EVERYTHING in maintenance mode; at least one
+  health check runs `evenInMaintenanceMode()`.
+- "Reconnect forever" is availability, NOT recovery — strict-data
+  daemons self-exit for supervisor respawn.
+- TAAPI/Bybit throttle budget is NOT raised by the 2nd IP.
+- Non-Binance klines feed per-exchange semaphores.
+- Fleet: hyperion (DB+Redis), athena (ingestion), pheme (web),
+  eos/iris/nyx/hemera/palaemon/aristaeus (workers), tyche (indicators).
+- Reference symbols are infrastructure, not trading candidates —
+  cleanup keyed on trading verdicts must exempt them (Entry 97).
+- Providers signal one outcome via multiple status codes — gate on
+  (code, body-pattern) pairs (Entry 96).
 
-## Open / deferred (long-standing, not blocking)
+## Open / deferred
 
-- Atomic throttle reservation fix (parked — would zero the 429s).
+- **Owner-account subscription expiry Jul 17** — product decision.
+- Populate stop_reason on silent workflow stops (assign job returned
+  null on the Entry-97 failure — cost diagnosis time).
+- Atomic throttle reservation fix (parked).
 - `priority-trading` vs `priority-cron` split.
-- `SyncLeverageBracketJob` bulk wave watchdog spikes — smaller bulks.
 - Bybit `min_delay_ms` dead knob.
 - Thread table prefix into `StaleStepsDetected` notification.
-- Out-of-band scheduler dead-man on hyperion (proposed post-Entry-93,
-  Bruno declined for now — runbook + sentinel layers deemed enough).
-- No backtesting chapter on the syntax docs site — the v1.61.0 grade
-  cap landed in `domains/token-selection`; a dedicated chapter needs
-  Bruno's call.
+- No backtesting chapter on syntax site (grade cap lives in
+  domains/token-selection).
