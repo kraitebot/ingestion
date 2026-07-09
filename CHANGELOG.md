@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.58.1 - 2026-07-09
+
+### Dependencies
+
+- [CHANGED] **Exception-triage columns ship fleet-wide (step-dispatcher 1.16.1).** Every steps / steps_archive table (both fleets) gains `exception_analysed` (operator marked a failure handled — bulk-resolved per class from the admin Engine page) and `exception_verdict` (persisted AI diagnosis on the newest occurrence). Failed stays terminal per step; triage is a flag on top of the state machine, never a state. The migration sweeps existing prefixed tables shape-guarded (`block_uuid` + `state` must exist, so foreign `*_steps` tables and same-named tables leaking from sibling schemas are skipped — both hit in the wild on the first local run), the installer covers fresh sets, and `steps:archive` carries both columns verbatim. Operator surface is admin v0.15.0's Engine page.
+
 ## 1.58.0 - 2026-07-08
 
 ### Improvements
