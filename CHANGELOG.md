@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.59.0 - 2026-07-11
+
+### Features
+
+- [NEW FEATURE] **Live-window cascade detection (core 1.63.0).** The market-shock circuit breaker now watches per-second mark prices through a rolling 1-minute sample buffer instead of 15-minute-stale klines — worst-case reaction to a violent market-wide move drops from ~35 minutes to ~1-2 minutes, with a 2-consecutive-tick persistence guard against single-minute wicks and the kline path retained as automatic fallback + kill switch. Replay-validated across the six historical black-swan events (earlier on every one; ~1 false 6h pause per choppy month, zero in calm months). Ships the `market_price_samples` rolling buffer table (additive migration).
+
 ## 1.58.3 - 2026-07-10
 
 ### Bug fixes
