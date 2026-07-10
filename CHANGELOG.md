@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.58.3 - 2026-07-10
+
+### Bug fixes
+
+- [FIXED] **Binance order-cancel mapper guards optional `avgPrice` (core 1.62.2).** First live TP-fill close (position #176 SKYUSDT SHORT, profit taken 01:51) crashed the cancel-remaining-orders step because Binance omits `avgPrice` on cancel confirmations for never-filled orders — the crash aborted the cleanup loop and left 3 DCA rungs live and ownerless on Binance. Night watch contained it within one cycle (rungs cancelled, drift re-verified clean). Mapper now defaults the field to '0'; regression suite `MapsOrderCancelMissingAvgPriceTest` (2 cases). See deploy-notes Entry 98.
+
 ## 1.58.2 - 2026-07-10
 
 ### Bug fixes

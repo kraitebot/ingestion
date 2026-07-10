@@ -1,4 +1,4 @@
-# WhereAreWe — 2026-07-10 (GO-LIVE + reference-symbol purge exemption v1.58.2)
+# WhereAreWe — 2026-07-10 (GO-LIVE + reference-symbol purge exemption v1.58.3)
 
 ## Date
 
@@ -12,10 +12,10 @@
 CC SHORT — all verified 100% synced against Binance via
 DriftCheckService (28/28 orders exact).
 
-v1.58.2 release in flight:
+v1.58.3 release in flight (avgPrice cancel-mapper fix):
 
-- **ingestion** — v1.58.2 (this release)
-- **kraitebot/core** — v1.62.1 (purge exemption + CandleFactory schema fix)
+- **ingestion** — v1.58.3 (this release)
+- **kraitebot/core** — v1.62.2 (purge exemption + CandleFactory schema fix)
 - **brunocfalcao/step-dispatcher** — v1.16.1 (unchanged)
 - Fleet ran v1.58.1 / core v1.62.0 before this release.
 
