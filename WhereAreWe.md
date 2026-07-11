@@ -1,8 +1,36 @@
-# WhereAreWe — 2026-07-11 (SME code-review batch: signal-integrity + security + ops hardening)
+# WhereAreWe — 2026-07-12 (SME code-review batch #2: workflow-engine hardening — 12 fixes)
 
 ## Date
 
-2026-07-11
+2026-07-12
+
+## v1.62.0 release (2026-07-12) — Sol Ultra code-review batch #2 (core 1.66.0, step-dispatcher 1.17.0)
+
+Second external SME review (GPT-5.6 "Sol Ultra"), this one aimed at the
+workflow ENGINE: 12 of 16 findings shipped, 4 discarded with evidence.
+Deploy-notes Entry 100 has the full record. Where Entry 99 was signal +
+security + ops, this batch is engine correctness — the failure modes are
+duplicate exchange orders and phantom positions, so it matters more:
+
+- Retried orchestrators can no longer duplicate a half-built child chain
+  (atomic + idempotent build across all 6 position orchestrators) — the
+  worst case was a second market entry on a live account.
+- A Skipped parent with a Dispatched child no longer wedges the dispatcher
+  group forever (step-dispatcher: new skip transitions + honest progress).
+- Ladder builds are atomic (no more phantom NEW orders), positions can't
+  get stuck in `new` looping the open-fail-cancel cycle, concurrent order
+  recreation is locked + unique-indexed, Bitget correction dedupe sees its
+  own class, Bitget TP/SL picks the live sibling not a cancelled ghost,
+  WAP follow-up ack is transactional, a filled TP persists+closes instead
+  of reverting to a phantom-active position, and the dead verifyPrice
+  contract is gone.
+
+Ships a schema migration (orders.recreated_from_order_id → unique), run
+on athena after the pre-deploy backup; prod carried zero duplicate
+lineage rows so it applied clean. Live positions rode through untouched.
+
+
+## Prior: Date
 
 ## v1.61.0 release (2026-07-11) — code-review batch (core v1.65.0)
 

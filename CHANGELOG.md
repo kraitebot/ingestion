@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.62.0 - 2026-07-12
+
+Second external SME code-review batch (GPT-5.6 "Sol Ultra") — 12 of 16 findings shipped across `kraitebot/core` 1.66.0 and `brunocfalcao/step-dispatcher` 1.17.0, 4 discarded with evidence. 26 new regression tests. Full record in deploy-notes Entry 100.
+
+### Bug fixes (via core 1.66.0 + step-dispatcher 1.17.0)
+
+- [FIXED] **Duplicate market entries on orchestrator retry** — atomic + idempotent child-chain build across all six position orchestrators (open/cancel/WAP).
+- [FIXED] **Dispatcher group wedge** — a Skipped parent with a `Dispatched` descendant no longer reselects forever; new `Dispatched→Skipped` / `NotRunnable→Skipped` transitions + honest per-tick progress reporting (step-dispatcher).
+- [FIXED] **Swallowed ladder failures**, **positions stuck in `new`**, **concurrent double-recreation** (+ unique lineage index — DB migration), **Bitget wrong-class + non-atomic correction dedupe**, **stale Bitget TP/SL sibling selection**, **WAP follow-up ack atomicity**, **TP-filled phantom-active position**, **double WAP notification**, and removal of the **dead `verifyPrice`** contract. Each with a regression test — see core 1.66.0 changelog for the per-fix detail.
+
+### Deploy note
+
+- Core 1.66.0 ships a schema migration (`orders.recreated_from_order_id` → unique). Runs on athena after the hard-gated pre-deploy DB backup; production pre-verified to carry zero duplicate lineage rows, so it applies clean.
+
 ## 1.61.0 - 2026-07-11
 
 ### Bug fixes
