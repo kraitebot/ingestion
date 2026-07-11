@@ -133,9 +133,15 @@ Schedule::command('kraite:cron-check-binance-listen-keys-stale')
 // fallback and backups all silent, zero pages). While down, the command
 // runs ONLY its stuck-maintenance check; the full pass is skipped so a
 // normal deploy window never produces transient alerts.
+// withoutOverlapping(6): the framework default expiry is 1,440 min — a
+// hard-killed run (OOM, power loss) would leave a stale mutex silencing
+// this watchdog for a FULL DAY, including its stuck-maintenance check —
+// the Entry-93 self-blinding shape via a different mechanism. 6 min sits
+// just under the 7-min cadence: a crash costs at most one skipped tick,
+// and a legitimate run takes seconds.
 Schedule::command('kraite:cron-check-system-health')
     ->cron('*/7 * * * *')
-    ->withoutOverlapping()
+    ->withoutOverlapping(6)
     ->evenInMaintenanceMode();
 
 // Scheduled jobs that create NEW steps should NOT run during cooldown
@@ -261,7 +267,8 @@ if (! $isCoolingDown()) {
 
     // Purge old candles daily at 03:00 (keeps last 500 per symbol/timeframe)
     Schedule::command('kraite:purge-candles')
-        ->dailyAt('03:00');
+        ->dailyAt('03:00')
+        ->withoutOverlapping();
 
     // Sweep breadcrumb trails of positions whose clean close has aged past
     // the configured retention window (kraite.positions.trail_retention_hours).
@@ -271,7 +278,8 @@ if (! $isCoolingDown()) {
     // (cron 7 */3) to capture it before reclamation. Slotted before the
     // 03:30 generic log purges.
     Schedule::command('kraite:cron-purge-position-trails')
-        ->dailyAt('03:20');
+        ->dailyAt('03:20')
+        ->withoutOverlapping();
 
     // Purge candles for ExchangeSymbols whose backtest review was rejected.
     // Runs hourly so a fresh reject quickly drops dead candle weight.
@@ -289,29 +297,34 @@ if (! $isCoolingDown()) {
     //     (position lifecycle, fills, WAP transitions, close chains). Beyond
     //     that, log volume outweighs the forensics value.
     Schedule::command('kraite:purge-old-data --api-request-logs-days=5 --model-logs-days=30')
-        ->dailyAt('03:30');
+        ->dailyAt('03:30')
+        ->withoutOverlapping();
 
     // Archive fully-resolved step trees daily at 04:00 (keeps last 1 day)
     Schedule::command('steps:archive --duration=1')
-        ->dailyAt('04:00');
+        ->dailyAt('04:00')
+        ->withoutOverlapping();
 
     // Same archive pass, scoped to the `trading_*` table set. Offset by
     // 5 minutes so the two passes never compete for I/O on the same
     // physical disk. Same 1-day retention as the default set.
     Schedule::command('steps:archive --prefix=trading --duration=1')
-        ->dailyAt('04:05');
+        ->dailyAt('04:05')
+        ->withoutOverlapping();
 
     // Trim the archive itself daily at 04:30, 30 min after the archive
     // run finishes. --only-archive keeps the live `steps` table and the
     // ticks table off-limits — date-based delete on steps_archive only.
     // 5-day retention window: anything older than that is gone.
     Schedule::command('steps:purge --only-archive --days=5')
-        ->dailyAt('04:30');
+        ->dailyAt('04:30')
+        ->withoutOverlapping();
 
     // Same archive trim, scoped to `trading_steps_archive`. Offset by
     // 5 minutes from the default purge for the same I/O reason.
     Schedule::command('steps:purge --prefix=trading --only-archive --days=5')
-        ->dailyAt('04:35');
+        ->dailyAt('04:35')
+        ->withoutOverlapping();
 
     // ---------------------------------------------------------------
     // OPTIMIZE TABLE on the breadcrumb tables — staggered window
@@ -393,7 +406,7 @@ if (! $isCoolingDown()) {
             ->cron('7 */3 * * *')
             ->withoutOverlapping()
             ->onOneServer()
-            ->then(function (): void {
+            ->onSuccess(function (): void {
                 Artisan::call('backup:clean', ['--disable-notifications' => true]);
             });
 

@@ -69,7 +69,17 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            // 900s: must exceed the longest legitimate job runtime (Horizon
+            // supervisors run timeout=0). Longest observed: hourly
+            // ConcludeSymbolDirectionAtTimeframeJob at 464s wall
+            // (deploy-notes Entry 95). At the old 90s default, Redis
+            // re-delivered still-running jobs to a second worker — the
+            // step layer's duplicate-Running bail-out absorbed the
+            // side effects, but the churn was real and the guard was
+            // load-bearing instead of a backstop. Crash recovery is
+            // owned by steps:recover-stale (every minute), NOT by this
+            // lease, so the higher value slows nothing.
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 900),
             'block_for' => null,
             'after_commit' => false,
         ],

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.61.0 - 2026-07-11
+
+### Bug fixes
+
+- [FIXED] **Same-run provenance gate on direction conclusion (core 1.65.0) — the signal-integrity fix.** A partial TAAPI refresh could conclude a trading direction from indicators mixing this hour's fresh values with last hour's stale ones (write-time `MAX(timestamp)`, count gate proves presence not provenance), stamping a phantom direction that drives position opening. Now rejected as inconclusive when the latest-per-indicator write times spread beyond `INDICATORS_MAX_RUN_SPREAD_SECONDS` (300s).
+- [FIXED] **System-health watchdog stale-mutex window capped.** `withoutOverlapping()` used the framework default 1,440-min expiry; a hard-killed run would silence the watchdog (incl. its maintenance check) for a full day — the Entry-93 self-blinding shape via stale mutex. Now `withoutOverlapping(6)`.
+- [FIXED] **Redis queue `retry_after` 90→900s.** Jobs run up to 464s under Horizon `timeout=0`, so Redis was re-delivering still-running jobs to a second worker; the step duplicate-Running bail-out absorbed the side effects but the churn was real. 900s restores the documented `retry_after > max-runtime` invariant (crash recovery is owned by steps:recover-stale, not the lease). **Fleet `.env` change required: set `REDIS_QUEUE_RETRY_AFTER=900`.**
+
+### Security
+
+- [FIXED] **Connectivity endpoints authorize against account ownership + ZeptoMail webhook replay dedup + CSRF exact-URIs (core 1.65.0).** Pre-multi-user hardening; zero exposure today (single-user). See deploy-notes Entry 99.
+
+### Improvements
+
+- [IMPROVED] **Overlap guards on 7 daily destructive schedules** (purge-candles, purge-position-trails, purge-old-data, both steps:archive, both steps:purge) for consistency with the siblings that already carried `withoutOverlapping()`. Backup cleanup `then()`→`onSuccess()` so it never runs on a failed backup.
+
 ## 1.60.1 - 2026-07-11
 
 ### Bug fixes

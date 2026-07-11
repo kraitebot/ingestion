@@ -1,8 +1,26 @@
-# WhereAreWe — 2026-07-10 (GO-LIVE + reference-symbol purge exemption v1.58.3)
+# WhereAreWe — 2026-07-11 (SME code-review batch: signal-integrity + security + ops hardening)
 
 ## Date
 
-2026-07-10
+2026-07-11
+
+## v1.61.0 release (2026-07-11) — code-review batch (core v1.65.0)
+
+Adversarial adjudication of a 6-report external SME review: 7 of 10
+findings shipped, 2 discarded with evidence, 1 parked. Deploy-notes
+Entry 99 has the full record. Headline fix (the only one touching a
+trading decision): direction conclusion now has a same-run provenance
+gate — a partial TAAPI refresh can no longer blend this-hour and
+last-hour indicators into a phantom direction that drives position
+opening. Plus pre-multi-user security hardening (connectivity authz
+via AccountPolicy, ZeptoMail replay dedup, CSRF exact-URIs — zero
+exposure today, single-user) and ops resilience (watchdog stale-mutex
+cap, retry_after 90→900, destructive-schedule overlap guards). Parked
+still: atomic TAAPI throttle reservation (efficiency-only, feature-
+sized). Live positions carried through the deploy untouched, as always.
+
+
+## Prior: Date
 
 ## Current fleet state
 

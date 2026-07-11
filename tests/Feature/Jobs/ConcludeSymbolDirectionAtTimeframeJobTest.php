@@ -1056,3 +1056,60 @@ test('preserves previous conclusions when spawning child workflows', function ()
     expect($previousConclusions['1m'])->toBe('LONG');
     expect($previousConclusions['5m'])->toBe('INCONCLUSIVE');
 });
+
+test('does NOT conclude when indicators come from different runs (mixed-hour data)', function (): void {
+    // review-diff 06-High: a partial TAAPI refresh leaves MAX(timestamp)
+    // mixing this run's fresh rows with a prior run's stale ones. All
+    // indicators are PRESENT (count check passes) but not from one run.
+    // The same-run provenance gate must reject this rather than conclude
+    // a direction from data that never co-existed.
+    seedIndicatorsForConcludeTest();
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONMIXED1');
+    $step = createStepForConcludeJob($exchangeSymbol, '1h');
+
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    // Age ONE indicator's latest row back by a full hour — simulating a
+    // construct that failed to refresh this run, so its newest row is the
+    // previous run's. Spread now ~3600s, far beyond the 300s tolerance.
+    $adxIndicator = Indicator::where('canonical', 'adx')->first();
+    IndicatorHistory::where('exchange_symbol_id', $exchangeSymbol->id)
+        ->where('indicator_id', $adxIndicator->id)
+        ->where('timeframe', '1h')
+        ->update(['timestamp' => (string) (now()->timestamp - 3600)]);
+
+    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h', [], true);
+    $job->step = $step;
+
+    $result = $job->compute();
+
+    expect($result['result'])->not->toBe('concluded');
+
+    $exchangeSymbol->refresh();
+    expect($exchangeSymbol->direction)->toBeNull();
+});
+
+test('still concludes when a same-run set has minor sub-tolerance timestamp spread', function (): void {
+    // Guard against a false positive: one query run upserts indicators over
+    // a few seconds, so a small spread must NOT block a legitimate
+    // conclusion. Age one indicator by 30s — well inside the 300s tolerance.
+    seedIndicatorsForConcludeTest();
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONSAMERUN1');
+    $step = createStepForConcludeJob($exchangeSymbol, '1h');
+
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    $adxIndicator = Indicator::where('canonical', 'adx')->first();
+    IndicatorHistory::where('exchange_symbol_id', $exchangeSymbol->id)
+        ->where('indicator_id', $adxIndicator->id)
+        ->where('timeframe', '1h')
+        ->update(['timestamp' => (string) (now()->timestamp - 30)]);
+
+    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h', [], true);
+    $job->step = $step;
+
+    $result = $job->compute();
+
+    expect($result['result'])->toBe('concluded')
+        ->and($result['direction'])->toBe('LONG');
+});
