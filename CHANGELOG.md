@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.60.0 - 2026-07-11
+
+### Features
+
+- [NEW FEATURE] **BSCS drawdown floor (core 1.64.0).** When BTC trades 15%+ below its ~21-day high, the hourly regime score is floored at Fragile — smaller and fewer positions during post-crash bleed regimes that the relative sub-signals cannot see (the June-2022 blind spot, now covered). Floor semantics only: never lowers a genuine higher score, never blocks opens by itself. Kill switch `MARKET_REGIME_DRAWDOWN_FLOOR`. Companion research decision: the perp-basis candidate was killed by data (1/6 events, noise above signal) — study preserved in the blackswan repo.
+
 ## 1.59.0 - 2026-07-11
 
 ### Features

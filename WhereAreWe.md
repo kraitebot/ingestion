@@ -104,3 +104,19 @@ mandatory before calling the release done.
   this (Bruno's last-rung-only choice). MUST be replayed against the
   6 historical events in backtest sim before shipping. Bruno parked:
   accepts current risk profile for now.
+
+## v1.59.0 release (2026-07-11)
+
+Live-window cascade detection LIVE fleet-wide: shock breaker evaluates
+rolling 1-min mark-price samples (offsets 15/60, persistence 2 ticks),
+kline path as fallback + kill switch (MARKET_SHOCK_LIVE_WINDOW).
+Replay evidence: ~/blackswan/reports/fast-breaker-replay-20260711.txt.
+market_price_samples buffer table migrated on athena. Verified post-
+deploy: samples growing 5/min, detector Completed each minute,
+insufficient_series during first-hour buffer fill (expected), no false
+cooldown. Admin v0.16.0 (Positions page) on pheme — deploy stalled
+mid-npm on an SSH client timeout (heartbeat went silent → watchdog
+paged "pheme no live metrics"); resumed detached, warmed, heartbeat
+re-seeded via kraite:fleet-report --seed. Lesson: pheme deploy blocks
+run detached (nohup + log) from now on. 30-min SMOKE WATCH cron active
+(catastrophe authority: stop bot + close positions, pre-authorized).
