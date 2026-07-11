@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.60.1 - 2026-07-11
+
+### Bug fixes
+
+- [FIXED] **Price-alignment check stops hammering delisted symbols (core 1.64.1).** Bitget's dead TON row (post TON→GRAM rebrand, already delisting-flagged) was selected for the live price comparison on every refresh — 36 failed steps over two weeks, twice-hourly `40034` noise on the admin Engine page. Candidate selection now excludes delisted rows via the existing `notDelisted` scope. Regression test in `PriceAlignmentTest`.
+
 ## 1.60.0 - 2026-07-11
 
 ### Features

@@ -109,3 +109,28 @@ it('parent selects only naming-divergent symbol_id siblings, not same-name ones'
     expect($ids->all())->toContain($divergent->id)
         ->and($ids->all())->not->toContain($sameName->id);
 });
+
+it('parent never selects delisted naming-divergent symbols', function (): void {
+    // Production incident 2026-07-11: Bitget's dead TON/USDT row (flagged
+    // is_marked_for_delisting after the TON→GRAM rebrand) still shares its
+    // symbol_id with Binance's renamed GRAM sibling, so the name diverges and
+    // the parent kept selecting it — Bitget answered 40034 twice an hour,
+    // 36 failed steps. Delisted rows must never reach the live price check.
+    $binanceSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'binance', 'name' => 'Binance']);
+    $bitgetSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'bitget', 'name' => 'Bitget']);
+
+    ExchangeSymbol::factory()->create(['api_system_id' => $binanceSystem->id, 'token' => 'GRAM', 'quote' => 'USDT', 'symbol_id' => 900]);
+    $delisted = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitgetSystem->id, 'token' => 'TON', 'quote' => 'USDT', 'symbol_id' => 900,
+        'is_marked_for_delisting' => true,
+    ]);
+    $alive = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitgetSystem->id, 'token' => '1000TON', 'quote' => 'USDT', 'symbol_id' => 900,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    $ids = (new VerifyPriceAlignmentsJob)->namingDivergentCandidateIds();
+
+    expect($ids->all())->not->toContain($delisted->id)
+        ->and($ids->all())->toContain($alive->id);
+});

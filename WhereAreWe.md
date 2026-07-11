@@ -120,3 +120,16 @@ paged "pheme no live metrics"); resumed detached, warmed, heartbeat
 re-seeded via kraite:fleet-report --seed. Lesson: pheme deploy blocks
 run detached (nohup + log) from now on. 30-min SMOKE WATCH cron active
 (catastrophe authority: stop bot + close positions, pre-authorized).
+
+## v1.60.0 release (2026-07-11) — BSCS drawdown floor
+
+Research session (~/blackswan/reports/signal-candidates-20260711.txt):
+- Drawdown floor SHIPPED (core v1.64.0): BTC >=15% below ~21d high
+  floors hourly score at Fragile. 4/6 events at T-6h incl. the missed
+  Jun-2022 (36.6%). ~zero calm phantoms. Floor-only semantics; kill
+  switch MARKET_REGIME_DRAWDOWN_FLOOR. Live verified: value_pct=2.11%,
+  floor dormant (correct — calm market).
+- Perp basis KILLED by data: 1/6 events, calm noise above signal —
+  funding rate's failure mode repeated. Not implemented.
+BSCS now covers three horizons: days (hourly score+ramps), bleed
+regimes (drawdown floor), minutes (live-window breaker).
