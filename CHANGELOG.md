@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.62.1 - 2026-07-12
+
+### Config
+
+- [FIXED] **Engine timestamps now recorded in UTC.** The trading fleet ran `APP_TIMEZONE=Europe/Zurich`, so `now()` stamped every position/order/snapshot time in Swiss wall-clock (1–2h ahead of UTC). The shared DB runs UTC, so those stamps stored 1–2h in the future, and every UTC reader (admin, marketing) showed open-times ahead of reality — the Positions page surfaced it as future "opened" times and backwards ages, while the dashboard masked the same value as "just now". Default timezone flipped to UTC. **Fleet `.env` change required: set `APP_TIMEZONE=UTC` on all trading boxes.** Historical engine-written timestamps (positions, orders, balance history, exchange snapshots) backfilled Swiss→UTC under the pre-deploy DB backup — dispatcher steps and web-app-written rows excluded (already UTC). Scheduled maintenance jobs and daily P&L windows now align to UTC (previously Zurich), matching admin/marketing.
+
 ## 1.62.0 - 2026-07-12
 
 Second external SME code-review batch (GPT-5.6 "Sol Ultra") — 12 of 16 findings shipped across `kraitebot/core` 1.66.0 and `brunocfalcao/step-dispatcher` 1.17.0, 4 discarded with evidence. 26 new regression tests. Full record in deploy-notes Entry 100.
