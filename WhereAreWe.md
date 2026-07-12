@@ -1,3 +1,34 @@
+# WhereAreWe — 2026-07-13 (public registration live on kraite.com; money-guard; Black plan)
+
+## Date
+
+2026-07-13
+
+## This release (2026-07-13)
+
+- **Public registration wizard shipped on kraite.com** (private beta
+  retired): profile → fleet-wide connectivity test (hard gate) →
+  trading-currency pick (live balances, BFUSD-aware) → plan pick
+  (Basic/Unlimited, immediate 7-day trial, soft underfunded warning)
+  → automatic exchange scan + one-time-token auto-login handoff to
+  admin.kraite.com. Admin's invite registration surface deleted.
+- **Sizing safety coupling (core):** `allow_other_positions=true` now
+  forces margin sizing onto available-balance — a user's own locked
+  capital is never counted. The wizard flips the switch automatically
+  when its scan finds pre-existing positions/orders.
+- **Black plan:** the zombie free "Starter" row (seeder resurrection
+  after the 2026-05-15 basic rename) is now deliberate — canonical
+  `black`, free forever, uncapped, invite-only, hidden from the
+  wizard. Seeder seeds basic/unlimited/black correctly now.
+- **Trading money-guard (other session, ships with this release):**
+  CheckDrifts Scope 3+4 cooling contract — deterministic triggers
+  (broken structure, failed-position burst, failed-step storm,
+  exchange-error storm) halt opens globally, write a monitoring/
+  incident + direct Pushover, alarm-once latch; `kraite:monitor-narrate`
+  (Haiku, every 20min) documents open incidents, never decides.
+
+---
+
 # WhereAreWe — 2026-07-12 (SME code-review batch #2: workflow-engine hardening — 12 fixes)
 
 ## Date

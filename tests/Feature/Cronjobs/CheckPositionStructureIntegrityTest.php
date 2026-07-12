@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Kraite\Core\Models\Account;
@@ -287,4 +288,183 @@ it('emits one notification per broken position when several break at once', func
     $this->artisan('kraite:cron-check-drifts')->run();
 
     Notification::assertCount(2);
+});
+
+/**
+ * #503 regression (2026-07-12): a position whose take-profit FILLED is
+ * closing — the close workflow cancels its SL + limits as a normal part
+ * of the exit — so the transient "missing STOP_LOSS" while it is still
+ * `active` for a heartbeat MUST NOT halt the whole bot. A fired exit is
+ * never a broken structure. This false halt cooled trading for 6 hours.
+ */
+it('does NOT halt opens when a TP-filled (closing) position is missing its SL', function (): void {
+    $f = makeStructureFixture(totalLimitOrders: 4, token: 'TPFILL');
+    $pid = $f['position']->id;
+
+    makeStructureOrder($pid, ['type' => 'MARKET', 'status' => 'FILLED']);
+    // TP fired — the exit that closes the position.
+    makeStructureOrder($pid, [
+        'type' => 'PROFIT-LIMIT', 'side' => 'SELL', 'status' => 'FILLED',
+        'price' => '1.10000000', 'is_algo' => true,
+    ]);
+    // Close workflow cancelled the SL and every limit — the normal exit.
+    makeStructureOrder($pid, [
+        'type' => 'STOP-MARKET', 'side' => 'SELL', 'status' => 'CANCELLED',
+        'price' => '0.90000000', 'is_algo' => true,
+    ]);
+    for ($i = 0; $i < 4; $i++) {
+        makeStructureOrder($pid, ['type' => 'LIMIT', 'status' => 'CANCELLED']);
+    }
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    // No false structure alarm, no global halt — it is closing, not broken.
+    Notification::assertNothingSent();
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue();
+});
+
+it('does NOT halt opens when a STOP-triggered (closing) position is missing its TP', function (): void {
+    $f = makeStructureFixture(totalLimitOrders: 4, token: 'SLTRIG');
+    $pid = $f['position']->id;
+
+    makeStructureOrder($pid, ['type' => 'MARKET', 'status' => 'FILLED']);
+    // SL triggered — the exit fired on the downside.
+    makeStructureOrder($pid, [
+        'type' => 'STOP-MARKET', 'side' => 'SELL', 'status' => 'TRIGGERED',
+        'price' => '0.90000000', 'is_algo' => true,
+    ]);
+    // The TP got cancelled by the close workflow.
+    makeStructureOrder($pid, [
+        'type' => 'PROFIT-LIMIT', 'side' => 'SELL', 'status' => 'CANCELLED',
+        'price' => '1.10000000', 'is_algo' => true,
+    ]);
+    for ($i = 0; $i < 4; $i++) {
+        makeStructureOrder($pid, ['type' => 'LIMIT', 'status' => 'CANCELLED']);
+    }
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    Notification::assertNothingSent();
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue();
+});
+
+it('STILL halts opens when a genuinely-open (no exit fired) position is missing its SL', function (): void {
+    // Guard against over-correction: a real naked position — no TP/SL
+    // fired, SL absent — must STILL trip the halt. The fix only excludes
+    // positions that are exiting, never genuinely-open ones.
+    $f = makeStructureFixture(totalLimitOrders: 4, token: 'NAKED');
+    $pid = $f['position']->id;
+
+    makeStructureOrder($pid, ['type' => 'MARKET', 'status' => 'FILLED']);
+    for ($i = 0; $i < 4; $i++) {
+        makeStructureOrder($pid, ['type' => 'LIMIT', 'status' => 'NEW']);
+    }
+    makeStructureOrder($pid, [
+        'type' => 'PROFIT-LIMIT', 'side' => 'SELL', 'status' => 'NEW',
+        'price' => '1.10000000', 'is_algo' => true,
+    ]);
+    // SL missing entirely, nothing fired — genuinely naked.
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    Notification::assertSentTimes(AlertNotification::class, 1);
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
+});
+
+// ---------------------------------------------------------------------------
+// Scope 4 — trading-engine-health cooldown + incident writer + latch
+// ---------------------------------------------------------------------------
+
+function cleanMonitoringDir(): void
+{
+    $dir = base_path('monitoring');
+    if (is_dir($dir)) {
+        foreach (glob($dir.'/*') ?: [] as $f) {
+            @unlink($f);
+        }
+    }
+}
+
+it('cools the bot and writes ONE incident when fresh failed positions burst', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config(['kraite.guard.failed_positions_threshold' => 2]);
+
+    $f = makeStructureFixture(token: 'FAILB');
+    seedHealthyStructure($f['position']->id, 4); // keep Scope 3 clean so Scope 4 is what fires
+    // Two fresh failed positions in the window.
+    Position::factory()->count(2)->create([
+        'account_id' => $f['account']->id,
+        'exchange_symbol_id' => $f['position']->exchange_symbol_id,
+        'status' => 'failed',
+        'updated_at' => now(),
+    ]);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
+    expect(File::exists(base_path('monitoring/OPEN-INCIDENT')))->toBeTrue();
+
+    $incidents = glob(base_path('monitoring/*.md')) ?: [];
+    expect($incidents)->toHaveCount(1);
+    expect(File::get($incidents[0]))->toContain('failed_positions_burst')->toContain('narrated: NO');
+
+    // Guard pushover fired once.
+    Illuminate\Support\Facades\Http::assertSent(fn ($r) => str_contains($r->url(), 'pushover.net'));
+
+    cleanMonitoringDir();
+});
+
+it('cools when the failed trading-step storm crosses threshold', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config(['kraite.guard.failed_steps_threshold' => 3, 'kraite.guard.failed_positions_threshold' => 99]);
+
+    Illuminate\Support\Facades\DB::table('trading_steps')->insert(collect(range(1, 3))->map(fn () => [
+        'class' => 'X', 'type' => 'default', 'queue' => 'trading',
+        'state' => 'StepDispatcher\\States\\Failed',
+        'block_uuid' => (string) Str::uuid(),
+        'index' => 1, 'created_at' => now(), 'updated_at' => now(),
+    ])->all());
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
+    expect(glob(base_path('monitoring/*.md')))->toHaveCount(1);
+    cleanMonitoringDir();
+});
+
+it('latches: once cooled, a second pass writes no new incident', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config(['kraite.guard.failed_positions_threshold' => 1]);
+
+    $f = makeStructureFixture(token: 'LATCH');
+    seedHealthyStructure($f['position']->id, 4); // keep Scope 3 clean so Scope 4 is what fires
+    Position::factory()->create([
+        'account_id' => $f['account']->id,
+        'exchange_symbol_id' => $f['position']->exchange_symbol_id,
+        'status' => 'failed', 'updated_at' => now(),
+    ]);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+    $first = glob(base_path('monitoring/*.md')) ?: [];
+    expect($first)->toHaveCount(1);
+
+    // Second pass while already cooled — no new incident, no re-cool.
+    $this->artisan('kraite:cron-check-drifts')->run();
+    expect(glob(base_path('monitoring/*.md')))->toHaveCount(1);
+
+    cleanMonitoringDir();
+});
+
+it('stays green (no cool, no incident) when engine health is clean', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue();
+    expect(File::exists(base_path('monitoring/OPEN-INCIDENT')))->toBeFalse();
+    cleanMonitoringDir();
 });

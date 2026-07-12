@@ -8,8 +8,10 @@ use Kraite\Core\Models\ApiSnapshot;
 /*
  * Account::balanceForTrading() decides which exchange-side balance
  * figure feeds margin sizing. The operator selects whether Kraite trades
- * from total wallet balance or available balance; allow_other_* stays
- * scoped to orphan cleanup policy.
+ * from total wallet balance or available balance. When the account
+ * allows the user's own positions (allow_other_positions=true), sizing
+ * is forced onto available balance so capital locked in those positions
+ * is never counted.
  */
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
@@ -25,13 +27,25 @@ function seedAccountBalanceSnapshot(Account $account, string $totalWallet, strin
 test('returns total-wallet-balance when the trading balance basis is total', function (): void {
     $account = Account::factory()->create([
         'balance_for_trading_basis' => 'total',
+        'allow_other_positions' => false,
+        'allow_other_orders' => false,
+    ]);
+
+    seedAccountBalanceSnapshot($account, totalWallet: '1000.00', available: '600.00');
+
+    expect($account->balanceForTrading())->toBe('1000.00');
+});
+
+test('allow_other_positions forces available-balance even when the basis is total', function (): void {
+    $account = Account::factory()->create([
+        'balance_for_trading_basis' => 'total',
         'allow_other_positions' => true,
         'allow_other_orders' => true,
     ]);
 
     seedAccountBalanceSnapshot($account, totalWallet: '1000.00', available: '600.00');
 
-    expect($account->balanceForTrading())->toBe('1000.00');
+    expect($account->balanceForTrading())->toBe('600.00');
 });
 
 test('returns available-balance when the trading balance basis is available', function (): void {

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.63.0 - 2026-07-13
+
+Ships kraitebot/core 1.67.0. See deploy-notes Entry 101 and WhereAreWe.
+
+### Features
+
+- [NEW FEATURE] **Trading money-guard scheduled.** `kraite:monitor-narrate` (Haiku incident narrator, documentation-only) runs every 20 minutes on the scheduler; the deterministic cooling detectors ship inside core's `kraite:cron-check-drifts`. `monitoring/` gitignored so deploys never wipe incident files.
+- [NEW FEATURE] **Black subscription plan.** Migration renames the zombie free "Starter" row (seeder resurrection after the 2026-05-15 basic rename) into `black` — invite-only, free forever, uncapped; linked users keep their subscription_id. The public registration wizard on kraite.com offers Basic + Unlimited only.
+
+### Tests
+
+- [IMPROVED] `AccountBalanceForTradingTest` now locks the new coupling: `allow_other_positions=true` forces sizing onto available-balance regardless of the configured basis.
+
 ## 1.62.1 - 2026-07-12
 
 ### Config

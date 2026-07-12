@@ -168,6 +168,17 @@ if (! $isCoolingDown()) {
         ->everyFiveMinutes()
         ->withoutOverlapping();
 
+    // Trading money-guard narrator — the Haiku documentation layer. When
+    // CheckDrifts has cooled the bot and left an un-narrated incident file,
+    // this enriches it into a readable narrative for the operator/terminal
+    // LLM via `claude -p` on the subscription. Documentation only — never
+    // detects, never decides, never touches trading. No-ops (cheap) when
+    // there is no open incident. Runs every 20 minutes.
+    Schedule::command('kraite:monitor-narrate')
+        ->cron('7,27,47 * * * *')
+        ->withoutOverlapping()
+        ->onOneServer();
+
     // Open new positions every 3 minutes. Runs PreparePositionsOpeningJob
     // per account/can_trade=true combo, which in turn fans out the
     // Verify/Query/Assign/Dispatch chain only if slots are available.
