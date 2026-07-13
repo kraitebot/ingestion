@@ -543,3 +543,58 @@ test('does not create false positive log when JSON key order differs', function 
     // Should NOT have created a log (ValueNormalizer normalizes JSON)
     expect($logCountAfter)->toBe($logCountBefore);
 });
+
+test('does not log recomputed indicator/correlation/pivot fields on ExchangeSymbol (skipsLogging)', function (): void {
+    // These recomputed-analytics fields rewrite on every indicator refresh
+    // across all symbols and drowned the audit trail (~95% of model_logs).
+    // They are excluded via ExchangeSymbol::$skipsLogging.
+    $exchangeSymbol = ExchangeSymbol::factory()->create();
+
+    $before = ModelLog::where('loggable_type', ExchangeSymbol::class)
+        ->where('loggable_id', $exchangeSymbol->id)
+        ->count();
+
+    $exchangeSymbol->pivot_p = 12345.67;
+    $exchangeSymbol->btc_correlation_pearson = ['1h' => 0.42];
+    $exchangeSymbol->indicators_timeframe = '1h';
+    $exchangeSymbol->indicators_synced_at = now();
+    $exchangeSymbol->save();
+
+    $after = ModelLog::where('loggable_type', ExchangeSymbol::class)
+        ->where('loggable_id', $exchangeSymbol->id)
+        ->count();
+
+    // Not one of the excluded mutations produced an audit row.
+    expect($after)->toBe($before);
+
+    $skipped = ModelLog::where('loggable_type', ExchangeSymbol::class)
+        ->where('loggable_id', $exchangeSymbol->id)
+        ->whereIn('attribute_name', [
+            'pivot_p',
+            'btc_correlation_pearson',
+            'indicators_timeframe',
+            'indicators_synced_at',
+        ])
+        ->count();
+
+    expect($skipped)->toBe(0);
+});
+
+test('still logs business fields on ExchangeSymbol — direction is NOT excluded', function (): void {
+    // Guard against over-exclusion: the trading-meaningful fields must
+    // remain in the audit trail.
+    $exchangeSymbol = ExchangeSymbol::factory()->create(['direction' => null]);
+
+    $exchangeSymbol->direction = 'LONG';
+    $exchangeSymbol->save();
+
+    $log = ModelLog::where('loggable_type', ExchangeSymbol::class)
+        ->where('loggable_id', $exchangeSymbol->id)
+        ->where('event_type', 'attribute_changed')
+        ->where('attribute_name', 'direction')
+        ->latest()
+        ->first();
+
+    expect($log)->not->toBeNull();
+    expect($log->new_value)->toBe('LONG');
+});

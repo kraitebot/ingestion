@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.63.2 - 2026-07-13
+
+Ships kraitebot/core 1.68.0.
+
+### Tests
+
+- [IMPROVED] `ModelLogObserverTest` locks the ExchangeSymbol audit exclusion — recomputed indicator/correlation/pivot fields write no audit rows, `direction` still does (guard against over-exclusion). `ModelLogTest`'s null→value case moved off the now-excluded `indicators_synced_at` onto a still-audited datetime. See deploy-notes Entry 103.
+
 ## 1.63.1 - 2026-07-13
 
 Ships kraitebot/core 1.67.1.

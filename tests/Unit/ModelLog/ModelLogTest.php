@@ -58,26 +58,26 @@ it('logs attribute changes when ExchangeSymbol is updated', function (): void {
 });
 
 it('logs null to value changes', function (): void {
+    // tradeable_at is a datetime that stays in the audit trail (unlike the
+    // recomputed indicator markers now excluded via ExchangeSymbol::$skipsLogging).
     $exchangeSymbol = ExchangeSymbol::factory()->create([
-        'indicators_synced_at' => null,
+        'tradeable_at' => null,
     ]);
 
-    // Clear creation logs
-
-    // Set indicators_synced_at from null to a value
+    // Set tradeable_at from null to a value
     $now = now();
-    $exchangeSymbol->update(['indicators_synced_at' => $now]);
+    $exchangeSymbol->update(['tradeable_at' => $now]);
 
     $log = ModelLog::where('loggable_type', ExchangeSymbol::class)
         ->where('loggable_id', $exchangeSymbol->id)
         ->where('event_type', 'attribute_changed')
-        ->where('attribute_name', 'indicators_synced_at')
+        ->where('attribute_name', 'tradeable_at')
         ->first();
 
     expect($log)->not->toBeNull();
     expect($log->previous_value)->toBeNull();
     expect($log->new_value)->not->toBeNull();
-    expect($log->message)->toContain('Attribute "indicators_synced_at" changed from null to');
+    expect($log->message)->toContain('Attribute "tradeable_at" changed from null to');
 });
 
 it('logs value to null changes', function (): void {
