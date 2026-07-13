@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.63.1 - 2026-07-13
+
+Ships kraitebot/core 1.67.1.
+
+### Tests
+
+- [IMPROVED] `ApiResponseTest` locks the empty "nothing to close" construction path — `new ApiResponse` with a null response must build cleanly instead of throwing a `TypeError`. Regression cover for the LTCUSDT #736 aborted-open unwind crash. See deploy-notes Entry 102.
+
 ## 1.63.0 - 2026-07-13
 
 Ships kraitebot/core 1.67.0. See deploy-notes Entry 101 and WhereAreWe.
