@@ -17,8 +17,9 @@ declare(strict_types=1);
  * the dispatcher is re-activated in the finally block.
  */
 it('mirrorOrderStatuses wraps apiSync in withoutEvents to suppress observer cascade', function (): void {
+    // mirrorOrderStatuses moved to the per-account runner with fleet fan-out.
     $source = file_get_contents(
-        base_path('vendor/kraitebot/core/src/Commands/RecoverPositionsCommand.php')
+        base_path('vendor/kraitebot/core/src/Support/Recovery/AccountRecoveryRunner.php')
     );
 
     expect($source)->toMatch('/Order::withoutEvents\(.*apiSync/s')

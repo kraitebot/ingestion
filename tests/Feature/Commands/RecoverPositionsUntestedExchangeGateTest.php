@@ -49,10 +49,17 @@ it('Bybit + KuCoin recoverers ARE flagged untested', function (): void {
 });
 
 it('command surface includes the --allow-untested-exchange option', function (): void {
-    $source = file_get_contents(
+    // The CLI option is declared on the command...
+    $command = file_get_contents(
         base_path('vendor/kraitebot/core/src/Commands/RecoverPositionsCommand.php')
     );
+    expect($command)->toContain('--allow-untested-exchange');
 
-    expect($source)->toContain('--allow-untested-exchange')
-        ->and($source)->toMatch('/isUntested\(\)\s*&&\s*!.*allow-untested-exchange/s');
+    // ...but the gate that acts on it moved to the per-account runner with
+    // fleet fan-out: an untested recoverer is skipped unless the operator
+    // opted in via the constructor-injected flag.
+    $runner = file_get_contents(
+        base_path('vendor/kraitebot/core/src/Support/Recovery/AccountRecoveryRunner.php')
+    );
+    expect($runner)->toMatch('/isUntested\(\)\s*&&\s*!\s*\$this->allowUntestedExchange/s');
 });

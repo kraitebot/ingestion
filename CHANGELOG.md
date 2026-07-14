@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.64.0 - 2026-07-14
+
+Ships kraitebot/core 1.69.0. See deploy-notes Entry 104 and WhereAreWe.
+
+### Bug fixes
+
+- [FIXED] **FILUSDT stuck take-profit after a WAP.** A DCA fill was absorbed on Binance but the take-profit resize crashed on a missing `avgPrice` field and was then reverted by the order-correction path, leaving the position under-covered (TP for 47.3 against a 141.9 exchange position). The Binance modify + query response mappers are now null-safe on `avgPrice`.
+- [FIXED] **Disaster-recovery fan-out no longer reports success over a failed recovery** or leaves trading frozen on an uncaught error.
+
+### Features
+
+- [ADDED] **Stuck-WAP self-heal** — the 5-minute drift spotter (Scope 2b) re-applies the WAP for any active position whose take-profit under-covers its filled entry ladder, so a lost WAP repairs itself on the next pass. FIL heals automatically on the first post-deploy pass.
+- [ADDED] **Disaster recovery fleet fan-out** — `kraite:recover-positions` now distributes per-account recovery across the workers by default (`--inline` for the single-box path).
+
+### Tests
+
+- [ADDED] Regression cover: `avgPrice`-omission on the modify + query mappers, the Scope 2b self-heal (15 cases), the recovery fan-out success/failure verdict (6 cases), and the disaster-recovery reconstruction contract.
+
 ## 1.63.2 - 2026-07-13
 
 Ships kraitebot/core 1.68.0.

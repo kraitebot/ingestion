@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Kraite\Core\Commands\RecoverPositionsCommand;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use Kraite\Core\Support\Recovery\AccountRecoveryRunner;
 use Kraite\Core\Support\Recovery\RecoveryReport;
 
 /**
@@ -39,8 +39,10 @@ function makeKeyShapeAccount(): Account
 }
 
 it('fetchExchangePositionKeys reads multi-exchange quantity fields (positionAmt | size | total | currentQty | contracts)', function (): void {
+    // fetchExchangePositionKeys moved to the per-account runner with fleet
+    // fan-out; the multi-exchange quantity-field contract lives there now.
     $source = file_get_contents(
-        base_path('vendor/kraitebot/core/src/Commands/RecoverPositionsCommand.php')
+        base_path('vendor/kraitebot/core/src/Support/Recovery/AccountRecoveryRunner.php')
     );
 
     expect($source)->toContain("'positionAmt'")
@@ -67,16 +69,13 @@ it('resetStuckStates skips ghost-closing when the exchange snapshot is empty for
         'direction' => 'LONG',
     ]);
 
-    $cmd = new RecoverPositionsCommand;
-    $ref = new ReflectionClass($cmd);
-    $m = $ref->getMethod('resetStuckStates');
-    $m->setAccessible(true);
-
     $report = new RecoveryReport;
+    $runner = new AccountRecoveryRunner($account, $report);
+    $m = new ReflectionMethod($runner, 'resetStuckStates');
 
     // Empty snapshot for this account — simulating an API failure or
     // a non-Binance shape that key extraction failed to parse.
-    $m->invoke($cmd, collect([$account]), null, [$account->id => []], $report);
+    $m->invoke($runner, []);
 
     $position->refresh();
 

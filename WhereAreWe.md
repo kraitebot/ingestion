@@ -1,3 +1,37 @@
+# WhereAreWe — 2026-07-14 (FILUSDT stuck-WAP fix + Scope 2b self-heal; recovery fleet fan-out)
+
+## Date
+
+2026-07-14
+
+## This release (2026-07-14)
+
+- **FILUSDT stuck-WAP incident fixed, two layers (core):** Binance
+  omits `avgPrice` on modify responses for never-filled orders — the
+  unguarded read crashed the WAP TP-resize AFTER Binance had accepted
+  it, the observer's correction then reverted the resize, and position
+  #394 sat with a TP covering 47.3 against a 141.9 exchange position.
+  (1) modify + query mappers now null-safe on `avgPrice` (cancel was
+  already guarded). (2) New drift-spotter **Scope 2b self-heal**:
+  every 5 min, `active` positions whose FILLED entry ladder exceeds
+  the resting NEW TP quantity get ApplyWapJob re-dispatched
+  (observer-identical dedupe; failed steps don't block; mid-flight
+  statuses skipped; no quiet window; runs while cooled;
+  `--skip-wap-heal` kill switch; `position_wap_self_healed` pushover).
+  FIL heals automatically on the first post-deploy spotter pass.
+  Deploy-notes Entry 104.
+- **Disaster recovery v2 — fleet fan-out (core):** default execution
+  now dispatches one per-account recovery job across the workers with
+  a shared API throttle + settle-poll (`--poll-timeout-minutes`);
+  `--inline` keeps the v1 single-box sequential path (dry-run always
+  forces it). Docs: 02-features/disaster-recovery.md.
+- **Same night, non-release:** prod DB was cloned onto localhost; the
+  Mac's always-on engine fought the real Binance account over the
+  cloned positions (401s blocked it — IP not whitelisted). Local DB
+  wiped + reseeded; prod untouched. Lesson in Entry 104.
+
+---
+
 # WhereAreWe — 2026-07-13 (public registration live on kraite.com; money-guard; Black plan)
 
 ## Date

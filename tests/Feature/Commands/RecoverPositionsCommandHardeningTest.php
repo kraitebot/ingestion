@@ -10,6 +10,7 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use Kraite\Core\Support\Recovery\AccountRecoveryRunner;
 
 /**
  * 2026-05-04 — Pin the disaster-recovery hardening on
@@ -86,9 +87,12 @@ function makeRecoveryPosition(Account $account, string $token, string $direction
     ]);
 }
 
-it('command source has the phase-2 close-detection helper', function (): void {
+it('recovery-runner source has the phase-2 close-detection helper', function (): void {
+    // The four phase helpers moved from the command into the per-account
+    // AccountRecoveryRunner when recovery gained fleet fan-out (the command
+    // now dispatches a runner per account instead of running them inline).
     $source = file_get_contents(
-        (new ReflectionClass(RecoverPositionsCommand::class))->getFileName()
+        (new ReflectionClass(AccountRecoveryRunner::class))->getFileName()
     );
 
     expect($source)->toContain(
@@ -96,17 +100,17 @@ it('command source has the phase-2 close-detection helper', function (): void {
     );
 });
 
-it('command source has the phase-3 order-status mirror helper', function (): void {
+it('recovery-runner source has the phase-3 order-status mirror helper', function (): void {
     $source = file_get_contents(
-        (new ReflectionClass(RecoverPositionsCommand::class))->getFileName()
+        (new ReflectionClass(AccountRecoveryRunner::class))->getFileName()
     );
 
     expect($source)->toContain('mirrorOrderStatuses');
 });
 
-it('command source has the phase-4 stuck-state reset helper', function (): void {
+it('recovery-runner source has the phase-4 stuck-state reset helper', function (): void {
     $source = file_get_contents(
-        (new ReflectionClass(RecoverPositionsCommand::class))->getFileName()
+        (new ReflectionClass(AccountRecoveryRunner::class))->getFileName()
     );
 
     expect($source)->toContain('resetStuckStates');
@@ -186,7 +190,7 @@ it('phase-2 marks local active position closed when its symbol is not in the exc
         '*/fapi/v1/allOrders*' => Http::response([], 200),
     ]);
 
-    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id])
+    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id, '--inline' => true])
         ->assertSuccessful();
 
     expect(Position::find($phantom->id)->status)->toBe(
@@ -228,7 +232,7 @@ it('phase-2 leaves the position alone when the exchange snapshot DOES contain it
         '*/fapi/v1/allOrders*' => Http::response([], 200),
     ]);
 
-    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id])
+    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id, '--inline' => true])
         ->assertSuccessful();
 
     expect(Position::find($live->id)->status)->toBe('active');
@@ -263,7 +267,7 @@ it('phase-4 resets a stuck opening-status position to active when the exchange s
         '*/fapi/v1/allOrders*' => Http::response([], 200),
     ]);
 
-    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id])
+    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id, '--inline' => true])
         ->assertSuccessful();
 
     expect(Position::find($stuck->id)->status)->toBe(
@@ -306,7 +310,7 @@ it('phase-4 closes a stuck opening-status position when the exchange does not sh
         '*/fapi/v1/allOrders*' => Http::response([], 200),
     ]);
 
-    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id])
+    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id, '--inline' => true])
         ->assertSuccessful();
 
     expect(Position::find($stuck->id)->status)->toBe(
@@ -332,7 +336,7 @@ it('freezes allow_opening_positions during the run and restores on completion', 
         '*/fapi/v1/allOrders*' => Http::response([], 200),
     ]);
 
-    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id])
+    $this->artisan('kraite:recover-positions', ['--account_id' => $account->id, '--inline' => true])
         ->assertSuccessful();
 
     // After successful recovery the trading flag must be back to its

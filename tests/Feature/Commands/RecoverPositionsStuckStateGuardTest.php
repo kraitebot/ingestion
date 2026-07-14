@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Str;
-use Kraite\Core\Commands\RecoverPositionsCommand;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use Kraite\Core\Support\Recovery\AccountRecoveryRunner;
 use Kraite\Core\Support\Recovery\RecoveryReport;
 use StepDispatcher\Models\Step;
 use StepDispatcher\States\Pending;
@@ -48,12 +48,15 @@ function makeStuckStateGuardEnv(string $token): array
     return [$account, $exchangeSymbol];
 }
 
-function invokeResetStuckStates(RecoverPositionsCommand $cmd, $accounts, ?string $tokenFilter, array $keys, RecoveryReport $report): void
+function invokeResetStuckStates(Account $account, ?string $tokenFilter, array $exchangeKeys, RecoveryReport $report): void
 {
-    $ref = new ReflectionClass($cmd);
-    $m = $ref->getMethod('resetStuckStates');
-    $m->setAccessible(true);
-    $m->invoke($cmd, $accounts, $tokenFilter, $keys, $report);
+    // resetStuckStates moved to the per-account AccountRecoveryRunner when
+    // recovery gained fleet fan-out. Its signature is now per-account: a
+    // flat list of live exchange keys for this one account, not the old
+    // [account_id => keys] map.
+    $runner = new AccountRecoveryRunner($account, $report, $tokenFilter);
+    $m = new ReflectionMethod($runner, 'resetStuckStates');
+    $m->invoke($runner, $exchangeKeys);
 }
 
 it('resetStuckStates skips a stuck position when an in-flight trading step references it', function (): void {
@@ -79,8 +82,11 @@ it('resetStuckStates skips a stuck position when an in-flight trading step refer
         'updated_at' => now(),
     ]));
 
+    // Non-empty keys containing this position's key: the empty-snapshot
+    // guard is bypassed, so the ONLY reason it stays 'opening' is the
+    // in-flight-step guard — which is exactly what this test pins.
     $report = new RecoveryReport;
-    invokeResetStuckStates(new RecoverPositionsCommand, collect([$account]), null, [$account->id => []], $report);
+    invokeResetStuckStates($account, null, ['STKGRDUSDT:LONG'], $report);
 
     $position->refresh();
 
@@ -99,13 +105,7 @@ it('resetStuckStates DOES reset a stuck position with no in-flight steps', funct
     ]);
 
     $report = new RecoveryReport;
-    invokeResetStuckStates(
-        new RecoverPositionsCommand,
-        collect([$account]),
-        null,
-        [$account->id => ['STKOKUSDT:LONG']],
-        $report,
-    );
+    invokeResetStuckStates($account, null, ['STKOKUSDT:LONG'], $report);
 
     $position->refresh();
 

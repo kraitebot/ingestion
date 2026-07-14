@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Str;
-use Kraite\Core\Commands\RecoverPositionsCommand;
+use Kraite\Core\Support\Recovery\AccountRecoveryRunner;
 use StepDispatcher\Models\Step;
 use StepDispatcher\States\Dispatched;
 use StepDispatcher\States\NotRunnable;
@@ -28,11 +28,13 @@ use StepDispatcher\Support\Steps;
  */
 function invokeHasInflightStepFor(int $positionId): bool
 {
-    $command = new RecoverPositionsCommand;
-    $method = new ReflectionMethod($command, 'hasInflightStepFor');
-    $method->setAccessible(true);
+    // hasInflightStepFor moved to AccountRecoveryRunner (per-account) when
+    // recovery gained fleet fan-out. It only queries Steps by positionId —
+    // no instance state — so a constructor-less bare instance is enough.
+    $runner = (new ReflectionClass(AccountRecoveryRunner::class))->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod($runner, 'hasInflightStepFor');
 
-    return (bool) $method->invoke($command, $positionId);
+    return (bool) $method->invoke($runner, $positionId);
 }
 
 function insertStepForPosition(string $state, int $positionId, ?string $prefix = null): void
