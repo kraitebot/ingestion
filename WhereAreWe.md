@@ -1,3 +1,39 @@
+# WhereAreWe — 2026-07-14 (workflow ownership and billing hardening)
+
+## Date
+
+2026-07-14
+
+## This release (2026-07-14)
+
+- **Workflow roots now have indexed ownership:** opening, sync, WAP,
+  close, replacement, quantity-sync, correction, and drift-heal roots
+  record their account or position when created. Live-workflow guards
+  share one Pending/Dispatched/Running contract instead of repeating
+  JSON scans and subtly different state lists.
+- **All remaining orchestrators build once atomically:** parent child-block
+  election and child creation now commit under one parent-row lock. A
+  retry after commit no-ops; a mid-build failure leaves no partial tree.
+  This closes the duplicate-child and potential duplicate-exchange-action
+  retry shape across opening, WAP, close, replacement, correction,
+  balance, connectivity, symbol-refresh, and leverage workflows.
+- **Existing exposure survives delisting filters:** delisted symbols stay
+  excluded from new-position candidate work, but open positions retain
+  mark-price monitoring and may use their Binance sibling for atomic
+  price comparison.
+- **Billing/opening gates are consolidated:** an account must be active,
+  its user active, trading enabled, subscription currently valid, and on
+  capped plans be the designated account. Paid time is proved by the
+  renewal anchor, not by wallet affordability alone. Payment webhooks now
+  credit only newly received deltas, and legacy trial users missing their
+  renewal anchor are backfilled.
+- **Operational safety:** `waping` consumes the position's unique open
+  slot, Horizon depth reads the physical queues workers consume, and the
+  destructive symbol-direction `--clean` flag is refused outside local
+  or testing while overlapping runs share one lock.
+
+---
+
 # WhereAreWe — 2026-07-14 (ETC cleanup, DATA reference, B2 retry)
 
 ## Date

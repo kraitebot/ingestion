@@ -164,9 +164,12 @@ function wapHealStepsFor(int $positionId): Illuminate\Support\Collection
 function makeWapHealStep(int $positionId, string $state): Step
 {
     return Steps::usingPrefix('trading', function () use ($positionId, $state): Step {
+        $position = Position::findOrFail($positionId);
         $step = Step::create([
             'class' => ApplyWapJob::class,
             'queue' => 'positions',
+            'relatable_type' => $position->getMorphClass(),
+            'relatable_id' => $position->getKey(),
             'arguments' => ['positionId' => $positionId],
         ]);
 

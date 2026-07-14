@@ -27,6 +27,19 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['kraite.notifications_enabled' => true]);
+    config([
+        'kraite.horizon.workers' => [
+            'test-worker' => [
+                'default' => [],
+                'priority' => [],
+                'positions' => [],
+                'orders' => [],
+                'cronjobs' => [],
+                'indicators' => [],
+                'user-data-stream' => [],
+            ],
+        ],
+    ]);
     Notification::fake();
     Illuminate\Support\Once::flush();
 
@@ -45,6 +58,7 @@ beforeEach(function (): void {
     foreach (['default', 'priority', 'positions', 'orders', 'cronjobs', 'indicators', 'user-data-stream'] as $queue) {
         try {
             Redis::connection()->del("queues:{$queue}");
+            Redis::connection()->del("queues:test-worker-{$queue}");
         } catch (Throwable) {
             // Local dev / CI without Redis: tests will skip below.
         }
@@ -55,6 +69,7 @@ afterEach(function (): void {
     foreach (['default', 'priority', 'positions', 'orders', 'cronjobs', 'indicators', 'user-data-stream'] as $queue) {
         try {
             Redis::connection()->del("queues:{$queue}");
+            Redis::connection()->del("queues:test-worker-{$queue}");
         } catch (Throwable) {
         }
     }
@@ -64,7 +79,18 @@ function pushFakeJobs(string $queue, int $count): void
 {
     try {
         for ($i = 0; $i < $count; $i++) {
-            Redis::connection()->rpush("queues:{$queue}", 'fake-payload-'.$i);
+            Redis::connection()->rpush("queues:test-worker-{$queue}", 'fake-payload-'.$i);
+        }
+    } catch (Throwable $e) {
+        test()->markTestSkipped("Redis unavailable in test env: {$e->getMessage()}");
+    }
+}
+
+function pushFakeJobsToRawLogicalQueue(string $queue, int $count): void
+{
+    try {
+        for ($i = 0; $i < $count; $i++) {
+            Redis::connection()->rpush("queues:{$queue}", 'raw-fake-payload-'.$i);
         }
     } catch (Throwable $e) {
         test()->markTestSkipped("Redis unavailable in test env: {$e->getMessage()}");
@@ -99,6 +125,18 @@ it('fires horizon_queue_depth_positions when positions queue exceeds its tight p
         fn ($n) => ($n->canonical ?? '') === 'system_health_alert'
             && str_contains((string) ($n->title ?? ''), 'positions')
             && str_contains((string) ($n->title ?? ''), 'Horizon queue depth')
+    );
+});
+
+it('ignores an orphan logical queue when routed workers consume physical queues', function (): void {
+    pushFakeJobsToRawLogicalQueue('positions', 60);
+
+    $this->artisan('kraite:cron-check-system-health')->assertSuccessful();
+
+    Notification::assertNotSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn ($n) => str_contains((string) ($n->title ?? ''), 'Horizon queue depth')
     );
 });
 

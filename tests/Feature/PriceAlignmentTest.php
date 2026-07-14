@@ -9,6 +9,7 @@ use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\ExchangeSymbolPrice;
 use Kraite\Core\Models\Kraite;
+use Kraite\Core\Models\Position;
 use Kraite\Core\Support\NotificationMessageBuilder;
 
 /**
@@ -68,7 +69,7 @@ function setupPriceAlignmentAtomic(
     $job = new VerifyPriceAlignmentJob($bybit->id);
     $job->assignExceptionHandler();
 
-    return [$job, $bybit];
+    return [$job, $bybit, $binance];
 }
 
 it('disables a unit-divergent symbol whose live price is ~1000x off Binance', function (): void {
@@ -114,6 +115,25 @@ it('skips the atomic comparison when the only Binance same-asset reference is de
     Http::assertNothingSent();
 });
 
+it('uses a delisted Binance reference when the target symbol carries an open position', function (): void {
+    [$job, $bybit] = setupPriceAlignmentAtomic(
+        bybitLivePrice: '0.0000237',
+        binanceIsDelisted: true,
+    );
+
+    Position::factory()->create([
+        'exchange_symbol_id' => $bybit->id,
+        'status' => 'active',
+    ]);
+
+    $result = $job->computeApiable();
+
+    expect($result['disabled'] ?? false)->toBeTrue()
+        ->and($bybit->fresh()->is_price_aligned)->toBeFalse();
+
+    Http::assertSentCount(1);
+});
+
 it('parent selects only naming-divergent symbol_id siblings, not same-name ones', function (): void {
     $binanceSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'binance', 'name' => 'Binance']);
     $bybitSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'bybit', 'name' => 'Bybit']);
@@ -155,6 +175,60 @@ it('parent never selects delisted naming-divergent symbols', function (): void {
 
     expect($ids->all())->not->toContain($delisted->id)
         ->and($ids->all())->toContain($alive->id);
+});
+
+it('parent selects a delisted naming-divergent symbol when it carries an open position', function (): void {
+    $binanceSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'binance', 'name' => 'Binance']);
+    $bitgetSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'bitget', 'name' => 'Bitget']);
+
+    ExchangeSymbol::factory()->create([
+        'api_system_id' => $binanceSystem->id,
+        'token' => 'GRAMACTIVE',
+        'quote' => 'USDT',
+        'symbol_id' => 901,
+    ]);
+    $delisted = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitgetSystem->id,
+        'token' => 'TONACTIVE',
+        'quote' => 'USDT',
+        'symbol_id' => 901,
+        'is_marked_for_delisting' => true,
+    ]);
+    Position::factory()->create([
+        'exchange_symbol_id' => $delisted->id,
+        'status' => 'active',
+    ]);
+
+    $ids = (new VerifyPriceAlignmentsJob)->namingDivergentCandidateIds();
+
+    expect($ids->all())->toContain($delisted->id);
+});
+
+it('parent uses a delisted Binance sibling when the target symbol carries an open position', function (): void {
+    $binanceSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'binance', 'name' => 'Binance']);
+    $bitgetSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'bitget', 'name' => 'Bitget']);
+
+    ExchangeSymbol::factory()->create([
+        'api_system_id' => $binanceSystem->id,
+        'token' => 'IPACTIVE',
+        'quote' => 'USDT',
+        'symbol_id' => 35627,
+        'is_marked_for_delisting' => true,
+    ]);
+    $target = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitgetSystem->id,
+        'token' => 'DATAACTIVE',
+        'quote' => 'USDT',
+        'symbol_id' => 35627,
+    ]);
+    Position::factory()->create([
+        'exchange_symbol_id' => $target->id,
+        'status' => 'active',
+    ]);
+
+    $ids = (new VerifyPriceAlignmentsJob)->namingDivergentCandidateIds();
+
+    expect($ids->all())->toContain($target->id);
 });
 
 it('parent never selects a symbol whose only Binance reference is delisted or past delivery', function (): void {

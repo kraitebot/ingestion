@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.65.0 - 2026-07-14
+
+Ships `kraitebot/core` 1.70.0 and `brunocfalcao/step-dispatcher` 1.18.0. See WhereAreWe and the refreshed Kraite docs.
+
+### Architecture
+
+- [IMPROVED] **All orchestrator child chains now share one atomic, locked build contract.** Concurrent stale instances cannot elect separate child blocks or append duplicate exchange-facing work. Repeated live-workflow queries use package scopes and indexed relational ownership.
+
+### Bug fixes
+
+- [FIXED] **Delisted assets are excluded only from new trading while live exposure remains monitored.** Active positions keep mark-price, price-alignment, sync, WAP, protection, and closure coverage.
+- [FIXED] **A position in `waping` keeps its unique open slot,** preventing a same-direction duplicate position during WAP.
+- [FIXED] **Trading and billing eligibility now use one readiness decision:** active account/user, pause switch, valid paid/trial/free window, and designated account for capped plans.
+- [FIXED] **Trial anchors, partial-payment credit deltas, exact pause duration, direction-run overlap, production `--clean`, and physical Horizon queue-depth monitoring** are hardened and regression-tested.
+
+### Tooling and tests
+
+- [UPDATED] Laravel Boost project instructions and bundled Laravel/Horizon/Pest skills.
+- [ADDED] Heavy regression coverage across workflow concurrency, monitoring, billing, delisting, command safety, and database uniqueness. Full suite: 2,575 passed / 8,022 assertions; Step Dispatcher feature suite: 200 passed / 482 assertions.
+
 ## 1.64.1 - 2026-07-14
 
 Ships kraitebot/core 1.69.1. See deploy-notes Entry 105 and WhereAreWe.

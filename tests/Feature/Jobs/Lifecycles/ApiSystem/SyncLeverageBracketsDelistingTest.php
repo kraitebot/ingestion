@@ -108,3 +108,39 @@ test('KuCoin SyncLeverageBracketsJob skips symbols marked for delisting', functi
     expect($childIds)->not->toContain($delisted->id);
     expect($childIds)->toHaveCount(1);
 });
+
+it('does not duplicate a per-symbol chain when two stale job instances compute', function (string $jobClass, string $canonical): void {
+    $apiSystem = ApiSystem::factory()->exchange()->create([
+        'canonical' => $canonical,
+        'name' => mb_ucfirst($canonical),
+    ]);
+
+    createExchangeSymbolForLifecycle($apiSystem, 'BTC', delisted: false);
+    createExchangeSymbolForLifecycle($apiSystem, 'ETH', delisted: false);
+
+    $parent = Step::create([
+        'class' => $jobClass,
+        'arguments' => ['apiSystemId' => $apiSystem->id],
+        'queue' => 'cronjobs',
+        'index' => 1,
+        'block_uuid' => (string) Str::uuid(),
+    ]);
+
+    $first = new $jobClass($apiSystem->id);
+    $first->step = Step::findOrFail($parent->id);
+
+    $staleSecond = new $jobClass($apiSystem->id);
+    $staleSecond->step = Step::findOrFail($parent->id);
+
+    $first->compute();
+    $staleSecond->compute();
+
+    $childBlockUuid = $parent->fresh()->child_block_uuid;
+
+    expect($childBlockUuid)->not->toBeNull()
+        ->and(Step::where('block_uuid', $childBlockUuid)->count())->toBe(2);
+})->with([
+    'Bitget' => [BitgetSyncLeverageBracketsJob::class, 'bitget'],
+    'Bybit' => [BybitSyncLeverageBracketsJob::class, 'bybit'],
+    'KuCoin' => [KucoinSyncLeverageBracketsJob::class, 'kucoin'],
+]);

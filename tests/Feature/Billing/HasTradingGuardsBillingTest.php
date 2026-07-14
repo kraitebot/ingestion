@@ -81,6 +81,7 @@ function billableUserWithAccount(
     $account = Account::factory()->create([
         'api_system_id' => $apiSystem->id,
         'user_id' => $user->id,
+        'is_active' => true,
         'can_trade' => true,
         'margin_mode' => 'CROSSED',
     ]);
@@ -172,6 +173,7 @@ it('blocks new opens on a Starter user’s non-active account', function (): voi
     $designated = Account::factory()->create([
         'api_system_id' => $apiSystem->id,
         'user_id' => $user->id,
+        'is_active' => true,
         'can_trade' => true,
         'margin_mode' => 'CROSSED',
     ]);
@@ -179,6 +181,7 @@ it('blocks new opens on a Starter user’s non-active account', function (): voi
     $secondary = Account::factory()->create([
         'api_system_id' => $apiSystem->id,
         'user_id' => $user->id,
+        'is_active' => true,
         'can_trade' => true,
         'margin_mode' => 'CROSSED',
     ]);
@@ -212,6 +215,7 @@ it('does not apply the active-account gate on Unlimited tier', function (): void
     $accountA = Account::factory()->create([
         'api_system_id' => $apiSystem->id,
         'user_id' => $user->id,
+        'is_active' => true,
         'can_trade' => true,
         'margin_mode' => 'CROSSED',
     ]);
@@ -219,6 +223,7 @@ it('does not apply the active-account gate on Unlimited tier', function (): void
     $accountB = Account::factory()->create([
         'api_system_id' => $apiSystem->id,
         'user_id' => $user->id,
+        'is_active' => true,
         'can_trade' => true,
         'margin_mode' => 'CROSSED',
     ]);

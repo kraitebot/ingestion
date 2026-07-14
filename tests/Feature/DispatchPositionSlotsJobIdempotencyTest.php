@@ -107,6 +107,8 @@ it('does not create a duplicate DispatchPositionJob step when one already exists
     Step::create([
         'class' => BinanceDispatchPositionJob::class,
         'queue' => 'positions',
+        'relatable_type' => Position::class,
+        'relatable_id' => $positionA->id,
         'arguments' => ['positionId' => $positionA->id],
     ]);
 
@@ -141,6 +143,39 @@ it('does not create a duplicate DispatchPositionJob step when one already exists
         Pending::class,
         'Fresh dispatch lands in Pending so the next dispatcher tick promotes it.'
     );
+});
+
+it('does not let an argument-only legacy row block an indexed position dispatch', function (): void {
+    $position = Position::factory()->create([
+        'account_id' => $this->account->id,
+        'exchange_symbol_id' => $this->exchangeSymbolA->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    Step::create([
+        'class' => BinanceDispatchPositionJob::class,
+        'queue' => 'positions',
+        'arguments' => ['positionId' => $position->id],
+    ]);
+
+    $parentStep = Step::create([
+        'class' => DispatchPositionSlotsJob::class,
+        'arguments' => ['accountId' => $this->account->id],
+        'queue' => 'cronjobs',
+        'index' => 1,
+        'block_uuid' => (string) Str::uuid(),
+    ]);
+
+    $job = new DispatchPositionSlotsJob($this->account->id);
+    $job->step = $parentStep;
+    $job->compute();
+
+    $steps = dispatchPositionStepsForPosition($position);
+
+    expect($steps)->toHaveCount(2)
+        ->and($steps->where('relatable_type', Position::class))->toHaveCount(1)
+        ->and((int) $steps->firstWhere('relatable_type', Position::class)->relatable_id)->toBe($position->id);
 });
 
 it('treats only non-terminal DispatchPositionJob steps as a duplicate signal', function (): void {

@@ -126,3 +126,25 @@ it('flags a closed/cancelled/failed parent as a valid orphan parent', function (
         expect($job->isOrphanParent())->toBeTrue("status `{$status}` should qualify as orphan parent");
     }
 });
+
+it('does not duplicate the cancel chain when two stale parent instances compute', function (): void {
+    $fixture = buildOrphanCancelFixture('closed');
+    $parent = Step::create([
+        'class' => PrepareCancelOrphanOrdersJob::class,
+        'arguments' => ['positionId' => $fixture['position']->id],
+        'queue' => 'positions',
+        'index' => 1,
+        'block_uuid' => (string) Str::uuid(),
+    ]);
+
+    $first = new PrepareCancelOrphanOrdersJob($fixture['position']->id);
+    $first->step = Step::findOrFail($parent->id);
+
+    $staleSecond = new PrepareCancelOrphanOrdersJob($fixture['position']->id);
+    $staleSecond->step = Step::findOrFail($parent->id);
+
+    $first->compute();
+    $staleSecond->compute();
+
+    expect(Step::where('block_uuid', $parent->fresh()->child_block_uuid)->count())->toBe(2);
+});

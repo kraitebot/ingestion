@@ -158,7 +158,7 @@ it('detects an existing live step via the indexed relatable_type / relatable_id 
     );
 });
 
-it('does not re-dispatch when the orphan position already has a live DispatchPositionJob step', function (): void {
+it('does not let an argument-only legacy row hide an orphan after the production cutover audit', function (): void {
     $position = Position::factory()->create([
         'account_id' => $this->account->id,
         'exchange_symbol_id' => $this->exchangeSymbol->id,
@@ -166,7 +166,10 @@ it('does not re-dispatch when the orphan position already has a live DispatchPos
         'direction' => 'LONG',
     ]);
 
-    // Existing live step — recovery must NOT duplicate it.
+    // Production was audited read-only before removing the JSON fallback:
+    // no in-progress position workflow lacked relatable_type/relatable_id.
+    // An argument-only row is therefore legacy debris, not a live workflow
+    // ownership signal. Recovery must create one indexed replacement.
     Steps::usingPrefix('trading', fn () => Step::create([
         'class' => BinanceDispatchPositionJob::class,
         'queue' => 'positions',
@@ -175,16 +178,14 @@ it('does not re-dispatch when the orphan position already has a live DispatchPos
 
     $this->artisan('kraite:cron-create-positions')->assertSuccessful();
 
-    $count = Steps::usingPrefix('trading', fn (): int => Step::query()
+    $steps = Steps::usingPrefix('trading', fn () => Step::query()
         ->whereIn('class', [BaseDispatchPositionJob::class, BinanceDispatchPositionJob::class])
         ->whereJsonContains('arguments->positionId', $position->id)
-        ->count());
+        ->get());
 
-    expect($count)->toBe(
-        1,
-        'Recovery must be idempotent — a position with a live (non-terminal) DispatchPositionJob '
-        .'step is healthy, not orphaned. Re-dispatching would create a duplicate workflow.'
-    );
+    expect($steps)->toHaveCount(2)
+        ->and($steps->where('relatable_type', Position::class))->toHaveCount(1)
+        ->and((int) $steps->firstWhere('relatable_type', Position::class)->relatable_id)->toBe($position->id);
 });
 
 it('treats terminal-state DispatchPositionJob steps as "no live step" for recovery purposes', function (): void {

@@ -21,7 +21,7 @@ use StepDispatcher\Models\Step;
  */
 uses(RefreshDatabase::class)->group('feature', 'step-dispatcher');
 
-function makeChainOrchestrator(int $childCount, int $throwAtIndex = 0)
+function makeChainOrchestrator(int $childCount, int $throwAtIndex = 0, ?Step $step = null)
 {
     $job = new class extends BaseQueueableJob
     {
@@ -52,7 +52,7 @@ function makeChainOrchestrator(int $childCount, int $throwAtIndex = 0)
 
     $job->childCount = $childCount;
     $job->throwAtIndex = $throwAtIndex;
-    $job->step = Step::create([
+    $job->step = $step ?? Step::create([
         'class' => 'Tests\\Fakes\\FakeOrchestratorStep',
         'queue' => 'default',
         'block_uuid' => (string) Illuminate\Support\Str::uuid(),
@@ -69,10 +69,26 @@ it('persists zero children when the chain build fails mid-way', function (): voi
 
     $job->step->refresh();
 
-    // Parent election survives (uuid persisted before the build)...
-    expect($job->step->child_block_uuid)->not->toBeNull()
-        // ...but the half-built chain rolled back entirely.
-        ->and(Step::where('block_uuid', $job->step->child_block_uuid)->count())->toBe(0);
+    expect($job->step->child_block_uuid)->toBeNull();
+});
+
+it('serializes two stale parent instances onto one child block', function (): void {
+    $parent = Step::create([
+        'class' => 'Tests\\Fakes\\FakeOrchestratorStep',
+        'queue' => 'default',
+        'block_uuid' => (string) Illuminate\Support\Str::uuid(),
+        'index' => 1,
+    ]);
+
+    $first = makeChainOrchestrator(2, step: Step::findOrFail($parent->id));
+    $staleSecond = makeChainOrchestrator(2, step: Step::findOrFail($parent->id));
+
+    expect($first->compute()['built'])->toBeTrue();
+    $firstBlockUuid = $parent->fresh()->child_block_uuid;
+
+    expect($staleSecond->compute()['built'])->toBeFalse()
+        ->and($parent->fresh()->child_block_uuid)->toBe($firstBlockUuid)
+        ->and(Step::where('block_uuid', $firstBlockUuid)->count())->toBe(2);
 });
 
 it('rebuilds a full chain on retry after a rolled-back build', function (): void {

@@ -127,6 +127,33 @@ it('reports covered when no monthly rate is set (zero-rate tier)', function (): 
     expect($user->renewalShortfallUsdt())->toEqual(0.0);
 });
 
+it('keeps a zero-rate subscription active without a renewal anchor', function (): void {
+    $user = User::factory()->create([
+        'subscription_id' => tierFor('black', 0.0, trialDays: 0)->id,
+        'trial_started_at' => null,
+        'subscription_renews_at' => null,
+        'subscription_paused_at' => null,
+    ]);
+
+    expect($user->isInClosingMode())->toBeFalse();
+});
+
+it('starts a trial and establishes the first renewal anchor together', function (): void {
+    $this->travelTo(now()->startOfSecond());
+
+    $user = User::factory()->create([
+        'subscription_id' => tierFor('starter', 75, trialDays: 7)->id,
+        'trial_started_at' => null,
+        'subscription_renews_at' => null,
+    ]);
+
+    $user->startTrial();
+    $user->refresh();
+
+    expect($user->trial_started_at?->equalTo(now()))->toBeTrue();
+    expect($user->subscription_renews_at?->equalTo(now()->addDays(7)))->toBeTrue();
+});
+
 it('flags closing-mode when paused, regardless of trial state', function (): void {
     $tier = tierFor('starter', 75, trialDays: 7);
 
@@ -225,6 +252,22 @@ it('resume clears paused_at and pushes renews_at by the pause duration', functio
     $expected = $originalAnchor->copy()->addDays(3);
     expect($user->subscription_renews_at->toDateString())
         ->toBe($expected->toDateString());
+});
+
+it('resume preserves pause time shorter than one day', function (): void {
+    $this->travelTo(now()->startOfSecond());
+
+    $originalAnchor = now()->addDays(15);
+    $user = User::factory()->create([
+        'subscription_id' => tierFor('starter', 75)->id,
+        'subscription_renews_at' => $originalAnchor,
+        'subscription_paused_at' => now()->subHours(6),
+    ]);
+
+    $user->resume();
+
+    expect($user->fresh()->subscription_renews_at?->equalTo($originalAnchor->copy()->addHours(6)))
+        ->toBeTrue();
 });
 
 it('resume is a no-op when the user is not paused', function (): void {

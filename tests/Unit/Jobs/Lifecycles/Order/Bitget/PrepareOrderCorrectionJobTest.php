@@ -187,3 +187,28 @@ it('startOrFail aborts when the position is no longer active', function (): void
 
     expect($job->startOrFail())->toBeFalse();
 });
+
+it('does not duplicate the correction chain when two stale parent instances compute', function (): void {
+    $fixture = buildBitgetCorrectionFixture('PROFIT-LIMIT', isAlgo: true);
+    $parent = Step::create([
+        'class' => PrepareOrderCorrectionJob::class,
+        'arguments' => [
+            'positionId' => $fixture['positionId'],
+            'orderId' => $fixture['orderId'],
+        ],
+        'queue' => 'positions',
+        'index' => 1,
+        'block_uuid' => (string) Str::uuid(),
+    ]);
+
+    $first = new PrepareOrderCorrectionJob($fixture['positionId'], $fixture['orderId']);
+    $first->step = Step::findOrFail($parent->id);
+
+    $staleSecond = new PrepareOrderCorrectionJob($fixture['positionId'], $fixture['orderId']);
+    $staleSecond->step = Step::findOrFail($parent->id);
+
+    $first->compute();
+    $staleSecond->compute();
+
+    expect(Step::where('block_uuid', $parent->fresh()->child_block_uuid)->count())->toBe(2);
+});

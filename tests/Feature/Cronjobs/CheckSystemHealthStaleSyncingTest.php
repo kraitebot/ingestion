@@ -82,6 +82,29 @@ it('does not fire stale_syncing_position when a syncing position has a live sync
     );
 });
 
+it('does not let an argument-only legacy row suppress a stale syncing alert after the production audit', function (): void {
+    $position = Position::factory()->long()->create(['status' => 'syncing']);
+    Illuminate\Support\Facades\DB::table('positions')
+        ->where('id', $position->id)
+        ->update(['updated_at' => now()->subMinutes(20)]);
+
+    Step::create([
+        'class' => AtomicSyncPositionOrdersJob::class,
+        'queue' => 'positions',
+        'state' => Pending::class,
+        'arguments' => ['positionId' => $position->id],
+    ]);
+
+    $this->artisan('kraite:cron-check-system-health')->assertSuccessful();
+
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn ($notification) => ($notification->canonical ?? '') === 'system_health_alert'
+            && str_contains((string) ($notification->title ?? ''), "Position #{$position->id} wedged in 'syncing'")
+    );
+});
+
 it('does not fire stale_syncing_position when the syncing duration is below the 15-min threshold', function (): void {
     $belowThreshold = Position::factory()->long()->create(['status' => 'syncing']);
     Illuminate\Support\Facades\DB::table('positions')

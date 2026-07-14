@@ -137,14 +137,34 @@ it('fires mark_price_missing when the sidecar is null past the grace window', fu
     );
 });
 
-it('does not fire mark_price_missing for delisted symbols', function (): void {
+it('still fires mark_price_missing for a delisted symbol carrying an open position', function (): void {
     $symbol = makeEligibleSymbolWithOpenPosition('DELISTED');
 
-    // Mark the symbol as delisted — `notDelisted()` scope must filter
-    // it out so we don't alert on a symbol the exchange itself stopped
-    // streaming. Daemon-quiet on a delisted symbol is correct, not an
-    // outage.
     $symbol->update(['is_marked_for_delisting' => true]);
+
+    DB::table('exchange_symbol_prices')
+        ->where('exchange_symbol_id', $symbol->id)
+        ->update([
+            'mark_price' => null,
+            'mark_price_synced_at' => null,
+            'created_at' => now()->subMinutes(10),
+        ]);
+
+    $this->artisan('kraite:cron-check-system-health')->assertSuccessful();
+
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn ($n) => str_contains((string) ($n->title ?? ''), 'DELISTEDUSDT')
+    );
+});
+
+it('does not fire mark_price_missing for a delisted symbol with no open position', function (): void {
+    $symbol = ExchangeSymbol::factory()->create([
+        'token' => 'DELISTEDIDLE',
+        'quote' => 'USDT',
+        'is_marked_for_delisting' => true,
+    ]);
 
     DB::table('exchange_symbol_prices')
         ->where('exchange_symbol_id', $symbol->id)
@@ -159,7 +179,7 @@ it('does not fire mark_price_missing for delisted symbols', function (): void {
     Notification::assertNotSentTo(
         Kraite::admin(),
         AlertNotification::class,
-        fn ($n) => str_contains((string) ($n->title ?? ''), 'DELISTEDUSDT')
+        fn ($n) => str_contains((string) ($n->title ?? ''), 'DELISTEDIDLEUSDT')
     );
 });
 
