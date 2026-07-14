@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 
 /**
  * The Haiku narrator (kraite:monitor-narrate) is documentation-only. It
@@ -67,6 +69,17 @@ it('enriches the incident and flags it narrated when the model returns text', fu
     expect($out)->toContain('narrated: YES')
         ->toContain('The bot cooled on a failed-position burst.')
         ->not->toContain('_pending_');
+});
+
+it('runs the narrator outside the project directory', function (): void {
+    writeStubIncident('20260712_143000');
+    Process::fake([
+        '*' => Process::result(output: "### What happened\nThe bot cooled safely.\n"),
+    ]);
+
+    $this->artisan('kraite:monitor-narrate')->assertExitCode(0);
+
+    Process::assertRan(fn (PendingProcess $process): bool => $process->path === sys_get_temp_dir());
 });
 
 it('does not re-narrate an already-narrated incident', function (): void {

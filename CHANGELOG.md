@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.65.3 - 2026-07-15
+
+Ships `kraitebot/core` 1.70.2.
+
+### Bug fixes
+
+- [FIXED] **Production incident narration no longer tries to boot the development-only Laravel Boost MCP server.** Claude receives the same bounded prompt from a neutral working directory, preventing project `.mcp.json` discovery without weakening the deterministic trading guard.
+
+### Tests
+
+- [ADDED] TDD coverage for narrator process isolation: the regression failed before the fix and passes after it.
+
 ## 1.65.2 - 2026-07-15
 
 Ships `kraitebot/core` 1.70.1. See WhereAreWe and the refreshed Kraite docs.
