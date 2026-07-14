@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.65.1 - 2026-07-14
+
+### Deployment
+
+- [ADDED] **Explicit `SKIP_DB_BACKUP=1` deploy override.** The default Athena path still hard-gates migrations behind a fresh database snapshot. An operator-requested release can now skip only the dump while still running migrations, cache rebuilds, fleet-topology verification, and the normal daemon restart path.
+
 ## 1.65.0 - 2026-07-14
 
 Ships `kraitebot/core` 1.70.0 and `brunocfalcao/step-dispatcher` 1.18.0. See WhereAreWe and the refreshed Kraite docs.

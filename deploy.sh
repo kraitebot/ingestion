@@ -196,19 +196,23 @@ echo "[6/9] Server role: $SERVER_ROLE"
 # operator rollback recipes don't have to dig through framework state.
 # Files are timestamped (pre-deploy-YYYYMMDD_HHMMSS.sql.gz) and NEVER
 # deleted by deploy — full history is preserved for point-in-time
-# rollback. The backup is a HARD gate: if mysqldump fails (zero bytes
-# or non-zero exit) the deploy aborts BEFORE running migrations, so a
-# migration is never executed without a fresh, restorable snapshot.
+# rollback. The backup is a HARD gate by default: if mysqldump fails (zero
+# bytes or non-zero exit) the deploy aborts BEFORE running migrations. An
+# operator can explicitly set SKIP_DB_BACKUP=1 for a release that must omit
+# the dump; migrations and every later deployment gate still run normally.
 if [ "$SERVER_ROLE" = "ingestion" ]; then
-    BACKUP_DIR="$PROJECT_DIR/db-backups"
-    mkdir -p "$BACKUP_DIR"
-    chown $KRAITE_USER:www-data "$BACKUP_DIR"
-    BACKUP_FILE="$BACKUP_DIR/pre-deploy-$(date +%Y%m%d_%H%M%S).sql.gz"
+    if [ "${SKIP_DB_BACKUP:-0}" = "1" ]; then
+        echo "[7/9] DB backup: skipped (SKIP_DB_BACKUP=1)"
+    else
+        BACKUP_DIR="$PROJECT_DIR/db-backups"
+        mkdir -p "$BACKUP_DIR"
+        chown $KRAITE_USER:www-data "$BACKUP_DIR"
+        BACKUP_FILE="$BACKUP_DIR/pre-deploy-$(date +%Y%m%d_%H%M%S).sql.gz"
 
-    DB_HOST=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.host');\"" 2>/dev/null | tail -1)
-    DB_NAME=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.database');\"" 2>/dev/null | tail -1)
-    DB_USER=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.username');\"" 2>/dev/null | tail -1)
-    DB_PASS=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.password');\"" 2>/dev/null | tail -1)
+        DB_HOST=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.host');\"" 2>/dev/null | tail -1)
+        DB_NAME=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.database');\"" 2>/dev/null | tail -1)
+        DB_USER=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.username');\"" 2>/dev/null | tail -1)
+        DB_PASS=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('database.connections.mysql.password');\"" 2>/dev/null | tail -1)
 
     # `set -o pipefail` is already enabled at the top of this script, so a
     # mysqldump failure surfaces here as a non-zero exit even though it sits
@@ -227,19 +231,20 @@ if [ "$SERVER_ROLE" = "ingestion" ]; then
     #  (no --events)        → omitted because the `kraite` user lacks the
     #                         EVENT privilege, and the kraite schema does
     #                         not declare any scheduled events to capture.
-    mysqldump -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" --single-transaction --routines --triggers --no-tablespaces | gzip > "$BACKUP_FILE"
+        mysqldump -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" --single-transaction --routines --triggers --no-tablespaces | gzip > "$BACKUP_FILE"
 
     # Defence in depth — pipefail covers exec failures, but if mysqldump
     # ever succeeds-with-empty-output (e.g. permission to connect but not
     # to dump), the gzip would also "succeed" and leave a near-zero-byte
     # file. Refuse to migrate against an empty snapshot.
-    if [ ! -s "$BACKUP_FILE" ] || [ "$(stat -c %s "$BACKUP_FILE" 2>/dev/null || stat -f %z "$BACKUP_FILE")" -lt 1024 ]; then
-        echo "[7/9] DB backup FAILED — snapshot is empty or under 1KB at $BACKUP_FILE. Aborting before migrations."
-        exit 1
-    fi
+        if [ ! -s "$BACKUP_FILE" ] || [ "$(stat -c %s "$BACKUP_FILE" 2>/dev/null || stat -f %z "$BACKUP_FILE")" -lt 1024 ]; then
+            echo "[7/9] DB backup FAILED — snapshot is empty or under 1KB at $BACKUP_FILE. Aborting before migrations."
+            exit 1
+        fi
 
-    chown $KRAITE_USER:www-data "$BACKUP_FILE"
-    echo "[7/9] DB backup: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+        chown $KRAITE_USER:www-data "$BACKUP_FILE"
+        echo "[7/9] DB backup: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+    fi
 
     su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan migrate --force --no-interaction"
     echo "[7/9] Migrations: done"
