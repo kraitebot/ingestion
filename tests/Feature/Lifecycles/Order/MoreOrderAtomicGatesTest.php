@@ -9,6 +9,8 @@ use Kraite\Core\Jobs\Atomic\Order\PlaceProfitOrderJob;
 use Kraite\Core\Jobs\Atomic\Order\SyncPositionOrdersJob;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
+use StepDispatcher\Models\Step;
+use StepDispatcher\States\Skipped;
 
 /**
  * Pin the placement / sync / WAP atomic gates that the dispatch chain
@@ -150,7 +152,7 @@ it('CalculateWap: refuses when profit_percentage is null (config bug)', function
     expect((new CalculateWapAndModifyProfitOrderJob($position->id))->startOrFail())->toBeFalse();
 });
 
-// ───────────────── SyncPositionOrdersJob::startOrFail ─────────────────
+// ───────────────── SyncPositionOrdersJob start guards ─────────────────
 
 it('SyncPositionOrders: passes when status is opened-set AND there is at least one syncable order', function (): void {
     $position = buildPlacementReadyPosition(['status' => 'active']);
@@ -171,8 +173,8 @@ it('SyncPositionOrders: passes when status is opened-set AND there is at least o
     expect((new SyncPositionOrdersJob($position->id))->startOrFail())->toBeTrue();
 });
 
-it('SyncPositionOrders: refuses when no syncable orders exist (all MARKET, all unplaced)', function (): void {
-    $position = buildPlacementReadyPosition(['status' => 'active']);
+it('SyncPositionOrders: fails loud outside cleanup when no syncable orders exist', function (string $status): void {
+    $position = buildPlacementReadyPosition(['status' => $status]);
     Order::create([
         'position_id' => $position->id,
         'uuid' => Str::uuid()->toString(),
@@ -188,9 +190,51 @@ it('SyncPositionOrders: refuses when no syncable orders exist (all MARKET, all u
     ]);
 
     expect((new SyncPositionOrdersJob($position->id))->startOrFail())->toBeFalse();
+})->with([
+    'active' => ['active'],
+    'opening' => ['opening'],
+]);
+
+it('SyncPositionOrders: records an empty pre-order cleanup as Skipped instead of Failed', function (): void {
+    $position = buildPlacementReadyPosition(['status' => 'cancelling']);
+    $job = new SyncPositionOrdersJob($position->id);
+    $job->step = Step::create([
+        'class' => SyncPositionOrdersJob::class,
+        'queue' => 'positions',
+        'arguments' => ['positionId' => $position->id],
+        'block_uuid' => Str::uuid()->toString(),
+        'index' => 1,
+    ]);
+
+    $job->handle();
+
+    expect($job->step->fresh()->state)->toBeInstanceOf(Skipped::class)
+        ->and($position->fresh()->status)->toBe('cancelling');
 });
 
-it('SyncPositionOrders: refuses when status is terminal (closed/cancelled/failed)', function (string $terminal): void {
+it('SyncPositionOrders: does not skip cancelling cleanup when a syncable order exists', function (): void {
+    $position = buildPlacementReadyPosition(['status' => 'cancelling']);
+    Order::create([
+        'position_id' => $position->id,
+        'uuid' => Str::uuid()->toString(),
+        'client_order_id' => Str::uuid()->toString(),
+        'type' => 'LIMIT',
+        'side' => 'SELL',
+        'position_side' => $position->direction,
+        'quantity' => 1,
+        'price' => 10,
+        'status' => 'NEW',
+        'exchange_order_id' => 'cleanup-order',
+        'reference_status' => 'NEW',
+    ]);
+
+    $job = new SyncPositionOrdersJob($position->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
+});
+
+it('SyncPositionOrders: fails when status is terminal (closed/cancelled/failed)', function (string $terminal): void {
     $position = buildPlacementReadyPosition(['status' => $terminal]);
     Order::create([
         'position_id' => $position->id,

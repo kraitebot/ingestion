@@ -63,3 +63,14 @@ it('boots the b2 disk into a real S3Client with the retry config attached', func
 
     expect($client)->toBeInstanceOf(S3Client::class);
 });
+
+/**
+ * Pin the package-level retry that reruns the complete backup command after a
+ * multipart upload still fails despite the B2 disk's per-request retries.
+ */
+it('retries the complete backup after a terminal destination failure', function (): void {
+    expect(config('backup.backup.tries'))
+        ->toBe(2, 'A single terminal B2 multipart failure must receive one complete backup retry.')
+        ->and(config('backup.backup.retry_delay'))
+        ->toBe(60, 'The complete retry must wait briefly before rebuilding and uploading the archive.');
+});

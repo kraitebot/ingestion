@@ -1,3 +1,38 @@
+# WhereAreWe — 2026-07-14 (ETC cleanup, DATA reference, B2 retry)
+
+## Date
+
+2026-07-14
+
+## This release (2026-07-14)
+
+- **ETCUSDT safe pre-entry rejection no longer becomes a lifecycle
+  failure (core):** position #763 correctly rejected an entry below
+  the configured minimum margin before placing any order. Its cleanup
+  then found no exchange orders and incorrectly failed the sync step,
+  which promoted the otherwise safe rejection into an alert and token
+  disablement. Empty cleanup sync is now an explicit skipped no-op;
+  verified existing-order sync failures remain failures.
+- **DATAUSDT no longer compares against a delisted Binance reference
+  (ingestion + core):** Tyche compared the live 1:1 IP replacement
+  against a stale delisted Binance row and emitted a false 10% mismatch.
+  Candidate and atomic reference selection now require an active,
+  non-delisted Binance row. This gate controls new-opening eligibility
+  only; every active position remains in sync, WAP, protection, and
+  close flows regardless of the symbol's current listing state.
+- **Transient B2 failures receive one whole-backup retry (ingestion):**
+  the 03:07 backup completed its 915.57 MB archive, then B2 rejected
+  multipart part 8 with a server-side `InternalError`. The next two
+  scheduled backups succeeded. Scheduler-level retries are now two
+  attempts with a 60-second delay, on top of the destination adapter's
+  existing adaptive retries.
+- **Overnight WAP audit passed:** BCHUSDT position #411 completed its
+  WAP and retained live TP/SL protection. FILUSDT position #394 was the
+  only other overnight WAP; the existing Scope 2b repair restored its
+  TP coverage. No other active position was under-covered.
+
+---
+
 # WhereAreWe — 2026-07-14 (FILUSDT stuck-WAP fix + Scope 2b self-heal; recovery fleet fan-out)
 
 ## Date

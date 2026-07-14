@@ -9,6 +9,7 @@ use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\ExchangeSymbolPrice;
 use Kraite\Core\Models\Kraite;
+use Kraite\Core\Support\NotificationMessageBuilder;
 
 /**
  * A non-Binance symbol that lists the same asset under a different contract unit
@@ -20,8 +21,11 @@ use Kraite\Core\Models\Kraite;
  */
 uses()->group('feature', 'exchange-symbols', 'price-alignment');
 
-function setupPriceAlignmentAtomic(string $bybitLivePrice, string $binanceMark = '0.0237'): array
-{
+function setupPriceAlignmentAtomic(
+    string $bybitLivePrice,
+    string $binanceMark = '0.0237',
+    bool $binanceIsDelisted = false,
+): array {
     Kraite::updateOrCreate(['id' => 1], [
         'email' => 'admin@test.com',
         'bybit_api_key' => 'TESTKEY',
@@ -38,6 +42,7 @@ function setupPriceAlignmentAtomic(string $bybitLivePrice, string $binanceMark =
         'token' => '1000FLOKI',
         'quote' => 'USDT',
         'symbol_id' => 72,
+        'is_marked_for_delisting' => $binanceIsDelisted,
     ]);
 
     // Binance reference price lives on the price sidecar.
@@ -92,6 +97,23 @@ it('keeps a same-unit symbol aligned and enabled when its price matches Binance'
         ->and($bybit->is_manually_enabled)->toBeTrue();
 });
 
+it('skips the atomic comparison when the only Binance same-asset reference is delisted', function (): void {
+    [$job, $bybit] = setupPriceAlignmentAtomic(
+        bybitLivePrice: '0.0000237',
+        binanceIsDelisted: true,
+    );
+
+    $result = $job->computeApiable();
+
+    $bybit->refresh();
+
+    expect($result['skipped'] ?? null)->toBe('no Binance reference price')
+        ->and($bybit->is_price_aligned)->toBeTrue()
+        ->and($bybit->is_manually_enabled)->toBeTrue();
+
+    Http::assertNothingSent();
+});
+
 it('parent selects only naming-divergent symbol_id siblings, not same-name ones', function (): void {
     $binanceSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'binance', 'name' => 'Binance']);
     $bybitSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'bybit', 'name' => 'Bybit']);
@@ -133,4 +155,58 @@ it('parent never selects delisted naming-divergent symbols', function (): void {
 
     expect($ids->all())->not->toContain($delisted->id)
         ->and($ids->all())->toContain($alive->id);
+});
+
+it('parent never selects a symbol whose only Binance reference is delisted or past delivery', function (): void {
+    $binanceSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'binance', 'name' => 'Binance']);
+    $bitgetSystem = ApiSystem::factory()->exchange()->create(['canonical' => 'bitget', 'name' => 'Bitget']);
+
+    ExchangeSymbol::factory()->create([
+        'api_system_id' => $binanceSystem->id,
+        'token' => 'IP',
+        'quote' => 'USDT',
+        'symbol_id' => 35626,
+        'is_marked_for_delisting' => true,
+    ]);
+    $data = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitgetSystem->id,
+        'token' => 'DATA',
+        'quote' => 'USDT',
+        'symbol_id' => 35626,
+        'is_marked_for_delisting' => false,
+    ]);
+    ExchangeSymbol::factory()->create([
+        'api_system_id' => $binanceSystem->id,
+        'token' => 'OLD',
+        'quote' => 'USDT',
+        'symbol_id' => 45678,
+        'is_marked_for_delisting' => false,
+        'delivery_at' => now()->subMinute(),
+    ]);
+    $renamed = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitgetSystem->id,
+        'token' => 'NEW',
+        'quote' => 'USDT',
+        'symbol_id' => 45678,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    $ids = (new VerifyPriceAlignmentsJob)->namingDivergentCandidateIds();
+
+    expect($ids->all())->not->toContain($data->id)
+        ->and($ids->all())->not->toContain($renamed->id);
+});
+
+it('describes price divergence as a diagnosis to investigate rather than a proven unit mismatch', function (): void {
+    $payload = NotificationMessageBuilder::build('exchange_symbol_price_misaligned', [
+        'symbol' => 'DATAUSDT',
+        'exchange' => 'bitget',
+        'live_price' => 0.2688,
+        'binance_price' => 0.29905,
+        'ratio' => 0.898846,
+    ]);
+
+    expect($payload['emailMessage'])
+        ->toContain('may indicate a different contract unit, a token rebrand, or genuine venue price divergence')
+        ->not->toContain('which means it lists a different contract unit');
 });

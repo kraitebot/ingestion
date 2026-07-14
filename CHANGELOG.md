@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.64.1 - 2026-07-14
+
+Ships kraitebot/core 1.69.1. See deploy-notes Entry 105 and WhereAreWe.
+
+### Bug fixes
+
+- [FIXED] **ETCUSDT safe pre-entry cleanup no longer pages or disables the symbol solely because no order exists to sync.** The empty sync step is now skipped, while existing-order total failures remain strict.
+- [FIXED] **DATAUSDT no longer compares against delisted IPUSDT.** Price-alignment candidate and atomic reference selection require a live Binance sibling. Existing positions remain in every position-based management flow even when their symbol is no longer eligible for a new opening.
+- [FIXED] **A terminal B2 upload failure receives one complete backup retry.** The scheduled backup now makes two whole-command attempts with a 60-second delay, layered over the destination adapter's request-level retries.
+
+### Dependencies
+
+- [UPDATED] Patch releases for AWS SDK, Guzzle, PSR-7, CommonMark, Amp Pipeline, and Rector, plus current local package references.
+
+### Tests
+
+- [ADDED] Regression coverage for empty-order cleanup semantics, delisted/past-delivery Binance references, neutral mismatch messaging, and whole-backup retry configuration.
+
 ## 1.64.0 - 2026-07-14
 
 Ships kraitebot/core 1.69.0. See deploy-notes Entry 104 and WhereAreWe.
