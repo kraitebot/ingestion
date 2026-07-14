@@ -1070,6 +1070,53 @@ test('excludes symbols already in opened positions', function (): void {
     expect($newPosition->exchange_symbol_id)->toBe($availableToken->id);
 });
 
+test('an opened LONG symbol cannot be assigned to a new SHORT slot', function (): void {
+    $account = createAccountForTokenDiscoveryTest();
+    createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
+
+    $openedSymbol = createExchangeSymbolWithData(
+        'CROSSDIRECTIONOPEN',
+        'LONG',
+        ['1h' => -0.95],
+        ['1h' => 2.0],
+        ['1h' => -2.0],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $openedSymbol->id,
+        'parsed_trading_pair' => $openedSymbol->parsed_trading_pair,
+        'status' => 'active',
+        'direction' => 'LONG',
+    ]);
+
+    $openedSymbol->update(['direction' => 'SHORT']);
+
+    $availableShort = createExchangeSymbolWithData(
+        'AVAILABLESHORT',
+        'SHORT',
+        ['1h' => -0.5],
+        ['1h' => 1.0],
+        ['1h' => -1.0],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    createPositionSlot($account, 'SHORT');
+    $account->assignBestTokenToNewPositions();
+
+    $newShort = Position::query()
+        ->where('account_id', $account->id)
+        ->where('status', 'new')
+        ->where('direction', 'SHORT')
+        ->sole();
+
+    expect($newShort->exchange_symbol_id)->toBe($availableShort->id)
+        ->and($newShort->exchange_symbol_id)->not->toBe($openedSymbol->id);
+});
+
 test('filters symbols missing required trading metadata', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 

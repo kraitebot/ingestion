@@ -24,10 +24,7 @@ use Kraite\Core\Models\Symbol;
  * decision tree is locked here against:
  *
  *   - Snapshot present + position keyed by `{pair}:{direction}` exists → blocked.
- *   - Snapshot present + only opposite-direction key exists → still blocked
- *     (the key check uses the same direction the slot wants — same direction
- *     is the canonical duplicate; the "opposite-direction-also-blocks" case
- *     happens by virtue of `account-open-orders`).
+ *   - Snapshot present + only opposite-direction key exists → still blocked.
  *   - Open-orders snapshot has at least one row matching the pair → blocked.
  *   - Both snapshots empty / missing → cleared.
  *
@@ -105,6 +102,35 @@ it('blocks when the positions snapshot already has the same pair and direction o
     expect($result['is_open'])->toBeTrue()
         ->and($result['reason'])->toContain('BTCUSDT:LONG')
         ->and($result['reason'])->toContain('already exists');
+});
+
+it('blocks when only the opposite hedge direction is open on the same pair', function (): void {
+    $position = buildPositionForVerifyPairOpen(direction: 'SHORT', tradingPair: 'BTCUSDT');
+
+    seedSnapshot($position, 'account-positions', [
+        'BTCUSDT:LONG' => ['symbol' => 'BTCUSDT', 'positionAmt' => 0.1],
+    ]);
+    seedSnapshot($position, 'account-open-orders', []);
+
+    $result = (new VerifyTradingPairNotOpenJob($position->id))->compute();
+
+    expect($result['is_open'])->toBeTrue()
+        ->and($result['reason'])->toContain('BTCUSDT:LONG')
+        ->and($result['reason'])->toContain('already exists');
+});
+
+it('blocks a directional slot when a one-way BOTH position is open on the same pair', function (): void {
+    $position = buildPositionForVerifyPairOpen(direction: 'LONG', tradingPair: 'BTCUSDT');
+
+    seedSnapshot($position, 'account-positions', [
+        'BTCUSDT:BOTH' => ['symbol' => 'BTCUSDT', 'positionAmt' => -0.1],
+    ]);
+    seedSnapshot($position, 'account-open-orders', []);
+
+    $result = (new VerifyTradingPairNotOpenJob($position->id))->compute();
+
+    expect($result['is_open'])->toBeTrue()
+        ->and($result['reason'])->toContain('BTCUSDT:BOTH');
 });
 
 it('blocks when the open-orders snapshot has a pending order on the same pair', function (): void {

@@ -1,3 +1,29 @@
+# WhereAreWe — 2026-07-15 (manual-close opening-order safety)
+
+## Date
+
+2026-07-15
+
+## This release (2026-07-15)
+
+- **Manual exchange closes shed residual DCA risk immediately:** a
+  zero-quantity Binance account update now starts an independent
+  high-priority cancellation for that position's live LIMIT opening
+  orders. The normal replacement workflow still runs and owns final
+  position reconciliation; TP and SL orders are not swept by the new
+  safety action.
+- **Hedge and one-way matching are explicit:** `LONG` and `SHORT`
+  account updates match the same local direction; one-way `BOTH`
+  matches the sole locally-open position for the account and symbol.
+  Duplicate frames and concurrent replacement work do not create
+  duplicate emergency cancellations.
+- **Same-pair opening guard is direction-independent:** exchange
+  snapshots block a new opening when the pair exists under `LONG`,
+  `SHORT`, or `BOTH`. Token discovery's existing cross-direction
+  exclusion now has an explicit regression test.
+
+---
+
 # WhereAreWe — 2026-07-14 (workflow ownership and billing hardening)
 
 ## Date

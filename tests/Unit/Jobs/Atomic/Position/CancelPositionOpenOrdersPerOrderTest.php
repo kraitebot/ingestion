@@ -302,3 +302,58 @@ it('skips algo, terminal, and ghost rows', function (): void {
     expect($hitIds)->toBe(['GOOD-1']);
     expect(Order::find($cancellable->id)->reference_status)->toBe('CANCELLED');
 });
+
+it('cancels only opening LIMIT orders when openingOrdersOnly is enabled', function (): void {
+    $position = buildPositionWithOpenOrders('PERE');
+    $openingLimit = attachOrder($position, [
+        'type' => 'LIMIT',
+        'exchange_order_id' => 'OPENING-LIMIT-1',
+    ]);
+    $takeProfit = attachOrder($position, [
+        'type' => 'PROFIT-LIMIT',
+        'side' => 'SELL',
+        'exchange_order_id' => 'TAKE-PROFIT-1',
+    ]);
+
+    fakeBinanceCancelEndpoint();
+
+    $job = new CancelPositionOpenOrdersJob($position->id, openingOrdersOnly: true);
+    $job->assignExceptionHandler();
+    $result = $job->computeApiable();
+
+    $hitIds = collect(Http::recorded())
+        ->map(fn ($pair) => $pair[0])
+        ->filter(fn ($request) => $request->method() === 'DELETE')
+        ->map(function ($request): ?string {
+            preg_match('/orderId=([^&]+)/', $request->url(), $matches);
+
+            return $matches[1] ?? null;
+        })
+        ->filter()
+        ->values()
+        ->all();
+
+    expect($result['cancelled_count'])->toBe(1)
+        ->and($hitIds)->toBe(['OPENING-LIMIT-1'])
+        ->and($openingLimit->fresh()->reference_status)->toBe('CANCELLED')
+        ->and($takeProfit->fresh()->status)->toBe('NEW')
+        ->and($takeProfit->fresh()->reference_status)->toBe('NEW');
+});
+
+it('keeps cancelling every non-algo order by default', function (): void {
+    $position = buildPositionWithOpenOrders('PERF');
+    attachOrder($position, ['type' => 'LIMIT', 'exchange_order_id' => 'DEFAULT-LIMIT-1']);
+    attachOrder($position, [
+        'type' => 'PROFIT-LIMIT',
+        'side' => 'SELL',
+        'exchange_order_id' => 'DEFAULT-TP-1',
+    ]);
+
+    fakeBinanceCancelEndpoint();
+
+    $job = new CancelPositionOpenOrdersJob($position->id);
+    $job->assignExceptionHandler();
+    $result = $job->computeApiable();
+
+    expect($result['cancelled_count'])->toBe(2);
+});

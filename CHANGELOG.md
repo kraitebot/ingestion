@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.65.2 - 2026-07-15
+
+Ships `kraitebot/core` 1.70.1. See WhereAreWe and the refreshed Kraite docs.
+
+### Bug fixes
+
+- [FIXED] **Manual Binance closes no longer leave DCA LIMIT orders exposed behind the normal reconciliation workflow.** The flat account update creates an independent high-priority cancellation that is symbol-, account-, direction-, and mode-aware. The replacement workflow still runs and protection orders remain under normal lifecycle ownership.
+- [FIXED] **Same-pair exchange exposure blocks a new opening across LONG, SHORT, and one-way BOTH snapshot shapes.** The existing cross-direction token-selection exclusion now has explicit regression coverage.
+
+### Tests
+
+- [ADDED] TDD coverage for stream normalization, position matching, deduplication, priority routing, replacement coexistence, LIMIT-only emergency cancellation, standard lifecycle cancellation, and cross-direction opening guards. Targeted release gate: 189 tests / 428 assertions.
+
 ## 1.65.1 - 2026-07-14
 
 ### Deployment
