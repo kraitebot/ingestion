@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Kraite\Core\Jobs\Atomic\Position\ConfirmPositionFlatAndCancelOpeningOrdersJob;
 use Kraite\Core\Jobs\Lifecycles\Order\PrepareSyncOrdersJob;
 use Kraite\Core\Jobs\Lifecycles\Position\PrepareCancelOrphanOrdersJob;
 use Kraite\Core\Models\Account;
@@ -19,6 +20,7 @@ use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\Drift\DriftChecker;
 use Mockery as M;
 use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
 
 uses(RefreshDatabase::class)->group('feature', 'drift', 'cron');
 
@@ -242,6 +244,52 @@ it('catches the WAP scenario end-to-end: PROFIT-LIMIT price drift on a quiet pos
     // User whose identity in the fake is matched by class only.
     Notification::assertCount(1);
     Notification::assertSentTo(Kraite::admin(), AlertNotification::class);
+});
+
+it('keeps db-only drift alert-only while scheduling a separate flat safety confirmation', function (): void {
+    $f = makeSpotterFixture(token: 'DBONLY');
+    $position = $f['position'];
+
+    makeSpotterOrder($position->id, [
+        'type' => 'LIMIT',
+        'status' => 'NEW',
+        'is_algo' => false,
+    ]);
+    ageAllOrdersOutsideQuietWindow($position->id);
+
+    bindDriftReport(new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [
+            new \Kraite\Core\Support\Drift\PositionDriftReport(
+                symbol: $f['pair'],
+                direction: 'LONG',
+                status: \Kraite\Core\Support\Drift\PositionDriftReport::STATUS_DB_ONLY,
+                positionId: $position->id,
+                db: ['id' => $position->id, 'status' => 'active'],
+                exchange: null,
+                positionDriftFields: [],
+                orders: [],
+            ),
+        ],
+        orphanOrders: [],
+    ));
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-engine-health' => true,
+        '--skip-wap-heal' => true,
+    ])->assertSuccessful();
+
+    $confirmations = Steps::usingPrefix('trading', fn () => Step::query()
+        ->forRelatable($position)
+        ->forClasses(ConfirmPositionFlatAndCancelOpeningOrdersJob::class)
+        ->get());
+
+    expect(Step::where('class', PrepareSyncOrdersJob::class)->count())->toBe(0)
+        ->and($confirmations)->toHaveCount(1)
+        ->and($confirmations->first()->priority)->toBe('high')
+        ->and($confirmations->first()->dispatch_after->isFuture())->toBeTrue();
+    Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
 });
 
 it('skips an active position when one of its orders was touched within the quiet window', function (): void {

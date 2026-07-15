@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Kraite\Core\Jobs\Atomic\Position\ConfirmPositionFlatAndCancelOpeningOrdersJob;
 use Kraite\Core\Jobs\Atomic\Position\SyncPositionQuantityFromExchangeJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
@@ -11,6 +12,8 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
 
 /**
  * Pin partial-fill quantity sync.
@@ -92,6 +95,26 @@ function buildPartialFillPosition(string $exchange, string $direction = 'SHORT')
     ]));
 
     return $position;
+}
+
+function attachPartialFillOpeningOrder(Position $position): Order
+{
+    return Order::withoutEvents(fn () => Order::create([
+        'position_id' => $position->id,
+        'uuid' => Str::uuid()->toString(),
+        'client_order_id' => Str::uuid()->toString(),
+        'exchange_order_id' => 'LIMIT-SAFETY-1',
+        'type' => 'LIMIT',
+        'side' => $position->direction === 'SHORT' ? 'SELL' : 'BUY',
+        'position_side' => $position->direction,
+        'status' => 'PARTIALLY_FILLED',
+        'reference_status' => 'NEW',
+        'price' => '0.02400000',
+        'reference_price' => '0.02400000',
+        'quantity' => '975.00000000',
+        'reference_quantity' => '975.00000000',
+        'is_algo' => false,
+    ]));
 }
 
 it('writes positions.quantity = abs(exchange size) on Bitget partial fill', function (): void {
@@ -211,4 +234,70 @@ it('does not touch fields other than quantity (opening_price/status/breakeven un
     expect((string) $position->opening_price)->toBe($originalOpening);
     expect($position->status)->toBe($originalStatus);
     expect((bool) $position->was_waped)->toBe($originalWasWaped);
+});
+
+it('schedules delayed flat confirmation when a valid partial-fill snapshot is empty', function (): void {
+    Http::fake([
+        '*/fapi/v3/positionRisk*' => Http::response('[]'),
+    ]);
+    $position = buildPartialFillPosition('binance', 'LONG');
+    attachPartialFillOpeningOrder($position);
+
+    $job = new SyncPositionQuantityFromExchangeJob($position->id);
+    $job->assignExceptionHandler();
+    $result = Steps::usingPrefix('trading', fn (): array => $job->computeApiable());
+    $confirmations = Steps::usingPrefix('trading', fn () => Step::query()
+        ->forRelatable($position)
+        ->forClasses(ConfirmPositionFlatAndCancelOpeningOrdersJob::class)
+        ->get());
+
+    expect($result['matched_on_exchange'])->toBeFalse()
+        ->and($confirmations)->toHaveCount(1)
+        ->and($confirmations->first()->priority)->toBe('high')
+        ->and($confirmations->first()->dispatch_after->isFuture())->toBeTrue();
+});
+
+it('uses the signed BOTH quantity to reject the opposite one-way direction', function (): void {
+    Http::fake([
+        '*/fapi/v3/positionRisk*' => Http::response(json_encode([[
+            'symbol' => 'GRTUSDT',
+            'positionSide' => 'BOTH',
+            'positionAmt' => '-730.3',
+            'entryPrice' => '0.02432',
+        ]], JSON_THROW_ON_ERROR)),
+    ]);
+    $position = buildPartialFillPosition('binance', 'LONG');
+    attachPartialFillOpeningOrder($position);
+    $originalQuantity = (string) $position->quantity;
+
+    $job = new SyncPositionQuantityFromExchangeJob($position->id);
+    $job->assignExceptionHandler();
+    $result = Steps::usingPrefix('trading', fn (): array => $job->computeApiable());
+
+    expect($result['matched_on_exchange'])->toBeFalse()
+        ->and((string) $position->refresh()->quantity)->toBe($originalQuantity)
+        ->and(Steps::usingPrefix('trading', fn (): int => Step::query()
+            ->forRelatable($position)
+            ->forClasses(ConfirmPositionFlatAndCancelOpeningOrdersJob::class)
+            ->count()))->toBe(1);
+});
+
+it('rejects a partial-fill positions vendor error instead of treating it as flat', function (): void {
+    Http::fake([
+        '*/api/v2/mix/position/all-position*' => Http::response(json_encode([
+            'code' => '40014',
+            'msg' => 'invalid api key',
+        ], JSON_THROW_ON_ERROR)),
+    ]);
+    $position = buildPartialFillPosition('bitget', 'SHORT');
+    attachPartialFillOpeningOrder($position);
+    $job = new SyncPositionQuantityFromExchangeJob($position->id);
+    $job->assignExceptionHandler();
+
+    expect(fn () => Steps::usingPrefix('trading', fn () => $job->computeApiable()))
+        ->toThrow(UnexpectedValueException::class)
+        ->and(Steps::usingPrefix('trading', fn (): int => Step::query()
+            ->forRelatable($position)
+            ->forClasses(ConfirmPositionFlatAndCancelOpeningOrdersJob::class)
+            ->count()))->toBe(0);
 });

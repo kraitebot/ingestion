@@ -1,4 +1,4 @@
-# WhereAreWe — 2026-07-15 (manual-close opening-order safety)
+# WhereAreWe — 2026-07-15 (confirmed exchange truth and order safety)
 
 ## Date
 
@@ -21,6 +21,23 @@
   snapshots block a new opening when the pair exists under `LONG`,
   `SHORT`, or `BOTH`. Token discovery's existing cross-direction
   exclusion now has an explicit regression test.
+- **REST absence is never trusted once:** replacement, WAP,
+  partial-fill quantity sync, drift follow-up, and recovery share a
+  validated Binance / Bitget / Bybit / KuCoin position snapshot.
+  Vendor errors inside HTTP 200 preserve the last trusted snapshot.
+  Exact symbol + logical-side matching prevents an opposite hedge leg
+  from masquerading as the bot-owned position.
+- **Destructive flat actions require confirmation:** a first valid flat
+  REST read schedules a high-priority second read after 20 seconds.
+  Only the second valid flat result may cancel Kraite-owned opening
+  LIMITs; reappearance, invalid data, and opposite-side rows preserve
+  every order. Drift stays alert-only.
+- **Recovery preserves ownership until exchange cleanup succeeds:**
+  normal recovery confirms flat twice and cancels opening LIMITs while
+  the position is still locally open. `--override` now cancels those
+  exchange orders before deleting local ownership. Any cancellation
+  failure preserves the position, orders, steps, and reference state;
+  dry-run never sends a cancellation.
 
 ---
 

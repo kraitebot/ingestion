@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.66.0 - 2026-07-15
+
+Ships `kraitebot/core` 1.71.0. See WhereAreWe and the refreshed Kraite docs.
+
+### Position safety
+
+- [IMPROVED] **Missing exchange positions now require validated, confirmed truth.** Replacement, WAP, partial-fill quantity sync, drift follow-up, and disaster recovery share exact symbol + logical-side matching across Binance, Bitget, Bybit, and KuCoin. REST absence must repeat after 20 seconds before opening LIMITs can be cancelled.
+- [IMPROVED] **Immediate manual-close protection and normal lifecycle ownership now share one cancellation contract.** The User Data Stream still sheds DCA re-entry risk on the first valid zero-quantity event; replacement remains responsible for the final flat-versus-residual decision.
+- [FIXED] **Recovery and `--override` preserve local ownership when exchange cancellation fails.** Dry-run never sends cancellations, vendor-error responses never count as flat, and drift stays alert-only.
+
+### Tests
+
+- [ADDED] Heavy TDD coverage across snapshot validation, hedge/one-way direction matching, replacement, WAP, quantity sync, drift, recovery, override, and User Data Stream safety. Light release gate: 84 tests / 205 assertions; post-refinement stream gate: 10 tests / 31 assertions.
+
 ## 1.65.3 - 2026-07-15
 
 Ships `kraitebot/core` 1.70.2.

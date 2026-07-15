@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
@@ -139,6 +140,45 @@ it('returns synced when DB and exchange agree on every field', function (): void
     expect($report->positions[0]->status)->toBe(PositionDriftReport::STATUS_SYNCED);
     expect($report->positions[0]->positionDriftFields)->toBe([]);
     expect($report->driftingPositions())->toHaveCount(0);
+});
+
+it('reports an HTTP 200 vendor error as snapshot failure instead of db-only drift', function (): void {
+    Http::fake([
+        '*' => Http::response(json_encode([
+            'code' => '40014',
+            'msg' => 'invalid api key',
+        ], JSON_THROW_ON_ERROR)),
+    ]);
+
+    $apiSystem = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'bitget',
+        'name' => 'Bitget',
+    ]);
+    $symbol = Symbol::factory()->create(['token' => 'DRIFTFAIL']);
+    $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'token' => 'DRIFTFAIL',
+        'quote' => 'USDT',
+        'api_system_id' => $apiSystem->id,
+        'symbol_id' => $symbol->id,
+    ]);
+    $account = Account::factory()->create([
+        'api_system_id' => $apiSystem->id,
+        'bitget_api_key' => 'TESTKEY',
+        'bitget_api_secret' => 'TESTSECRET',
+        'bitget_passphrase' => 'TESTPASS',
+    ]);
+    Position::factory()->long()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'parsed_trading_pair' => 'DRIFTFAILUSDT',
+        'status' => 'active',
+    ]);
+
+    $report = (new DriftCheckService)->analyseAccount($account);
+
+    expect($report->apiError)->toContain('Invalid bitget positions response')
+        ->and($report->positions)->toBe([])
+        ->and($report->orphanOrders)->toBe([]);
 });
 
 it('flags WAP price drift on a PROFIT-LIMIT order when exchange has the post-WAP price', function (): void {
