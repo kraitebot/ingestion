@@ -7,6 +7,7 @@ use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Symbol;
+use Kraite\Core\Support\TradingMappers\BinanceTradingMapper;
 
 test('does not run for non-exchange API systems', function (): void {
     $apiSystem = ApiSystem::factory()->create([
@@ -322,7 +323,18 @@ test('flags DB symbols that are missing from the fresh API response as delisted'
         'token' => 'DENT',
         'quote' => 'USDT',
         'api_system_id' => $binance->id,
+        'is_manually_enabled' => true,
         'is_marked_for_delisting' => false,
+    ]);
+
+    // Scheduled for delisting, but still returned by this exchange. It must
+    // stay enabled until the authoritative response actually drops it.
+    $scheduled = ExchangeSymbol::factory()->create([
+        'token' => 'SCHEDULED',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_manually_enabled' => true,
+        'is_marked_for_delisting' => true,
     ]);
 
     // Unrelated exchange, must not be touched by a Binance refresh.
@@ -338,6 +350,7 @@ test('flags DB symbols that are missing from the fresh API response as delisted'
     $apiResult = [
         ['baseAsset' => 'BTC', 'quoteAsset' => 'USDT', 'pair' => 'BTCUSDT'],
         ['baseAsset' => 'ETH', 'quoteAsset' => 'USDT', 'pair' => 'ETHUSDT'],
+        ['baseAsset' => 'SCHEDULED', 'quoteAsset' => 'USDT', 'pair' => 'SCHEDULEDUSDT'],
     ];
 
     $job = new UpsertExchangeSymbolsFromExchangeJob($binance->id);
@@ -348,11 +361,18 @@ test('flags DB symbols that are missing from the fresh API response as delisted'
 
     expect($btc->fresh()->is_marked_for_delisting)->toBeFalse();
     expect($eth->fresh()->is_marked_for_delisting)->toBeFalse();
-    expect($dent->fresh()->is_marked_for_delisting)->toBeTrue();
-    expect($dentBybit->fresh()->is_marked_for_delisting)->toBeFalse();
+    expect($dent->fresh()->is_marked_for_delisting)->toBeTrue()
+        ->and($dent->fresh()->delivery_at->isSameSecond(now()))->toBeTrue()
+        ->and($dent->fresh()->is_manually_enabled)->toBeTrue();
+    expect($scheduled->fresh()->is_marked_for_delisting)->toBeTrue()
+        ->and($scheduled->fresh()->delivery_at)->toBeNull()
+        ->and($scheduled->fresh()->is_manually_enabled)->toBeTrue();
+    expect($dentBybit->fresh()->is_marked_for_delisting)->toBeFalse()
+        ->and($dentBybit->fresh()->delivery_at)->toBeNull()
+        ->and($dentBybit->fresh()->is_manually_enabled)->toBeTrue();
 });
 
-test('flagMissingSymbolsForDelisting is idempotent on rows already flagged', function (): void {
+test('a full catalogue upgrades an already flagged missing row to terminal without changing the sysadmin flag', function (): void {
     $binance = ApiSystem::factory()->exchange()->create([
         'canonical' => 'binance',
         'name' => 'Binance',
@@ -369,10 +389,9 @@ test('flagMissingSymbolsForDelisting is idempotent on rows already flagged', fun
         'token' => 'DENT',
         'quote' => 'USDT',
         'api_system_id' => $binance->id,
+        'is_manually_enabled' => true,
         'is_marked_for_delisting' => true,
     ]);
-
-    $originalUpdatedAt = $alreadyFlagged->updated_at;
 
     $apiResult = [
         ['baseAsset' => 'BTC', 'quoteAsset' => 'USDT', 'pair' => 'BTCUSDT'],
@@ -380,9 +399,173 @@ test('flagMissingSymbolsForDelisting is idempotent on rows already flagged', fun
 
     $job = new UpsertExchangeSymbolsFromExchangeJob($binance->id);
 
-    // No new flags — DENT was already flagged, skip it.
-    expect($job->flagMissingSymbolsForDelisting($apiResult))->toBe(0);
-    expect($alreadyFlagged->fresh()->updated_at->eq($originalUpdatedAt))->toBeTrue();
+    expect($alreadyFlagged->is_marked_for_delisting)->toBeTrue()
+        ->and($alreadyFlagged->is_manually_enabled)->toBeTrue();
+
+    expect($job->flagMissingSymbolsForDelisting($apiResult))->toBe(1);
+    expect($alreadyFlagged->fresh()->is_marked_for_delisting)->toBeTrue()
+        ->and($alreadyFlagged->fresh()->delivery_at->isSameSecond(now()))->toBeTrue()
+        ->and($alreadyFlagged->fresh()->is_manually_enabled)->toBeTrue();
+
+    $updatedAtAfterDeactivation = $alreadyFlagged->fresh()->updated_at;
+
+    expect($job->flagMissingSymbolsForDelisting($apiResult))->toBe(0)
+        ->and($alreadyFlagged->fresh()->updated_at->eq($updatedAtAfterDeactivation))->toBeTrue();
+});
+
+test('an active-only catalogue marks a missing row unavailable but does not call it fully delisted', function (): void {
+    $bybit = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'bybit',
+        'name' => 'Bybit',
+    ]);
+    ExchangeSymbol::factory()->create([
+        'token' => 'BTC',
+        'quote' => 'USDT',
+        'api_system_id' => $bybit->id,
+    ]);
+    $missing = ExchangeSymbol::factory()->create([
+        'token' => 'DATA',
+        'quote' => 'USDT',
+        'api_system_id' => $bybit->id,
+        'is_manually_enabled' => true,
+        'is_marked_for_delisting' => false,
+    ]);
+
+    $job = new UpsertExchangeSymbolsFromExchangeJob($bybit->id);
+
+    expect($job->flagMissingSymbolsForDelisting([
+        ['baseAsset' => 'BTC', 'quoteAsset' => 'USDT', 'pair' => 'BTCUSDT'],
+    ]))->toBe(1);
+
+    expect($missing->fresh()->is_marked_for_delisting)->toBeTrue()
+        ->and($missing->fresh()->delivery_at)->toBeNull()
+        ->and($missing->fresh()->isDelisted())->toBeFalse()
+        ->and($missing->fresh()->is_manually_enabled)->toBeTrue();
+});
+
+test('a returned trading pair clears only automatic delisting state', function (): void {
+    $binance = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance',
+    ]);
+    $bybit = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'bybit',
+        'name' => 'Bybit',
+    ]);
+    $symbol = Symbol::factory()->create(['token' => 'RARE']);
+    $removed = ExchangeSymbol::factory()->create([
+        'token' => 'RARE',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'symbol_id' => $symbol->id,
+        'is_manually_enabled' => false,
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subDay(),
+        'system_disabled_at' => now()->subDays(2),
+        'system_disabled_reason' => 'position_opening_failed',
+    ]);
+    $bybitSibling = ExchangeSymbol::factory()->create([
+        'token' => 'RARE',
+        'quote' => 'USDT',
+        'api_system_id' => $bybit->id,
+        'symbol_id' => $symbol->id,
+        'overlaps_with_binance' => false,
+    ]);
+    $bybitSibling->updateQuietly(['overlaps_with_binance' => false]);
+    $job = new UpsertExchangeSymbolsFromExchangeJob($binance->id);
+
+    $job->synchronizeExchangeSymbols([[
+        'baseAsset' => 'RARE',
+        'quoteAsset' => 'USDT',
+        'pair' => 'RAREUSDT',
+        'status' => 'TRADING',
+        'isTrading' => true,
+        'isDelisted' => false,
+        'deliveryDate' => BinanceTradingMapper::PERPETUAL_DEFAULT,
+    ]]);
+
+    $removed->refresh();
+
+    expect($removed->is_marked_for_delisting)->toBeFalse()
+        ->and($removed->delivery_at)->toBeNull()
+        ->and($removed->is_manually_enabled)->toBeFalse()
+        ->and($removed->system_disabled_at)->not->toBeNull()
+        ->and($removed->system_disabled_reason)->toBe('position_opening_failed')
+        ->and($bybitSibling->fresh()->overlaps_with_binance)->toBeTrue();
+});
+
+test('scheduled delivery blocks new trading while retaining the exchange date', function (): void {
+    $binance = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance',
+    ]);
+    $scheduled = ExchangeSymbol::factory()->create([
+        'token' => 'SCHEDULED',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_marked_for_delisting' => false,
+        'delivery_at' => null,
+    ]);
+    $deliveryTimestamp = now()->addDay()->getTimestampMs();
+
+    (new UpsertExchangeSymbolsFromExchangeJob($binance->id))->synchronizeExchangeSymbols([[
+        'baseAsset' => 'SCHEDULED',
+        'quoteAsset' => 'USDT',
+        'pair' => 'SCHEDULEDUSDT',
+        'status' => 'TRADING',
+        'isTrading' => true,
+        'isDelisted' => false,
+        'deliveryDate' => $deliveryTimestamp,
+    ]]);
+
+    $scheduled->refresh();
+
+    expect($scheduled->is_marked_for_delisting)->toBeTrue()
+        ->and($scheduled->delivery_ts_ms)->toBe($deliveryTimestamp)
+        ->and($scheduled->delivery_at->isSameSecond(now()->addDay()))->toBeTrue()
+        ->and($scheduled->isDelisted())->toBeFalse();
+});
+
+test('catalogue-only rows prevent false delisting without creating unsupported symbols', function (): void {
+    $binance = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance',
+    ]);
+    $existingStablecoin = ExchangeSymbol::factory()->create([
+        'token' => 'USDC',
+        'quote' => 'USDT',
+        'api_system_id' => $binance->id,
+        'is_marked_for_delisting' => false,
+        'delivery_at' => null,
+    ]);
+
+    (new UpsertExchangeSymbolsFromExchangeJob($binance->id))->synchronizeExchangeSymbols([
+        [
+            'baseAsset' => 'USDC',
+            'quoteAsset' => 'USDT',
+            'pair' => 'USDCUSDT',
+            'isEligible' => false,
+            'isTrading' => true,
+            'isDelisted' => false,
+            'deliveryDate' => BinanceTradingMapper::PERPETUAL_DEFAULT,
+        ],
+        [
+            'baseAsset' => 'NEWSTABLE',
+            'quoteAsset' => 'USDT',
+            'pair' => 'NEWSTABLEUSDT',
+            'isEligible' => false,
+            'isTrading' => true,
+            'isDelisted' => false,
+            'deliveryDate' => BinanceTradingMapper::PERPETUAL_DEFAULT,
+        ],
+    ]);
+
+    expect($existingStablecoin->fresh()->is_marked_for_delisting)->toBeFalse()
+        ->and($existingStablecoin->fresh()->delivery_at)->toBeNull()
+        ->and(ExchangeSymbol::query()
+            ->where('api_system_id', $binance->id)
+            ->where('token', 'NEWSTABLE')
+            ->exists())->toBeFalse();
 });
 
 test('flagMissingSymbolsForDelisting is a no-op when the API response is empty', function (): void {
@@ -397,11 +580,13 @@ test('flagMissingSymbolsForDelisting is a no-op when the API response is empty',
         'token' => 'BTC',
         'quote' => 'USDT',
         'api_system_id' => $binance->id,
+        'is_manually_enabled' => true,
         'is_marked_for_delisting' => false,
     ]);
 
     $job = new UpsertExchangeSymbolsFromExchangeJob($binance->id);
 
     expect($job->flagMissingSymbolsForDelisting([]))->toBe(0);
-    expect($symbol->fresh()->is_marked_for_delisting)->toBeFalse();
+    expect($symbol->fresh()->is_marked_for_delisting)->toBeFalse()
+        ->and($symbol->fresh()->is_manually_enabled)->toBeTrue();
 });

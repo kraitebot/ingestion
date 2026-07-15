@@ -964,6 +964,51 @@ test('handles no available exchange symbols gracefully', function (): void {
     expect($remainingPositions)->toBe(0);
 });
 
+test('automatic system blocks exclude a symbol without mutating the sysadmin flag', function (): void {
+    $account = createAccountForTokenDiscoveryTest();
+    $exchangeSymbol = createExchangeSymbolWithData(
+        'SYSTEMBLOCKED',
+        'LONG',
+        ['1h' => 0.8],
+        ['1h' => 1.2],
+        ['1h' => -1.2],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    expect(ExchangeSymbol::tradeable()->whereKey($exchangeSymbol->id)->exists())->toBeTrue();
+
+    $exchangeSymbol->update([
+        'system_disabled_at' => now(),
+        'system_disabled_reason' => 'position_opening_failed',
+    ]);
+
+    expect($exchangeSymbol->fresh()->is_manually_enabled)->toBeTrue()
+        ->and($exchangeSymbol->fresh()->isTradeable())->toBeFalse()
+        ->and(ExchangeSymbol::tradeable()->whereKey($exchangeSymbol->id)->exists())->toBeFalse();
+});
+
+test('price alignment gates agree between the model and tradeable scope', function (): void {
+    $account = createAccountForTokenDiscoveryTest();
+    $exchangeSymbol = createExchangeSymbolWithData(
+        'MISALIGNED',
+        'LONG',
+        ['1h' => 0.8],
+        ['1h' => 1.2],
+        ['1h' => -1.2],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    expect($exchangeSymbol->isTradeable())->toBeTrue()
+        ->and(ExchangeSymbol::tradeable()->whereKey($exchangeSymbol->id)->exists())->toBeTrue();
+
+    $exchangeSymbol->update(['is_price_aligned' => false]);
+
+    expect($exchangeSymbol->fresh()->isTradeable())->toBeFalse()
+        ->and(ExchangeSymbol::tradeable()->whereKey($exchangeSymbol->id)->exists())->toBeFalse();
+});
+
 test('handles symbols with incomplete data (missing own timeframe correlation)', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 

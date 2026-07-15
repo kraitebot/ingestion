@@ -49,6 +49,7 @@ function setupBybitLeverageAtomic(string $retMsg): array
         'token' => 'AAOI',
         'quote' => 'USDT',
         'asset' => 'AAOIUSDT',
+        'is_manually_enabled' => true,
         'is_marked_for_delisting' => false,
     ]);
 
@@ -70,12 +71,17 @@ it('marks the symbol for delisting and completes when the exchange reports it cl
     $result = $job->computeApiable();
 
     expect($result['delisted'] ?? false)->toBeTrue()
-        ->and($symbol->fresh()->is_marked_for_delisting)->toBeTrue();
+        ->and($symbol->fresh()->is_marked_for_delisting)->toBeTrue()
+        ->and($symbol->fresh()->isDelisted())->toBeTrue()
+        ->and($symbol->fresh()->delivery_at->isSameSecond(now()))->toBeTrue()
+        ->and($symbol->fresh()->is_manually_enabled)->toBeTrue();
 });
 
 it('rethrows non-delisting exchange errors so genuine failures still surface', function (): void {
     [$job, $symbol] = setupBybitLeverageAtomic('orderLinkId is required');
 
     expect(fn () => $job->computeApiable())->toThrow(Exception::class);
-    expect($symbol->fresh()->is_marked_for_delisting)->toBeFalse();
+    expect($symbol->fresh()->is_marked_for_delisting)->toBeFalse()
+        ->and($symbol->fresh()->delivery_at)->toBeNull()
+        ->and($symbol->fresh()->is_manually_enabled)->toBeTrue();
 });

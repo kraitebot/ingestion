@@ -1,3 +1,34 @@
+# WhereAreWe — 2026-07-15 (exchange listing lifecycle truth)
+
+## Date
+
+2026-07-15
+
+## This release (2026-07-15)
+
+- **Delisting warning and terminal removal are separate:** a warning
+  marker blocks new openings, while a delivery time at or before now is
+  the terminal exchange-removal truth. Active exposure remains covered
+  by price and kline monitoring, sync, WAP, protection, and close.
+- **Catalogue absence follows each exchange's evidence:** missing rows
+  from Binance or Bitget's full catalogue become terminal. Missing rows
+  from Bybit or KuCoin's active-only catalogue are warning-only until an
+  explicit closed or invalid-symbol response confirms removal.
+- **Returning symbols recover automatic listing state:** an active row
+  clears its warning and terminal timestamp. A returning Binance row also
+  restores same-asset overlap on other exchanges.
+- **Inactive and ineligible catalogue rows remain evidence, not trading
+  candidates:** existing rows are retained without becoming eligible, and
+  inactive rows are not created as new tradeable records.
+- **Manual enablement is sysadmin-owned:** opening failures and hourly
+  allow-list enforcement now use a separate automatic system block with a
+  recorded reason. Price mismatch uses its own alignment gate. None of
+  these automated flows rewrites `is_manually_enabled`.
+- **Historical manual disables are preserved:** existing production values
+  are not reclassified because their original cause cannot be proved.
+
+---
+
 # WhereAreWe — 2026-07-15 (confirmed exchange truth and order safety)
 
 ## Date

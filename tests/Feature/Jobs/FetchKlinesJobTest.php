@@ -7,6 +7,8 @@ use Kraite\Core\Jobs\Models\ExchangeSymbol\FetchKlinesJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\Candle;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Kraite;
+use Tests\Support\ResponseException;
 
 /**
  * Gets or creates the Binance API system for testing.
@@ -361,3 +363,57 @@ test('default limit is 1 when not specified', function (): void {
 
     expect($job->limit)->toBe(1);
 });
+
+test('a terminal Bitget rejection records removal without changing the sysadmin flag', function (string $code): void {
+    Kraite::updateOrCreate(['id' => 1], [
+        'bitget_api_key' => 'TESTKEY',
+        'bitget_api_secret' => 'TESTSECRET',
+        'bitget_passphrase' => 'TESTPASS',
+    ]);
+
+    $bitget = ApiSystem::firstOrCreate(
+        ['canonical' => 'bitget'],
+        ['is_exchange' => true, 'name' => 'Bitget', 'recvwindow_margin' => 1000]
+    );
+    $binance = getBinanceApiSystemForKlineJob();
+
+    $removedOnBitget = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitget->id,
+        'token' => 'TON',
+        'quote' => 'USDT',
+        'asset' => 'TONUSDT',
+        'is_marked_for_delisting' => true,
+        'is_manually_enabled' => true,
+    ]);
+    $samePairOnBinance = ExchangeSymbol::factory()->create([
+        'api_system_id' => $binance->id,
+        'token' => 'TON',
+        'quote' => 'USDT',
+        'asset' => 'TONUSDT',
+        'is_marked_for_delisting' => false,
+        'is_manually_enabled' => true,
+    ]);
+
+    Http::fake(static function () use ($code): void {
+        throw $code === '40309'
+            ? ResponseException::bitgetSymbolDelisted()
+            : ResponseException::bitgetSymbolNotFound40034();
+    });
+
+    $job = new FetchKlinesJob($removedOnBitget->id, '4h', 1);
+    $job->assignExceptionHandler();
+
+    $result = $job->computeApiable();
+
+    expect($result['delisted'])->toBeTrue()
+        ->and($removedOnBitget->fresh()->is_marked_for_delisting)->toBeTrue()
+        ->and($removedOnBitget->fresh()->isDelisted())->toBeTrue()
+        ->and($removedOnBitget->fresh()->delivery_at->isSameSecond(now()))->toBeTrue()
+        ->and($removedOnBitget->fresh()->is_manually_enabled)->toBeTrue()
+        ->and($samePairOnBinance->fresh()->is_marked_for_delisting)->toBeFalse()
+        ->and($samePairOnBinance->fresh()->delivery_at)->toBeNull()
+        ->and($samePairOnBinance->fresh()->is_manually_enabled)->toBeTrue();
+})->with([
+    'explicitly removed contract' => ['40309'],
+    'symbol no longer exists' => ['40034'],
+]);

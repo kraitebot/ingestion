@@ -8,6 +8,7 @@ use Kraite\Core\Jobs\Models\ExchangeSymbol\DispatchPerSymbolKlineBlocksJob;
 use Kraite\Core\Jobs\Models\ExchangeSymbol\FetchKlinesJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
 
 beforeEach(function (): void {
@@ -91,4 +92,78 @@ test('produces zero child blocks when exchangeSymbolIds list is empty', function
 
     expect($result['symbols_dispatched'])->toBe(0);
     expect(Step::where('id', '!=', $step->id)->count())->toBe(0);
+});
+
+test('accepts a queued payload created before protected symbol ids existed', function (): void {
+    $symbol = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'LEGACY',
+        'quote' => 'USDT',
+    ]);
+    $step = arrangeDispatchPerSymbolStep([$symbol->id], ['1h'], 5);
+    $job = new DispatchPerSymbolKlineBlocksJob([$symbol->id], ['1h'], 5);
+
+    unset($job->protectedExchangeSymbolIds);
+
+    /** @var DispatchPerSymbolKlineBlocksJob $restoredJob */
+    $restoredJob = unserialize(serialize($job));
+    $restoredJob->step = $step;
+
+    expect($restoredJob->compute()['symbols_dispatched'])->toBe(1);
+});
+
+test('revalidates monitoring while preserving warning-only and open-position symbols', function (): void {
+    $live = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'LIVE',
+        'quote' => 'USDT',
+    ]);
+    $warningOnly = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'WARNING',
+        'quote' => 'USDT',
+        'is_marked_for_delisting' => true,
+        'delivery_at' => null,
+    ]);
+    $removedWithoutPosition = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'REMOVED',
+        'quote' => 'USDT',
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+    $removedWithPosition = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'HELD',
+        'quote' => 'USDT',
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+    Position::factory()->long()->create([
+        'exchange_symbol_id' => $removedWithPosition->id,
+        'parsed_trading_pair' => 'HELDUSDT',
+        'status' => 'active',
+    ]);
+
+    $ids = [$live->id, $warningOnly->id, $removedWithoutPosition->id, $removedWithPosition->id];
+    $step = arrangeDispatchPerSymbolStep($ids, ['4h'], 1);
+    $job = new DispatchPerSymbolKlineBlocksJob($ids, ['4h'], 1);
+    $job->step = $step;
+
+    $result = $job->compute();
+
+    $dispatchedIds = Step::query()
+        ->where('id', '!=', $step->id)
+        ->get()
+        ->map(fn (Step $child): mixed => data_get($child->arguments, 'exchangeSymbolId'))
+        ->unique()
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($result['symbols_dispatched'])->toBe(3)
+        ->and($dispatchedIds)->toBe(collect([$live->id, $warningOnly->id, $removedWithPosition->id])->sort()->values()->all())
+        ->and($dispatchedIds)->not->toContain($removedWithoutPosition->id);
 });

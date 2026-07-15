@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.67.0 - 2026-07-15
+
+Ships `kraitebot/core` 1.72.0. See WhereAreWe and the refreshed Kraite docs.
+
+### Exchange listing lifecycle
+
+- [IMPROVED] **Warning-only delisting state is distinct from terminal exchange removal.** Full Binance and Bitget catalogues can prove removal by absence; active-only Bybit and KuCoin catalogues cannot. Returning active rows recover automatic listing state.
+- [IMPROVED] **Terminal symbols leave new-opening work but not live-position duties.** Existing exposure retains price, kline, sync, WAP, protection, and close coverage.
+- [IMPROVED] **Automated safety gates no longer write the sysadmin manual switch.** Opening failures and the token allow-list use a separate reasoned system block; price divergence remains an independent alignment gate.
+
+### Tests
+
+- [ADDED] Heavy TDD coverage across catalogue mapping, lifecycle reconciliation, relisting, candidate and operational scopes, price alignment, opening-failure blocks, allow-list enforcement, and queued-job backward compatibility. Light release gate: 174 tests / 451 assertions.
+
 ## 1.66.0 - 2026-07-15
 
 Ships `kraitebot/core` 1.71.0. See WhereAreWe and the refreshed Kraite docs.

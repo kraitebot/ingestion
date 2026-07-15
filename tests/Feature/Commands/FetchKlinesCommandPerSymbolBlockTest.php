@@ -7,6 +7,7 @@ use Kraite\Core\Jobs\Models\ExchangeSymbol\FetchKlinesJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite as KraiteSettings;
+use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
 
 beforeEach(function (): void {
@@ -138,4 +139,98 @@ test('orchestrator execution materializes one block per symbol with full klines+
         expect($peers->where('index', 2)->count())->toBe(2, "{$symbol->token} needs 2 index-2 correlation/elasticity");
         expect($peers->pluck('queue')->unique()->all())->toBe(['indicators']);
     }
+});
+
+test('bulk path excludes removed symbols without positions but keeps removed symbols with open positions', function (): void {
+    $removedWithoutPosition = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'REMOVED',
+        'quote' => 'USDT',
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+    $removedWithPosition = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'HELD',
+        'quote' => 'USDT',
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+    $removedBtcBaseline = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'BTC',
+        'quote' => 'USDC',
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+    Position::factory()->long()->create([
+        'exchange_symbol_id' => $removedWithPosition->id,
+        'parsed_trading_pair' => 'HELDUSDT',
+        'status' => 'active',
+    ]);
+
+    $this->artisan('kraite:cron-fetch-klines', ['--canonical' => 'binance'])
+        ->assertExitCode(0);
+
+    $orchestrator = Step::query()
+        ->where('class', DispatchPerSymbolKlineBlocksJob::class)
+        ->firstOrFail();
+    $targetIds = collect($orchestrator->arguments['exchangeSymbolIds'] ?? []);
+    $btcIds = Step::query()
+        ->where('class', FetchKlinesJob::class)
+        ->get()
+        ->map(fn (Step $step): mixed => data_get($step->arguments, 'exchangeSymbolId'));
+
+    expect($targetIds)->not->toContain($removedWithoutPosition->id)
+        ->and($targetIds)->toContain($removedWithPosition->id)
+        ->and($btcIds)->not->toContain($removedBtcBaseline->id);
+});
+
+test('active-position path preserves a mapped Binance symbol when the position lives on another exchange', function (): void {
+    $bitget = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'bitget',
+        'name' => 'Bitget',
+    ]);
+    $heldOnBitget = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitget->id,
+        'token' => 'CROSSHELD',
+        'quote' => 'USDT',
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+    $binanceReference = ExchangeSymbol::factory()->create([
+        'api_system_id' => $this->apiSystem->id,
+        'token' => 'CROSSHELD',
+        'quote' => 'USDT',
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+    Position::factory()->long()->create([
+        'exchange_symbol_id' => $heldOnBitget->id,
+        'parsed_trading_pair' => 'CROSSHELDUSDT',
+        'status' => 'active',
+    ]);
+
+    $this->artisan('kraite:cron-fetch-klines', ['--only-active-positions' => true])
+        ->assertExitCode(0);
+
+    $orchestratorStep = Step::query()
+        ->where('class', DispatchPerSymbolKlineBlocksJob::class)
+        ->firstOrFail();
+    $arguments = $orchestratorStep->arguments;
+    $job = new DispatchPerSymbolKlineBlocksJob(
+        exchangeSymbolIds: $arguments['exchangeSymbolIds'],
+        timeframes: $arguments['timeframes'],
+        limit: $arguments['limit'],
+        protectedExchangeSymbolIds: $arguments['protectedExchangeSymbolIds'],
+    );
+    $job->step = $orchestratorStep;
+
+    expect($job->compute()['symbols_dispatched'])->toBe(1)
+        ->and(collect($arguments['protectedExchangeSymbolIds'] ?? []))->toContain($binanceReference->id);
 });

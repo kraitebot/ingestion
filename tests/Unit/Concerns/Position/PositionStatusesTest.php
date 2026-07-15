@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Position;
 
 /**
@@ -181,6 +182,27 @@ it('updateToFailed does NOT stamp closed_at when the position never opened', fun
     $position->updateToFailed('rejected before fill');
 
     expect($position->fresh()->closed_at)->toBeNull();
+});
+
+it('opening failure applies an automatic selection block without changing the sysadmin flag', function (): void {
+    $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'is_manually_enabled' => true,
+        'system_disabled_at' => null,
+        'system_disabled_reason' => null,
+    ]);
+    $position = Position::factory()->long()->create([
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'status' => 'opening',
+    ]);
+
+    $position->updateToFailed('placement rejected');
+
+    $exchangeSymbol->refresh();
+
+    expect($exchangeSymbol->is_manually_enabled)->toBeTrue()
+        ->and($exchangeSymbol->system_disabled_at->isSameSecond(now()))->toBeTrue()
+        ->and($exchangeSymbol->system_disabled_reason)->toBe('position_opening_failed')
+        ->and($exchangeSymbol->isTradeable())->toBeFalse();
 });
 
 it('updateToFailed re-entry does NOT re-stamp side effects on an already-failed row (idempotent message bump)', function (): void {

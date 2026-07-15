@@ -44,6 +44,7 @@ function setupPriceAlignmentAtomic(
         'quote' => 'USDT',
         'symbol_id' => 72,
         'is_marked_for_delisting' => $binanceIsDelisted,
+        'delivery_at' => $binanceIsDelisted ? now()->subMinute() : null,
     ]);
 
     // Binance reference price lives on the price sidecar.
@@ -72,7 +73,7 @@ function setupPriceAlignmentAtomic(
     return [$job, $bybit, $binance];
 }
 
-it('disables a unit-divergent symbol whose live price is ~1000x off Binance', function (): void {
+it('blocks a unit-divergent symbol without changing the sysadmin flag', function (): void {
     // Bybit FLOKI live ~0.0000237 vs Binance 1000FLOKI 0.0237 → ratio ~0.001.
     [$job, $bybit] = setupPriceAlignmentAtomic('0.0000237');
 
@@ -82,7 +83,7 @@ it('disables a unit-divergent symbol whose live price is ~1000x off Binance', fu
 
     expect($result['disabled'] ?? false)->toBeTrue()
         ->and($bybit->is_price_aligned)->toBeFalse()
-        ->and($bybit->is_manually_enabled)->toBeFalse();
+        ->and($bybit->is_manually_enabled)->toBeTrue();
 });
 
 it('keeps a same-unit symbol aligned and enabled when its price matches Binance', function (): void {
@@ -111,6 +112,21 @@ it('skips the atomic comparison when the only Binance same-asset reference is de
     expect($result['skipped'] ?? null)->toBe('no Binance reference price')
         ->and($bybit->is_price_aligned)->toBeTrue()
         ->and($bybit->is_manually_enabled)->toBeTrue();
+
+    Http::assertNothingSent();
+});
+
+it('rechecks a warning-only Binance reference before atomic comparison', function (): void {
+    [$job, $bybit, $binance] = setupPriceAlignmentAtomic(
+        bybitLivePrice: '0.0000237',
+        binanceIsDelisted: true,
+    );
+    $binance->updateQuietly(['delivery_at' => null]);
+
+    $result = $job->computeApiable();
+
+    expect($result['skipped'] ?? null)->toBe('no Binance reference price')
+        ->and($bybit->fresh()->is_price_aligned)->toBeTrue();
 
     Http::assertNothingSent();
 });
@@ -165,6 +181,7 @@ it('parent never selects delisted naming-divergent symbols', function (): void {
     $delisted = ExchangeSymbol::factory()->create([
         'api_system_id' => $bitgetSystem->id, 'token' => 'TON', 'quote' => 'USDT', 'symbol_id' => 900,
         'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
     ]);
     $alive = ExchangeSymbol::factory()->create([
         'api_system_id' => $bitgetSystem->id, 'token' => '1000TON', 'quote' => 'USDT', 'symbol_id' => 900,
@@ -193,6 +210,7 @@ it('parent selects a delisted naming-divergent symbol when it carries an open po
         'quote' => 'USDT',
         'symbol_id' => 901,
         'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
     ]);
     Position::factory()->create([
         'exchange_symbol_id' => $delisted->id,
@@ -214,6 +232,7 @@ it('parent uses a delisted Binance sibling when the target symbol carries an ope
         'quote' => 'USDT',
         'symbol_id' => 35627,
         'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
     ]);
     $target = ExchangeSymbol::factory()->create([
         'api_system_id' => $bitgetSystem->id,

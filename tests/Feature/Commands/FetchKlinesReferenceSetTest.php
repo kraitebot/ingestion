@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Kraite\Core\Jobs\Models\ExchangeSymbol\FetchKlinesJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
 
 /**
@@ -17,8 +18,8 @@ use StepDispatcher\Models\Step;
  * 600 Binance symbols every 15 min.
  *
  * Distinct from `--only-active-positions` which depends on what's open
- * RIGHT NOW; the reference set is fixed and always available regardless
- * of the live position book.
+ * RIGHT NOW; the reference set is fixed, while removed rows are omitted unless
+ * an open position still requires operational monitoring.
  */
 beforeEach(function (): void {
     Step::query()->delete();
@@ -167,4 +168,45 @@ it('requires --canonical when --reference-set is used (config-driven scope needs
         '--reference-set' => true,
         '--timeframe' => '15m',
     ])->assertExitCode(1);
+});
+
+it('skips removed reference symbols unless an open position still needs monitoring', function (): void {
+    $removedWithoutPosition = ExchangeSymbol::query()
+        ->where('api_system_id', $this->binance->id)
+        ->where('token', 'SOL')
+        ->firstOrFail();
+    $removedWithoutPosition->update([
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+
+    $removedWithPosition = ExchangeSymbol::query()
+        ->where('api_system_id', $this->binance->id)
+        ->where('token', 'XRP')
+        ->firstOrFail();
+    $removedWithPosition->update([
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+        'is_manually_enabled' => false,
+    ]);
+    Position::factory()->long()->create([
+        'exchange_symbol_id' => $removedWithPosition->id,
+        'parsed_trading_pair' => 'XRPUSDT',
+        'status' => 'active',
+    ]);
+
+    $this->artisan('kraite:cron-fetch-klines', [
+        '--reference-set' => true,
+        '--canonical' => 'binance',
+        '--timeframe' => '15m',
+    ])->assertExitCode(0);
+
+    $scheduledIds = Step::query()
+        ->where('class', FetchKlinesJob::class)
+        ->get()
+        ->map(fn (Step $step): mixed => data_get($step->arguments, 'exchangeSymbolId'));
+
+    expect($scheduledIds)->not->toContain($removedWithoutPosition->id)
+        ->and($scheduledIds)->toContain($removedWithPosition->id);
 });
