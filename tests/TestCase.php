@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Once;
+use Kraite\Core\Support\NotificationService;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -20,10 +21,10 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // Clear the once() cache to prevent test pollution
-        // The once() helper memoizes results per process, which can cause
-        // stale cached values (like Kraite::admin()) to persist between tests
+        // Parallel workers reuse their PHP process for multiple tests. Clear
+        // both process caches so database rollbacks cannot leave stale models.
         Once::flush();
+        NotificationService::flushNotificationCache();
 
         // Register parallel testing hooks only once
         if (! static::$parallelHooksRegistered) {
