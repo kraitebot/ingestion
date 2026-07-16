@@ -19,6 +19,8 @@ Ships `kraitebot/core` 1.73.6.
 - [ADDED] Regression coverage proves every imported user can authenticate with
   the local password, old passwords stop working, and missing configuration
   aborts before any production inspection.
+- [FIXED] CI checks out public local packages through Git transport so a
+  degraded GitHub API cannot block the release before tests start.
 - [VERIFIED] Full ingestion suite passes: 2,773 tests / 8,815 assertions.
 
 ## 1.68.3 - 2026-07-16

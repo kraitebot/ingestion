@@ -39,29 +39,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Checkout kraitebot/core package
-        uses: actions/checkout@v4
-        with:
-          repository: kraitebot/core
-          path: packages/kraitebot/core
-
-      - name: Checkout brunocfalcao/step-dispatcher package
-        uses: actions/checkout@v4
-        with:
-          repository: brunocfalcao/step-dispatcher
-          path: packages/brunocfalcao/step-dispatcher
-
-      - name: Checkout brunocfalcao/blade-feather-icons package
-        uses: actions/checkout@v4
-        with:
-          repository: brunocfalcao/blade-feather-icons
-          path: packages/brunocfalcao/blade-feather-icons
-
-      - name: Checkout brunocfalcao/laravel-helpers package
-        uses: actions/checkout@v4
-        with:
-          repository: brunocfalcao/laravel-helpers
-          path: packages/brunocfalcao/laravel-helpers
+      - name: Checkout local packages
+        run: |
+          git clone --depth 1 https://github.com/kraitebot/core.git packages/kraitebot/core
+          git clone --depth 1 https://github.com/brunocfalcao/step-dispatcher.git packages/brunocfalcao/step-dispatcher
+          git clone --depth 1 https://github.com/brunocfalcao/blade-feather-icons.git packages/brunocfalcao/blade-feather-icons
+          git clone --depth 1 https://github.com/brunocfalcao/laravel-helpers.git packages/brunocfalcao/laravel-helpers
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
