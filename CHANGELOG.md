@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.68.0 - 2026-07-16
+
+Ships `kraitebot/core` 1.73.0. See WhereAreWe and the refreshed Kraite
+docs.
+
+### Bitget USDC futures
+
+- [ADDED] **Bitget USDC perpetual contracts are discoverable and tradeable
+  without changing existing USDT behavior.** The complete catalogue is
+  atomic across both products, and every account or symbol operation uses
+  the matching futures product and margin coin.
+- [FIXED] **Token selection cannot cross exchange or quote boundaries.**
+  Bitget USDT and USDC siblings remain separate candidates with their own
+  precision, tick size, and minimum-notional rules.
+
+### Local snapshot safety
+
+- [ADDED] **Production-shaped local UI testing can be frozen and cloned
+  safely.** The freeze blocks every automation and external traffic path
+  while preserving local reads and edits; clone requires exact production
+  migration parity and preserves the nine excluded high-volume tables.
+- [ADDED] **Unfreezing requires a clean operational database and queues.**
+  Interactive cleanup or `--force` removes cloned positions, orders,
+  dispatcher state, model/API/notification logs, and queued work first.
+- [ADDED] Shared-schema compatibility migrations keep ingestion aligned
+  with production before a clone can begin.
+
+### Tests
+
+- [ADDED] Heavy regression coverage for the full Bitget USDC lifecycle,
+  atomic catalogue failure, freeze boundaries, clone safety, and migration
+  parity.
+- [VERIFIED] 2,761 ingestion tests / 8,769 assertions; 200 Step Dispatcher
+  feature tests / 482 assertions; Pint, Rector, PHPStan, and type coverage
+  pass.
+
 ## 1.67.1 - 2026-07-16
 
 Ships `kraitebot/core` 1.72.1. See the refreshed Kraite docs.

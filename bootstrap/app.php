@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Kraite\Core\Http\Middleware\BlockExternalTrafficWhenFrozen;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(BlockExternalTrafficWhenFrozen::class);
+
         // Exact provider callback URIs, NOT a wildcard: CSRF-exempting a
         // server-to-server webhook is correct (no session cookie, no token
         // possible), but `api/webhooks/*` would silently grant that

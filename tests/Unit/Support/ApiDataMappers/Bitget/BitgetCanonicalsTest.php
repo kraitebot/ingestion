@@ -37,6 +37,13 @@ it('identifyBaseAndQuote handles USDC and USD quotes', function (string $pair, a
     'USD' => ['BTCUSD', ['base' => 'BTC', 'quote' => 'USD']],
 ]);
 
+it('maps Bitget USDC perpetual contract symbols in both directions', function (): void {
+    $m = makeBitgetMapperUnit();
+
+    expect($m->baseWithQuote('BTC', 'USDC'))->toBe('BTCPERP')
+        ->and($m->identifyBaseAndQuote('BTCPERP'))->toBe(['base' => 'BTC', 'quote' => 'USDC']);
+});
+
 it('identifyBaseAndQuote throws on unrecognised quote', function (): void {
     $m = makeBitgetMapperUnit();
     $m->identifyBaseAndQuote('FOOEUR');

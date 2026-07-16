@@ -26,6 +26,7 @@ function createBitgetTestExchangeSymbol(string $testId): ExchangeSymbol
     ]);
 
     return ExchangeSymbol::factory()->create([
+        'asset' => 'BTCUSDT',
         'token' => 'BTC',
         'quote' => 'USDT',
         'api_system_id' => $apiSystem->id,
@@ -497,7 +498,7 @@ test('prepareQueryLeverageBracketsDataProperties sets correct properties', funct
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $mapper = new BitgetApiDataMapper;
 
-    $properties = $mapper->prepareQueryLeverageBracketsDataProperties($apiSystem);
+    $properties = $mapper->prepareQueryLeverageBracketsDataProperties($apiSystem, quote: 'USDT');
 
     expect($properties->get('relatable'))->toBe($apiSystem);
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');
@@ -507,7 +508,7 @@ test('prepareQueryLeverageBracketsDataProperties accepts optional symbol', funct
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $mapper = new BitgetApiDataMapper;
 
-    $properties = $mapper->prepareQueryLeverageBracketsDataProperties($apiSystem, 'BTCUSDT');
+    $properties = $mapper->prepareQueryLeverageBracketsDataProperties($apiSystem, 'BTCUSDT', 'USDT');
 
     expect($properties->get('relatable'))->toBe($apiSystem);
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');

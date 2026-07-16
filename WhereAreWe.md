@@ -1,3 +1,31 @@
+# WhereAreWe — 2026-07-16 (Bitget USDC and safe local snapshots)
+
+## Date
+
+2026-07-16
+
+## This release (2026-07-16)
+
+- **Bitget supports both stablecoin futures products:** catalogue refresh
+  atomically merges USDT and USDC perpetuals. Account and symbol operations
+  carry the matching product and margin coin through balances, positions,
+  orders, prices, leverage, margin, protection, recovery, and close.
+- **Quote identity is preserved:** USDT and USDC contracts for the same token
+  stay separate, with independent exchange metadata. Missing or unsupported
+  Bitget quotes fail before an exchange request.
+- **Local production snapshots are fully isolated:** `kraite:freeze` blocks
+  schedules, workers, daemons, WebSockets, notifications, mail, and outbound
+  HTTP while preserving local UI and data editing. `kraite:clone` requires
+  exact migration parity and leaves the system frozen after import.
+- **Unsafe unfreeze is impossible:** protected trading and dispatcher state
+  must be empty first; interactive cleanup or `--force` removes it before the
+  freeze marker can be cleared.
+- **Billing is simpler:** users can change plans and top up, but no longer see
+  pause or resume controls. Existing paused state remains honoured so legacy
+  data cannot reopen trading or trigger renewal unexpectedly.
+
+---
+
 # WhereAreWe — 2026-07-15 (exchange listing lifecycle truth)
 
 ## Date

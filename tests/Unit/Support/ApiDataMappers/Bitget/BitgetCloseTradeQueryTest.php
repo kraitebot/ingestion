@@ -45,6 +45,7 @@ function buildBitgetTradeQueryFixture(): Position
     $symbol = Symbol::factory()->create(['token' => $token]);
 
     $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'asset' => $token.'USDT',
         'token' => $token,
         'quote' => 'USDT',
         'api_system_id' => $apiSystem->id,
@@ -142,5 +143,5 @@ it('builds Bitget trade-query properties scoped to the position symbol', functio
     $properties = $mapper->prepareQueryTokenTradesProperties($position);
 
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES')
-        ->and($properties->get('options.symbol'))->toBe($position->parsed_trading_pair);
+        ->and($properties->get('options.symbol'))->toBe($position->exchangeSymbol->asset);
 });

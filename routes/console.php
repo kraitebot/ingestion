@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use Kraite\Core\Models\Kraite;
+use Kraite\Core\Support\FreezeMode;
 
 /**
  * Helper to check if system is cooling down.
@@ -53,6 +54,10 @@ $isCoolingDown = function (): bool {
 // All scheduled commands only run on the ingestion server.
 // Workers only process queued jobs via Horizon — they never dispatch.
 if (config('kraite.server_role') !== 'ingestion') {
+    return;
+}
+
+if (FreezeMode::isActive()) {
     return;
 }
 
