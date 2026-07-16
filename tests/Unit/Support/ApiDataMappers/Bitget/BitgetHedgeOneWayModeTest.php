@@ -176,13 +176,22 @@ test('place-pos-tpsl in HEDGE mode carries holdSide', function (): void {
     expect($properties->get('options.holdSide'))->toBe('short');
 });
 
-test('place-pos-tpsl in ONE-WAY mode omits holdSide', function (): void {
-    $position = bitgetTestPosition(hedgeMode: false);
+test('place-pos-tpsl in ONE-WAY mode maps LONG to holdSide buy', function (): void {
+    $position = bitgetTestPosition(hedgeMode: false, direction: 'LONG');
 
     $properties = (new BitgetApiDataMapper)
         ->preparePlacePosTpslProperties($position, '50000', '30000');
 
-    expect($properties->get('options.holdSide'))->toBeNull();
+    expect($properties->get('options.holdSide'))->toBe('buy');
+});
+
+test('place-pos-tpsl in ONE-WAY mode maps SHORT to holdSide sell', function (): void {
+    $position = bitgetTestPosition(hedgeMode: false, direction: 'SHORT');
+
+    $properties = (new BitgetApiDataMapper)
+        ->preparePlacePosTpslProperties($position, '30000', '50000');
+
+    expect($properties->get('options.holdSide'))->toBe('sell');
 });
 
 // =============================================================================
@@ -198,13 +207,22 @@ test('place-tpsl-order in HEDGE mode carries holdSide', function (): void {
     expect($properties->get('options.holdSide'))->toBe('long');
 });
 
-test('place-tpsl-order in ONE-WAY mode omits holdSide', function (): void {
-    $position = bitgetTestPosition(hedgeMode: false);
+test('place-tpsl-order in ONE-WAY mode maps LONG to holdSide buy', function (): void {
+    $position = bitgetTestPosition(hedgeMode: false, direction: 'LONG');
     $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
 
     $properties = (new BitgetApiDataMapper)->preparePlaceTpslOrderProperties($order);
 
-    expect($properties->get('options.holdSide'))->toBeNull();
+    expect($properties->get('options.holdSide'))->toBe('buy');
+});
+
+test('place-tpsl-order in ONE-WAY mode maps SHORT to holdSide sell', function (): void {
+    $position = bitgetTestPosition(hedgeMode: false, direction: 'SHORT');
+    $order = bitgetTestOrder($position, ['type' => 'PROFIT-LIMIT']);
+
+    $properties = (new BitgetApiDataMapper)->preparePlaceTpslOrderProperties($order);
+
+    expect($properties->get('options.holdSide'))->toBe('sell');
 });
 
 // =============================================================================
@@ -252,6 +270,32 @@ test('set-leverage in ONE-WAY mode omits holdSide', function (): void {
 
     expect($properties->get('options.holdSide'))->toBeNull();
 });
+
+test('regular orders use the account margin mode', function (string $marginMode): void {
+    $position = bitgetTestPosition(hedgeMode: true);
+    $position->account->update(['margin_mode' => $marginMode]);
+    $order = bitgetTestOrder($position, ['type' => 'MARKET']);
+
+    $properties = (new BitgetApiDataMapper)->preparePlaceOrderProperties($order);
+
+    expect($properties->get('options.marginMode'))->toBe($marginMode);
+})->with([
+    'crossed' => ['crossed'],
+    'isolated' => ['isolated'],
+]);
+
+test('plan orders use the account margin mode', function (string $marginMode): void {
+    $position = bitgetTestPosition(hedgeMode: true);
+    $position->account->update(['margin_mode' => $marginMode]);
+    $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
+
+    $properties = (new BitgetApiDataMapper)->preparePlacePlanOrderProperties($order);
+
+    expect($properties->get('options.marginMode'))->toBe($marginMode);
+})->with([
+    'crossed' => ['crossed'],
+    'isolated' => ['isolated'],
+]);
 
 // =============================================================================
 // MapsPositionsQuery — response keying mirrors Binance for consumer parity

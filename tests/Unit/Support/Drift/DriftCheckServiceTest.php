@@ -176,7 +176,7 @@ it('reports an HTTP 200 vendor error as snapshot failure instead of db-only drif
 
     $report = (new DriftCheckService)->analyseAccount($account);
 
-    expect($report->apiError)->toContain('Invalid bitget positions response')
+    expect($report->apiError)->toBe('Bitget API error (code 40014): invalid api key')
         ->and($report->positions)->toBe([])
         ->and($report->orphanOrders)->toBe([]);
 });

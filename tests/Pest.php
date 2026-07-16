@@ -21,6 +21,39 @@ function seedKraiteServerIpCache(): void
     Cache::put(Kraite::IP_CACHE_KEY, '127.0.0.1', Kraite::IP_CACHE_TTL_SECONDS);
 }
 
+/**
+ * Serialize tests that mutate the same non-transactional filesystem or Redis namespace.
+ *
+ * @return resource
+ */
+function acquireKraiteTestLock(string $name)
+{
+    $directory = storage_path('framework/testing');
+
+    if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+        throw new RuntimeException("Unable to create test-lock directory: {$directory}");
+    }
+
+    $handle = fopen($directory."/{$name}.lock", 'c+');
+
+    if ($handle === false || ! flock($handle, LOCK_EX)) {
+        throw new RuntimeException("Unable to acquire test lock: {$name}");
+    }
+
+    return $handle;
+}
+
+/** @param resource|null $handle */
+function releaseKraiteTestLock(mixed $handle): void
+{
+    if (! is_resource($handle)) {
+        return;
+    }
+
+    flock($handle, LOCK_UN);
+    fclose($handle);
+}
+
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->beforeEach(function (): void {

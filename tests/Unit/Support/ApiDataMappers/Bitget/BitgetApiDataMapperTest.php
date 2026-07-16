@@ -95,7 +95,7 @@ test('preparePlaceOrderProperties sets correct properties for LIMIT order', func
 
     expect($properties->get('relatable'))->toBe($order);
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');
-    expect($properties->get('options.marginMode'))->toBe('crossed');
+    expect($properties->get('options.marginMode'))->toBe($order->position->account->margin_mode);
     expect($properties->get('options.marginCoin'))->toBe('USDT');
     expect($properties->get('options.side'))->toBe('buy');
     expect($properties->get('options.orderType'))->toBe('limit');
@@ -567,20 +567,21 @@ test('resolveLeverageBracketsDataResponse parses position tier data', function (
 // MapsTokenLeverageRatios Tests
 // =============================================================================
 
-test('prepareTokenLeverageRatiosProperties sets correct properties', function (): void {
+test('prepareUpdateLeverageRatioProperties sets correct properties', function (): void {
     $position = createBitgetTestPosition('SET_LEVERAGE');
+    $position->account->update(['on_hedge_mode' => true]);
     $mapper = new BitgetApiDataMapper;
 
-    $properties = $mapper->prepareTokenLeverageRatiosProperties($position, '20');
+    $properties = $mapper->prepareUpdateLeverageRatioProperties($position, 20);
 
     expect($properties->get('relatable'))->toBe($position);
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');
     expect($properties->get('options.marginCoin'))->toBe('USDT');
     expect($properties->get('options.leverage'))->toBe('20');
     expect($properties->get('options.holdSide'))->toBe('long');
-})->todo('MapsTokenLeverageRatios trait not yet implemented');
+});
 
-test('resolveTokenLeverageRatiosResponse parses leverage confirmation', function (): void {
+test('resolveUpdateLeverageRatioResponse parses leverage confirmation', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -594,31 +595,30 @@ test('resolveTokenLeverageRatiosResponse parses leverage confirmation', function
         ],
     ]);
 
-    $result = $mapper->resolveTokenLeverageRatiosResponse($response);
+    $result = $mapper->resolveUpdateLeverageRatioResponse($response);
 
     expect($result['symbol'])->toBe('BTCUSDT');
     expect($result['longLeverage'])->toBe('20');
     expect($result['shortLeverage'])->toBe('20');
-})->todo('MapsTokenLeverageRatios trait not yet implemented');
+});
 
 // =============================================================================
 // MapsSymbolMarginType Tests
 // =============================================================================
 
-test('prepareSymbolMarginTypeProperties sets correct properties', function (): void {
+test('prepareUpdateMarginTypeProperties sets correct properties', function (): void {
     $position = createBitgetTestPosition('SET_MARGIN');
     $mapper = new BitgetApiDataMapper;
 
-    $properties = $mapper->prepareSymbolMarginTypeProperties($position);
+    $properties = $mapper->prepareUpdateMarginTypeProperties($position);
 
     expect($properties->get('relatable'))->toBe($position);
     expect($properties->get('options.productType'))->toBe('USDT-FUTURES');
     expect($properties->get('options.marginCoin'))->toBe('USDT');
-    // Uses the account's margin_mode setting (default is 'isolated')
     expect($properties->get('options.marginMode'))->toBe($position->account->margin_mode);
-})->todo('MapsSymbolMarginType trait not yet implemented');
+});
 
-test('resolveSymbolMarginTypeResponse parses margin mode confirmation', function (): void {
+test('resolveUpdateMarginTypeResponse parses margin mode confirmation', function (): void {
     $mapper = new BitgetApiDataMapper;
 
     $response = createBitgetMockResponse([
@@ -631,11 +631,11 @@ test('resolveSymbolMarginTypeResponse parses margin mode confirmation', function
         ],
     ]);
 
-    $result = $mapper->resolveSymbolMarginTypeResponse($response);
+    $result = $mapper->resolveUpdateMarginTypeResponse($response);
 
     expect($result['symbol'])->toBe('BTCUSDT');
     expect($result['marginMode'])->toBe('crossed');
-})->todo('MapsSymbolMarginType trait not yet implemented');
+});
 
 // =============================================================================
 // Canonical Order Type Tests

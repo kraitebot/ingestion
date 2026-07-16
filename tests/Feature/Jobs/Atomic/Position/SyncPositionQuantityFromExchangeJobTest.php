@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\Position\ConfirmPositionFlatAndCancelOpeningOrdersJob;
@@ -293,9 +294,16 @@ it('rejects a partial-fill positions vendor error instead of treating it as flat
     attachPartialFillOpeningOrder($position);
     $job = new SyncPositionQuantityFromExchangeJob($position->id);
     $job->assignExceptionHandler();
+    $originalQuantity = (string) $position->quantity;
+
+    expect(Steps::usingPrefix('trading', fn (): int => Step::query()
+        ->forRelatable($position)
+        ->forClasses(ConfirmPositionFlatAndCancelOpeningOrdersJob::class)
+        ->count()))->toBe(0);
 
     expect(fn () => Steps::usingPrefix('trading', fn () => $job->computeApiable()))
-        ->toThrow(UnexpectedValueException::class)
+        ->toThrow(RequestException::class, 'Bitget API error (code 40014): invalid api key')
+        ->and((string) $position->refresh()->quantity)->toBe($originalQuantity)
         ->and(Steps::usingPrefix('trading', fn (): int => Step::query()
             ->forRelatable($position)
             ->forClasses(ConfirmPositionFlatAndCancelOpeningOrdersJob::class)

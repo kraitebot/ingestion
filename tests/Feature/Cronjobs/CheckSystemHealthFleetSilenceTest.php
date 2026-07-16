@@ -31,6 +31,8 @@ uses(RefreshDatabase::class);
 const FLEET_TEST_HOSTS = ['fleettest-graced', 'fleettest-missing', 'fleettest-stale', 'fleettest-corrupt', 'fleettest-throttle'];
 
 beforeEach(function (): void {
+    $this->sharedHealthResourceLock = acquireKraiteTestLock('shared-system-health-resources');
+
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
     Illuminate\Support\Once::flush();
@@ -66,6 +68,8 @@ afterEach(function (): void {
         } catch (Throwable) {
         }
     }
+
+    releaseKraiteTestLock($this->sharedHealthResourceLock ?? null);
 });
 
 function registerFleetBox(string $hostname, int $registeredSecondsAgo): Server

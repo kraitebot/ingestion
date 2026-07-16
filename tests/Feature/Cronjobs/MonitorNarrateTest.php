@@ -37,8 +37,13 @@ function cleanMonitoring(): void
     }
 }
 
+beforeEach(function (): void {
+    $this->monitoringResourceLock = acquireKraiteTestLock('shared-monitoring-directory');
+});
+
 afterEach(function (): void {
     cleanMonitoring();
+    releaseKraiteTestLock($this->monitoringResourceLock ?? null);
 });
 
 it('no-ops cleanly when there is no open incident', function (): void {

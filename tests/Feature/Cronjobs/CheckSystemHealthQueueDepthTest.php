@@ -26,6 +26,8 @@ use Kraite\Core\Notifications\AlertNotification;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    $this->sharedHealthResourceLock = acquireKraiteTestLock('shared-system-health-resources');
+
     config(['kraite.notifications_enabled' => true]);
     config([
         'kraite.horizon.workers' => [
@@ -73,6 +75,8 @@ afterEach(function (): void {
         } catch (Throwable) {
         }
     }
+
+    releaseKraiteTestLock($this->sharedHealthResourceLock ?? null);
 });
 
 function pushFakeJobs(string $queue, int $count): void

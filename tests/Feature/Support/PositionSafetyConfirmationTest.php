@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\Position\CancelPositionOpenOrdersJob;
@@ -152,7 +153,9 @@ it('rejects an unsuccessful confirmation envelope without cancelling', function 
     $position = positionSafetyFixture('bitget');
     $job = new ConfirmPositionFlatAndCancelOpeningOrdersJob($position->id, 'drift');
 
+    expect(positionSafetySteps($position, CancelPositionOpenOrdersJob::class))->toHaveCount(0);
+
     expect(fn () => Steps::usingPrefix('trading', fn () => $job->computeApiable()))
-        ->toThrow(UnexpectedValueException::class)
+        ->toThrow(RequestException::class, 'Bitget API error (code 40014): invalid api key')
         ->and(positionSafetySteps($position, CancelPositionOpenOrdersJob::class))->toHaveCount(0);
 });

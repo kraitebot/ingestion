@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Http;
 use Kraite\Core\Jobs\Atomic\Account\QueryAccountPositionsJob;
 use Kraite\Core\Models\Account;
@@ -37,8 +38,10 @@ it('does not replace the last trusted snapshot with an HTTP 200 vendor error', f
 
     $job = new QueryAccountPositionsJob($account->id);
 
+    expect(ApiSnapshot::getFrom($account, 'account-positions'))->toEqual($trustedPositions);
+
     expect(fn () => $job->computeApiable())
-        ->toThrow(UnexpectedValueException::class)
+        ->toThrow(RequestException::class, 'Bitget API error (code 40014): invalid api key')
         ->and(ApiSnapshot::getFrom($account, 'account-positions'))
         ->toEqual($trustedPositions);
 });

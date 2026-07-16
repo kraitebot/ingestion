@@ -22,6 +22,8 @@ use Mockery as M;
 uses(RefreshDatabase::class)->group('feature', 'drift', 'cron', 'structure');
 
 beforeEach(function (): void {
+    $this->monitoringResourceLock = acquireKraiteTestLock('shared-monitoring-directory');
+
     Kraite::updateOrCreate(
         ['id' => 1],
         [
@@ -54,6 +56,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
+    releaseKraiteTestLock($this->monitoringResourceLock ?? null);
     M::close();
 });
 

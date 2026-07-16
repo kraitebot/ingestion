@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.67.1 - 2026-07-16
+
+Ships `kraitebot/core` 1.72.1. See the refreshed Kraite docs.
+
+### Bitget position opening
+
+- [FIXED] **Bitget position opening again follows the account's real exchange contract.** Orders honor crossed or isolated mode, TP/SL protection routes correctly in hedge and one-way accounts, and vendor errors cannot advance workflows as successful responses.
+- [FIXED] **Bitget API failures preserve trading state.** Invalid account snapshots remain errors for drift, quantity sync, and flat-position confirmation; trusted snapshots, quantities, and live orders stay untouched.
+
+### Tooling and tests
+
+- [ADDED] Heavy TDD coverage for the full Bitget opening chain and HTTP boundary, plus a bounded FIL account-update audit helper.
+- [FIXED] Parallel tests that share Redis health keys or monitoring files now serialize those resources, eliminating release-gate races without serializing the full suite.
+- [VERIFIED] Full test, Pint, Rector, and PHPStan release gate passes.
+
 ## 1.67.0 - 2026-07-15
 
 Ships `kraitebot/core` 1.72.0. See WhereAreWe and the refreshed Kraite docs.
