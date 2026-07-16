@@ -1,3 +1,26 @@
+# WhereAreWe — 2026-07-16 (actionable production alerts)
+
+## Date
+
+2026-07-16
+
+## This release (2026-07-16)
+
+- **WAP notifications no longer interrupt quiet hours:** successful WAP
+  application remains visible but uses normal Pushover priority.
+- **Deployment recovery does not create false stale-data pages:** ingestion
+  warmup gives balance and indicator producers 10 minutes to catch up while
+  every independent system-health check remains active.
+- **Indicator alerts understand active repairs:** a symbol is not called stale
+  while its recent query or conclusion workflow is running. Terminal and old
+  abandoned work cannot hide genuine staleness.
+- **Contract-unit safety remains strict:** Bitget PEPE and SHIB contracts quote
+  individual tokens while Binance references 1,000-token contracts. Their
+  mismatch alerts were valid, so those symbols remain excluded until trading
+  gains an explicit unit-conversion model.
+
+---
+
 # WhereAreWe — 2026-07-16 (Bitget USDC and safe local snapshots)
 
 ## Date

@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.68.3 - 2026-07-16
+
+Ships `kraitebot/core` 1.73.4.
+
+### Production alert quality
+
+- [FIXED] **Successful WAP events no longer bypass quiet hours.** They remain
+  visible at normal Pushover priority.
+- [FIXED] **Deployment recovery no longer creates false stale-data pages.**
+  Balance and indicator checks receive a bounded post-warmup grace while
+  unrelated system-health checks remain active.
+- [FIXED] **Indicator alerts distinguish active repair from unattended
+  staleness.** Recent per-symbol query and conclusion workflows suppress the
+  stale alert; terminal and abandoned work do not.
+- [VERIFIED] Bitget PEPE and SHIB price-mismatch alerts were valid 1,000-to-1
+  contract-unit differences. Their price-alignment trading block remains.
+
+### Tests
+
+- [ADDED] TDD regression coverage for every changed alert behavior and edge
+  state.
+- [VERIFIED] Light release gate: 72 targeted tests / 171 assertions; Pint,
+  PHP syntax, docs build, and targeted syntax-site smokes pass.
+
 ## 1.68.2 - 2026-07-16
 
 Ships `kraitebot/core` 1.73.3.
