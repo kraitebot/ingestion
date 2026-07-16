@@ -26,6 +26,8 @@ use Kraite\Core\Notifications\AlertNotification;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    $this->sharedHealthResourceLock = acquireKraiteTestLock('shared-system-health-resources');
+
     config(['kraite.notifications_enabled' => true]);
     Notification::fake();
     Illuminate\Support\Once::flush();
@@ -49,6 +51,8 @@ afterEach(function (): void {
     @unlink(storage_path('framework/down'));
     @unlink(storage_path('logs/user-data-deadletter-'.now()->format('Y-m-d').'.log'));
     clearstatcache();
+
+    releaseKraiteTestLock($this->sharedHealthResourceLock ?? null);
 });
 
 it('fires maintenance_mode_stuck when the box has been down past the threshold', function (): void {
