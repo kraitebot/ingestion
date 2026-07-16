@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Kraite\Core\CoreServiceProvider;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Notification as NotificationDef;
 use Kraite\Core\Models\Server;
+use Kraite\Core\Models\SlowQuery;
 use Kraite\Core\Support\NotificationService;
 
 /**
@@ -134,4 +138,22 @@ it('slow_query sends on different connections both emit independently', function
 
     expect($primary)->toBeTrue();
     expect($replica)->toBeTrue();
+});
+
+it('records a slow query before the admin singleton exists without crashing migrations', function (): void {
+    Kraite::query()->delete();
+    Notification::fake();
+
+    $query = new QueryExecuted(
+        sql: 'alter table steps modify dispatch_after timestamp(3)',
+        bindings: [],
+        time: 6000,
+        connection: DB::connection(),
+    );
+
+    $handler = new ReflectionMethod(CoreServiceProvider::class, 'handleSlowQuery');
+    $handler->invoke(null, $query, 5000);
+
+    expect(SlowQuery::query()->count())->toBe(1);
+    Notification::assertNothingSent();
 });

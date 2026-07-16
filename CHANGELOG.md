@@ -2,9 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.68.0 - 2026-07-16
+## 1.68.1 - 2026-07-16
 
-Ships `kraitebot/core` 1.73.0. See WhereAreWe and the refreshed Kraite
+Ships `kraitebot/core` 1.73.1. See WhereAreWe and the refreshed Kraite
 docs.
 
 ### Bitget USDC futures
@@ -42,6 +42,8 @@ docs.
   instead of depending on runner-local service state.
 - [FIXED] Repeated parallel lanes isolate the shared maintenance marker, clear
   fleet alert throttle keys, and remove suffixed test databases.
+- [FIXED] Fresh database migrations cannot fail when slow-query monitoring
+  runs before the admin singleton is seeded.
 - [VERIFIED] 2,761 ingestion tests / 8,769 assertions; 200 Step Dispatcher
   feature tests / 482 assertions; Pint, Rector, PHPStan, and type coverage
   pass.
