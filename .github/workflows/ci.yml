@@ -155,7 +155,7 @@ jobs:
 
       - name: Install Mago
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://carthage.software/mago.sh | bash
+          curl --proto '=https' --tlsv1.2 -sSf https://carthage.software/mago.sh | bash || true
           mago --version || true
         env:
           GH_TOKEN: ${{ github.token }}
