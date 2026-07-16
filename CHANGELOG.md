@@ -38,6 +38,8 @@ docs.
   package path consistently on localhost and GitHub Actions.
 - [FIXED] Parallel test workers clear memoized notification definitions
   between database transactions, preventing order-dependent health tests.
+- [FIXED] GitHub Actions provisions Redis for queue and fleet-health tests
+  instead of depending on runner-local service state.
 - [VERIFIED] 2,761 ingestion tests / 8,769 assertions; 200 Step Dispatcher
   feature tests / 482 assertions; Pint, Rector, PHPStan, and type coverage
   pass.
