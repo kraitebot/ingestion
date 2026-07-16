@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Kraite\Core\Contracts\ProductionDatabaseCloneGateway;
+use Kraite\Core\Models\User;
 use Kraite\Core\Support\FreezeMode;
 
 final class FakeProductionDatabaseCloneGateway implements ProductionDatabaseCloneGateway
@@ -79,6 +81,7 @@ beforeEach(function (): void {
         'kraite.freeze.marker_path' => storage_path('framework/testing/kraite-clone-frozen-'.Str::uuid()),
         'kraite.clone.remote_dump_directory' => '/remote/clone-tests',
         'kraite.clone.local_dump_directory' => storage_path('framework/testing/clone-tests'),
+        'kraite.clone.local_password' => 'local-clone-password',
     ]);
 
     $this->cloneGateway = new FakeProductionDatabaseCloneGateway;
@@ -153,6 +156,52 @@ it('replaces every production table except the nine preserved local tables', fun
         ->toBeTrue()
         ->and(FreezeMode::isActive())
         ->toBeTrue();
+});
+
+it('replaces every cloned user password with the configured local password', function (): void {
+    $firstUser = User::factory()->create([
+        'email' => 'clone-first-'.Str::uuid().'@example.com',
+        'password' => 'production-password-one',
+        'remember_token' => 'production-remember-token-one',
+    ]);
+    $secondUser = User::factory()->create([
+        'email' => 'clone-second-'.Str::uuid().'@example.com',
+        'password' => 'production-password-two',
+        'remember_token' => 'production-remember-token-two',
+    ]);
+
+    expect(Hash::check('production-password-one', $firstUser->password))->toBeTrue()
+        ->and(Hash::check('local-clone-password', $firstUser->password))->toBeFalse()
+        ->and(Hash::check('production-password-two', $secondUser->password))->toBeTrue()
+        ->and(Hash::check('local-clone-password', $secondUser->password))->toBeFalse();
+
+    FreezeMode::activate();
+
+    $this->artisan('kraite:clone')
+        ->expectsOutputToContain('Local login password reset for 2 users.')
+        ->assertSuccessful();
+
+    $firstUser->refresh();
+    $secondUser->refresh();
+
+    expect(Hash::check('local-clone-password', $firstUser->password))->toBeTrue()
+        ->and(Hash::check('production-password-one', $firstUser->password))->toBeFalse()
+        ->and($firstUser->remember_token)->toBeNull()
+        ->and(Hash::check('local-clone-password', $secondUser->password))->toBeTrue()
+        ->and(Hash::check('production-password-two', $secondUser->password))->toBeFalse()
+        ->and($secondUser->remember_token)->toBeNull();
+});
+
+it('refuses to inspect production when the local clone password is missing', function (): void {
+    config(['kraite.clone.local_password' => null]);
+    FreezeMode::activate();
+
+    $this->artisan('kraite:clone')
+        ->expectsOutputToContain('Missing required clone configuration [kraite.clone.local_password]')
+        ->assertFailed();
+
+    expect($this->cloneGateway->migrationProbeRan)->toBeFalse()
+        ->and($this->cloneGateway->dumpedTables)->toBe([]);
 });
 
 it('cleans temporary dumps and stays frozen when import fails midway', function (): void {

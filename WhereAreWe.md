@@ -1,3 +1,28 @@
+# WhereAreWe — 2026-07-17 (Bitget onboarding and safe cloned logins)
+
+## Date
+
+2026-07-17
+
+## This release (2026-07-17)
+
+- **Bitget is available in public registration:** the website accepts Bitget
+  credentials with the required passphrase, reads its normalized futures
+  wallet balance, and keeps inactive exchanges visible but unselectable.
+- **Registration produces a renewable trial:** completion starts the trial
+  through the billing contract and establishes its first renewal anchor.
+- **Account controls show operational truth:** admin separates fleet
+  connectivity from final trading readiness, explains inactive subscriptions,
+  and locks quote changes while trading or open exposure exists.
+- **Connectivity recovery is scoped:** a successful full-fleet retest clears
+  only the account's connectivity bans and can reactivate an account that was
+  automatically stopped when every safe route disappeared.
+- **Production clones have a deliberate local login:** after import, every
+  cloned user receives the configured local-only password and stale remember
+  tokens are cleared. The local system remains frozen throughout.
+
+---
+
 # WhereAreWe — 2026-07-16 (actionable production alerts)
 
 ## Date

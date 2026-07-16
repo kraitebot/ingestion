@@ -20,6 +20,7 @@ return [
     'clone' => [
         'timeout_seconds' => (int) env('KRAITE_CLONE_TIMEOUT_SECONDS', 1800),
         'local_dump_directory' => env('KRAITE_CLONE_LOCAL_DUMP_DIRECTORY', storage_path('app/private/kraite-clone')),
+        'local_password' => env('KRAITE_CLONE_LOCAL_PASSWORD', env('ADMIN_USER_PASSWORD')),
         'remote_dump_directory' => env('KRAITE_CLONE_REMOTE_DUMP_DIRECTORY', '/home/athena/ingestion.kraite.com/storage/app/private/kraite-clone'),
         'production' => [
             'host' => env('KRAITE_CLONE_PRODUCTION_HOST', '37.27.243.164'),

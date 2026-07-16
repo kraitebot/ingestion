@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.68.4 - 2026-07-17
+
+Ships `kraitebot/core` 1.73.5.
+
+### Safe local production clones
+
+- [FIXED] **Cloned production users receive one configured local password.**
+  `kraite:clone` resets imported password hashes and remember tokens after the
+  data import, while the local system remains frozen.
+- [ADDED] The clone password has an explicit local environment setting with a
+  fallback to the existing admin bootstrap password.
+
+### Tests
+
+- [ADDED] Regression coverage proves every imported user can authenticate with
+  the local password, old passwords stop working, and missing configuration
+  aborts before any production inspection.
+- [VERIFIED] Full ingestion suite passes: 2,773 tests / 8,815 assertions.
+
 ## 1.68.3 - 2026-07-16
 
 Ships `kraitebot/core` 1.73.4.
