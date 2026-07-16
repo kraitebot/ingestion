@@ -141,6 +141,14 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: password
 
+      - name: Clean parallel test databases
+        run: composer test:cleanup
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
       - name: Run unit tests (composer test:unit:ci)
         run: composer test:unit:ci
         env:
@@ -148,6 +156,14 @@ jobs:
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
           DB_DATABASE: kraite_tests
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: Clean repeated-lane test databases
+        run: composer test:cleanup
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           DB_USERNAME: root
           DB_PASSWORD: password
 

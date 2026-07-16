@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Redis;
@@ -53,6 +54,8 @@ beforeEach(function (): void {
     );
 
     foreach (FLEET_TEST_HOSTS as $hostname) {
+        Cache::forget("system_health_alert-signal:fleet_box_silent_{$hostname}");
+
         try {
             Redis::connection('fleet')->del("kraite:fleet:{$hostname}");
         } catch (Throwable) {
@@ -63,6 +66,8 @@ beforeEach(function (): void {
 
 afterEach(function (): void {
     foreach (FLEET_TEST_HOSTS as $hostname) {
+        Cache::forget("system_health_alert-signal:fleet_box_silent_{$hostname}");
+
         try {
             Redis::connection('fleet')->del("kraite:fleet:{$hostname}");
         } catch (Throwable) {
