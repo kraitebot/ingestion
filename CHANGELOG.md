@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## 1.68.4 - 2026-07-17
 
-Ships `kraitebot/core` 1.73.5.
+Ships `kraitebot/core` 1.73.6.
 
 ### Safe local production clones
 
