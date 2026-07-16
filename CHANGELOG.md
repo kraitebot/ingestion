@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.68.2 - 2026-07-16
+
+Ships `kraitebot/core` 1.73.3.
+
+### Bitget USDC futures
+
+- [FIXED] **Tiny USDC contract tick sizes no longer truncate to zero.**
+  Exchange-symbol storage now retains 18 decimal places, and deployment
+  repairs affected rows from their preserved Bitget catalogue metadata.
+
+### Tests
+
+- [ADDED] Regression coverage for Bitget USDC contracts whose tick size is
+  smaller than one hundred-millionth.
+- [VERIFIED] 2,763 ingestion tests / 8,773 assertions; 100% type coverage,
+  Pint, Rector, and PHPStan pass.
+
 ## 1.68.1 - 2026-07-16
 
 Ships `kraitebot/core` 1.73.2. See WhereAreWe and the refreshed Kraite

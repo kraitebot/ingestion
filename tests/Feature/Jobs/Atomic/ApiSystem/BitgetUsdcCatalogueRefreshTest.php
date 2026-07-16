@@ -101,11 +101,11 @@ it('requests both Bitget futures products and persists separate USDT and USDC co
         ->and($usdc->quote)->toBe('USDC')
         ->and($usdc->price_precision)->toBe(2)
         ->and($usdc->quantity_precision)->toBe(3)
-        ->and($usdc->tick_size)->toBe('0.05000000')
+        ->and($usdc->tick_size)->toBe('0.050000000000000000')
         ->and($usdc->min_notional)->toBe('10.00000000')
         ->and($usdt->asset)->toBe('BTCUSDT')
         ->and($usdt->quote)->toBe('USDT')
-        ->and($usdt->tick_size)->toBe('0.10000000')
+        ->and($usdt->tick_size)->toBe('0.100000000000000000')
         ->and($usdt->min_notional)->toBe('5.00000000');
 
     $productTypes = Http::recorded()
@@ -114,6 +114,34 @@ it('requests both Bitget futures products and persists separate USDT and USDC co
         ->all();
 
     expect($productTypes)->toBe(['USDT-FUTURES', 'USDC-FUTURES']);
+});
+
+it('preserves Bitget USDC tick sizes smaller than one hundred-millionth', function (): void {
+    $apiSystem = bitgetUsdcCatalogueApiSystem();
+    Symbol::factory()->create(['token' => 'PEPE']);
+
+    expect(ExchangeSymbol::query()
+        ->whereBelongsTo($apiSystem)
+        ->where('token', 'PEPE')
+        ->exists())->toBeFalse();
+
+    Http::fakeSequence()
+        ->push(bitgetUsdcCatalogueEnvelope([
+            bitgetUsdcCatalogueContract('PEPEUSDT', 'PEPE', 'USDT', '1', '8', '0'),
+        ]), 200)
+        ->push(bitgetUsdcCatalogueEnvelope([
+            bitgetUsdcCatalogueContract('PEPEPERP', 'PEPE', 'USDC', '1', '10', '0'),
+        ]), 200);
+
+    (new UpsertExchangeSymbolsFromExchangeJob($apiSystem->id))->computeApiable();
+
+    $usdc = ExchangeSymbol::query()
+        ->whereBelongsTo($apiSystem)
+        ->where('token', 'PEPE')
+        ->where('quote', 'USDC')
+        ->sole();
+
+    expect($usdc->tick_size)->toBe('0.000000000100000000');
 });
 
 it('does not persist or delist any symbol when either Bitget catalogue request fails', function (string $failedProduct): void {
