@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 it('routes every orchestrator child build through the locked helper', function (): void {
-    $jobsDirectory = base_path('../packages/kraitebot/core/src/Jobs');
+    $jobsDirectory = base_path('vendor/kraitebot/core/src/Jobs');
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($jobsDirectory));
     $offenders = [];
 
