@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## 1.68.1 - 2026-07-16
 
-Ships `kraitebot/core` 1.73.1. See WhereAreWe and the refreshed Kraite
+Ships `kraitebot/core` 1.73.2. See WhereAreWe and the refreshed Kraite
 docs.
 
 ### Bitget USDC futures
