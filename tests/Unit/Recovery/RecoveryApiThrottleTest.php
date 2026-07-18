@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use Kraite\Core\Contracts\ClientLevelApiThrottler;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Support\Recovery\RecoveryApiThrottle;
+use Kraite\Core\Support\Throttlers\BinanceThrottler;
+use Kraite\Core\Support\Throttlers\BitgetThrottler;
 
 /**
  * RecoveryApiThrottle wraps a recovery-flow exchange call in the per-IP
@@ -22,8 +25,9 @@ it('returns the wrapped call result while gating through the exchange throttler'
         return 'PAYLOAD';
     });
 
-    expect($ran)->toBeTrue();
-    expect($result)->toBe('PAYLOAD');
+    expect(is_subclass_of(BinanceThrottler::class, ClientLevelApiThrottler::class))->toBeFalse()
+        ->and($ran)->toBeTrue()
+        ->and($result)->toBe('PAYLOAD');
 });
 
 it('falls straight through when the exchange has no throttler', function (): void {
@@ -31,4 +35,12 @@ it('falls straight through when the exchange has no throttler', function (): voi
     $account = Account::factory()->create(['api_system_id' => $apiSystem->id]);
 
     expect(RecoveryApiThrottle::call($account, fn () => 42))->toBe(42);
+});
+
+it('leaves Bitget request accounting to the HTTP client boundary', function (): void {
+    $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
+    $account = Account::factory()->create(['api_system_id' => $apiSystem->id]);
+
+    expect(is_subclass_of(BitgetThrottler::class, ClientLevelApiThrottler::class))->toBeTrue()
+        ->and(RecoveryApiThrottle::call($account, fn () => 'PAYLOAD'))->toBe('PAYLOAD');
 });

@@ -188,16 +188,20 @@ function createPositionSlot(Account $account, string $direction): Position
 }
 
 /**
- * Helper to create a fast-traded (recently closed, quick, profitable) position
+ * Helper to create a recent, short-lived position for fast-track tests.
  */
-function createFastTradedPosition(Account $account, ExchangeSymbol $exchangeSymbol, string $direction): Position
-{
+function createFastTradedPosition(
+    Account $account,
+    ExchangeSymbol $exchangeSymbol,
+    string $direction,
+    string $status = 'closed'
+): Position {
     return Position::factory()->create([
         'account_id' => $account->id,
         'uuid' => fake()->uuid(),
         'exchange_symbol_id' => $exchangeSymbol->id,
         'parsed_trading_pair' => $exchangeSymbol->parsed_trading_pair,
-        'status' => 'closed',
+        'status' => $status,
         'direction' => $direction,
         'was_fast_traded' => true,
         'opened_at' => now()->subMinutes(5),
@@ -842,6 +846,49 @@ test('fast-tracked symbol skips correlation sign check', function (): void {
     // Should still select WRONGSIGNFT because fast-track skips correlation check
     expect($position->exchange_symbol_id)->toBe($wrongSignFastTrack->id);
 });
+
+test('does not fast-track cancelled or failed positions', function (string $terminalStatus): void {
+    $account = createAccountForTokenDiscoveryTest();
+
+    createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
+
+    $regularCandidate = createExchangeSymbolWithData(
+        'REGULAR'.mb_strtoupper($terminalStatus),
+        'LONG',
+        ['1h' => 0.8],
+        ['1h' => 1.2],
+        ['1h' => -1.0],
+        $account->api_system_id,
+        $account->trading_quote
+    );
+
+    $terminalCandidate = createExchangeSymbolWithData(
+        'TERMINAL'.mb_strtoupper($terminalStatus),
+        'LONG',
+        ['1h' => -0.8],
+        ['1h' => 0.5],
+        ['1h' => -0.4],
+        $account->api_system_id,
+        $account->trading_quote
+    );
+
+    $terminalPosition = createFastTradedPosition(
+        $account,
+        $terminalCandidate,
+        'LONG',
+        $terminalStatus
+    );
+    $slot = createPositionSlot($account, 'LONG');
+
+    expect($slot->exchange_symbol_id)->toBeNull()
+        ->and($terminalPosition->status)->toBe($terminalStatus);
+
+    $account->assignBestTokenToNewPositions();
+
+    expect($slot->fresh()->exchange_symbol_id)->toBe($regularCandidate->id)
+        ->and($slot->fresh()->exchange_symbol_id)->not->toBe($terminalCandidate->id)
+        ->and($terminalPosition->fresh()->status)->toBe($terminalStatus);
+})->with(['cancelled', 'failed']);
 
 /*
 |--------------------------------------------------------------------------

@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.68.5 - 2026-07-18
+
+Ships `kraitebot/core` 1.73.7.
+
+### Bitget request pacing
+
+- [FIXED] **Bitget now respects each futures endpoint's real request tier.**
+  Every network attempt, including internal retries and multi-call jobs,
+  reserves its own coordinated slot before leaving the worker.
+- [FIXED] **Signed retries cannot expire while queued.** Public requests
+  coordinate by source IP, signed requests by API key, and every signed
+  attempt receives a fresh timestamp and signature after waiting.
+
+### Token selection
+
+- [FIXED] **Only cleanly closed positions qualify for fast-track re-entry.**
+  `cancelled` and `failed` histories remain diagnostic records and cannot
+  bypass normal token scoring.
+
+### Tests
+
+- [ADDED] Regression coverage for Bitget endpoint tiers, request scopes,
+  lock failure, internal retries, signature refresh, and closed-only
+  fast-track selection.
+- [VERIFIED] Full ingestion suite passes: 2,791 tests / 8,887 assertions.
+- [VERIFIED] Step Dispatcher passes: 200 tests / 482 assertions.
+
 ## 1.68.4 - 2026-07-17
 
 Ships `kraitebot/core` 1.73.6.

@@ -1,3 +1,23 @@
+# WhereAreWe — 2026-07-18 (Bitget pacing and clean fast-track history)
+
+## Date
+
+2026-07-18
+
+## This release (2026-07-18)
+
+- **Bitget requests now respect the exchange's real limit tiers:** every
+  network attempt, including client retries and multi-call jobs, reserves
+  an endpoint-specific slot. Public traffic is isolated by source IP and
+  signed traffic by API key; signed retries receive a fresh timestamp and
+  signature after waiting.
+- **Fast-track re-entry trusts only completed trades:** only positions
+  whose final status is `closed` can bypass normal token scoring.
+  `cancelled` and `failed` histories remain diagnostic records and never
+  become fast-track evidence.
+
+---
+
 # WhereAreWe — 2026-07-17 (Bitget onboarding and safe cloned logins)
 
 ## Date
