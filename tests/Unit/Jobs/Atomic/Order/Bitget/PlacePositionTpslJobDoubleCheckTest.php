@@ -2,14 +2,18 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\Order\Bitget\PlacePositionTpslJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Kraite as KraiteModel;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use StepDispatcher\Models\Step;
 
 /**
  * Regression guard for the THETAUSDT cancel on 2026-04-26 (position 423).
@@ -193,4 +197,95 @@ it('returns false when both Order properties are unset', function (): void {
         'When the Order properties are null doubleCheck must return false '
         .'without crashing or attempting any API call.'
     );
+});
+
+it('rehydrates both protection orders when the dispatcher reconstructs the job', function (): void {
+    $fixture = buildBitgetTpslJobFixture(
+        tpExchangeId: 'TP-EXCHANGE-REHYDRATED',
+        slExchangeId: 'SL-EXCHANGE-REHYDRATED',
+    );
+
+    $job = new PlacePositionTpslJob(
+        $fixture['positionId'],
+        $fixture['profitOrder']->id,
+        $fixture['stopLossOrder']->id,
+    );
+
+    expect($job->profitOrder?->id)->toBe($fixture['profitOrder']->id)
+        ->and($job->stopLossOrder?->id)->toBe($fixture['stopLossOrder']->id)
+        ->and($job->doubleCheck())->toBeTrue();
+});
+
+it('persists protection identity before HTTP and uses returned IDs without querying positions', function (): void {
+    $fixture = buildBitgetTpslJobFixture(tpExchangeId: null, slExchangeId: null);
+    $position = Position::findOrFail($fixture['positionId']);
+    $fixture['profitOrder']->delete();
+    $fixture['stopLossOrder']->delete();
+
+    KraiteModel::query()->findOrFail(1)->update([
+        'bitget_api_key' => 'ADMIN-KEY',
+        'bitget_api_secret' => 'ADMIN-SECRET',
+        'bitget_passphrase' => 'ADMIN-PASSPHRASE',
+    ]);
+    $position->account->update([
+        'bitget_api_key' => 'ACCOUNT-KEY',
+        'bitget_api_secret' => 'ACCOUNT-SECRET',
+        'bitget_passphrase' => 'ACCOUNT-PASSPHRASE',
+    ]);
+    $step = Step::create([
+        'class' => PlacePositionTpslJob::class,
+        'queue' => 'positions',
+        'block_uuid' => (string) Str::uuid(),
+        'index' => 1,
+        'arguments' => ['positionId' => $position->id],
+    ]);
+
+    Http::fake(function (Request $request) {
+        if (str_contains($request->url(), '/market/symbol-price')) {
+            return Http::response([
+                'code' => '00000',
+                'data' => [['symbol' => $request['symbol'], 'markPrice' => '36.70']],
+            ]);
+        }
+
+        if (str_contains($request->url(), '/place-pos-tpsl')) {
+            return Http::response([
+                'code' => '00000',
+                'data' => [
+                    [
+                        'orderId' => 'TP-EXCHANGE-DIRECT',
+                        'stopSurplusClientOid' => $request['stopSurplusClientOid'],
+                        'stopLossClientOid' => '',
+                    ],
+                    [
+                        'orderId' => 'SL-EXCHANGE-DIRECT',
+                        'stopSurplusClientOid' => '',
+                        'stopLossClientOid' => $request['stopLossClientOid'],
+                    ],
+                ],
+            ]);
+        }
+
+        throw new RuntimeException('Position query must not run when placement returned both IDs.');
+    });
+
+    $job = new PlacePositionTpslJob($position->id);
+    $job->step = $step;
+    $result = $job->computeApiable();
+
+    $orders = $position->orders()
+        ->whereIn('type', ['PROFIT-LIMIT', 'STOP-MARKET'])
+        ->get()
+        ->keyBy('type');
+    $persistedArguments = $step->fresh()->arguments;
+
+    expect($orders)->toHaveCount(2)
+        ->and($orders['PROFIT-LIMIT']->exchange_order_id)->toBe('TP-EXCHANGE-DIRECT')
+        ->and($orders['STOP-MARKET']->exchange_order_id)->toBe('SL-EXCHANGE-DIRECT')
+        ->and($persistedArguments['profitOrderId'])->toBe($orders['PROFIT-LIMIT']->id)
+        ->and($persistedArguments['stopLossOrderId'])->toBe($orders['STOP-MARKET']->id)
+        ->and($result['take_profit_id'])->toBe('TP-EXCHANGE-DIRECT')
+        ->and($result['stop_loss_id'])->toBe('SL-EXCHANGE-DIRECT');
+
+    Http::assertSentCount(2);
 });

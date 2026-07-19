@@ -122,8 +122,27 @@ it('flips on_hedge_mode from false to true when Bitget returns 40774', function 
     $account->refresh();
     expect($account->on_hedge_mode)->toBeTrue(
         'Symmetric flip: a 40774 against a one-way-mode account means the live exchange is in '
-        .'hedge mode; flag must auto-correct to true (next attempt sends posSide+tradeSide+holdSide).'
+        .'hedge mode; flag must auto-correct to true (next attempt sends tradeSide/holdSide).'
     );
+});
+
+it('recognises current Bitget 43075 position pattern mismatch', function (): void {
+    $account = buildBitgetOneWayAccount();
+
+    $step = StepTester::createSteps([
+        ['arguments' => [
+            'accountId' => $account->id,
+            'throw_exception_stub' => 'bitgetCurrentPositionModeMismatch',
+        ]],
+    ], TestBitgetApiableJob::class)[0];
+
+    StepTester::withSteps([$step])
+        ->withStatusMatrix([1 => [$step->id => 'pending']])
+        ->withLabel('bitget_current_position_mode_mismatch')
+        ->test();
+
+    expect($account->fresh()->on_hedge_mode)->toBeTrue()
+        ->and($step->fresh()->retries)->toBe(0);
 });
 
 it('writes Log::warning AND Account::modelLog when flipping a Bitget account', function (): void {

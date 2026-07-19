@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Kraite\Core\Jobs\Atomic\Account\TestServerConnectivityStep;
 use Kraite\Core\Jobs\Lifecycles\Account\TestExchangeConnectivityStep;
@@ -38,17 +40,31 @@ function createConnectivityServer(array $overrides = []): Server
     return Server::findOrFail($id);
 }
 
-function createConnectivityAccount(): Account
+function createConnectivityAccount(string $exchange = 'binance'): Account
 {
     $apiSystem = ApiSystem::factory()->exchange()->create([
-        'canonical' => 'binance',
-        'name' => 'Binance',
+        'canonical' => $exchange,
+        'name' => ucfirst($exchange),
     ]);
 
     return Account::factory()->create([
         'api_system_id' => $apiSystem->id,
         'user_id' => User::factory()->create()->id,
     ]);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function runConnectivityChildStep(Account $account, Server $server): array
+{
+    $job = new TestServerConnectivityStep($account->id, $server->id);
+
+    $compute = Closure::bind(function (): array {
+        return $this->compute();
+    }, $job, $job::class);
+
+    return $compute();
 }
 
 function runConnectivityParentStep(Step $parent, Account $account): void
@@ -128,6 +144,73 @@ it('maps per-server step states into console connectivity statuses', function ()
         ->and($rows['apollo']['can_notify_user'])->toBeFalse()
         ->and($rows['ares']['status'])->toBe('not_connected')
         ->and($rows['ares']['can_notify_user'])->toBeTrue();
+});
+
+it('checks Binance wallet permissions and reports withdrawals as disabled', function (): void {
+    $account = createConnectivityAccount();
+    $account->forceFill([
+        'binance_api_key' => 'connectivity-binance-key',
+        'binance_api_secret' => 'connectivity-binance-secret',
+    ])->save();
+    $server = createConnectivityServer();
+
+    Http::fake(function (HttpRequest $request) {
+        return match (true) {
+            str_contains($request->url(), '/fapi/v3/balance') => Http::response([], 200),
+            str_contains($request->url(), '/fapi/v1/openOrders') => Http::response([], 200),
+            str_contains($request->url(), '/sapi/v1/account/apiRestrictions') => Http::response([
+                'enableWithdrawals' => false,
+            ], 200),
+            default => Http::response(['message' => 'Unexpected test URL'], 500),
+        };
+    });
+
+    $result = runConnectivityChildStep($account, $server);
+
+    expect($result['result'])->toBe('ok')
+        ->and($result['balance_checked'])->toBeTrue()
+        ->and($result['open_orders_count'])->toBe(0)
+        ->and($result['withdrawals_enabled'])->toBeFalse();
+
+    Http::assertSent(fn (HttpRequest $request): bool => str_starts_with($request->url(), 'https://api.binance.com/')
+        && str_contains($request->url(), '/sapi/v1/account/apiRestrictions'));
+});
+
+it('checks Bitget account authorities and reports withdrawal access as enabled', function (): void {
+    $account = createConnectivityAccount('bitget');
+    $account->forceFill([
+        'bitget_api_key' => 'connectivity-bitget-key',
+        'bitget_api_secret' => 'connectivity-bitget-secret',
+        'bitget_passphrase' => 'connectivity-bitget-passphrase',
+    ])->save();
+    $server = createConnectivityServer();
+
+    Http::fake(function (HttpRequest $request) {
+        return match (true) {
+            str_contains($request->url(), '/api/v2/mix/account/accounts') => Http::response([
+                'code' => '00000',
+                'data' => [],
+            ], 200),
+            str_contains($request->url(), '/api/v2/mix/order/orders-pending') => Http::response([
+                'code' => '00000',
+                'data' => ['entrustedList' => []],
+            ], 200),
+            str_contains($request->url(), '/api/v2/spot/account/info') => Http::response([
+                'code' => '00000',
+                'data' => ['authorities' => ['coow', 'cpow', 'wwow']],
+            ], 200),
+            default => Http::response(['message' => 'Unexpected test URL'], 500),
+        };
+    });
+
+    $result = runConnectivityChildStep($account, $server);
+
+    expect($result['result'])->toBe('ok')
+        ->and($result['balance_checked'])->toBeTrue()
+        ->and($result['open_orders_count'])->toBe(0)
+        ->and($result['withdrawals_enabled'])->toBeTrue();
+
+    Http::assertSent(fn (HttpRequest $request): bool => str_contains($request->url(), '/api/v2/spot/account/info'));
 });
 
 it('sends the existing whitelist notification for a failed server result', function (): void {

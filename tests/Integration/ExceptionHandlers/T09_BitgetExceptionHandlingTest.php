@@ -176,7 +176,7 @@ it('handles 40014 invalid API key by creating forbidden_hostname', function (): 
     expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
 });
 
-it('handles 40017 not a trader by creating forbidden_hostname', function (): void {
+it('does not block an account for generic 40017 parameter verification', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -193,28 +193,27 @@ it('handles 40017 not a trader by creating forbidden_hostname', function (): voi
         ]],
     ], TestBitgetApiableJob::class)[0];
 
-    // Act: Dispatch step
+    // Act: Dispatch step. Generic parameter errors must remain visible failures.
     StepTester::withSteps([$step])
         ->withStatusMatrix([
-            1 => [$step->id => 'pending'],
+            1 => [$step->id => 'failed'],
         ])
         ->withLabel('bitget_40017_not_a_trader')
         ->test();
 
-    // Assert: Step is pending
+    // Assert: no account-level credential block was created.
     $step->refresh();
-    expect($step->state->value())->toBe('pending');
+    expect($step->state->value())->toBe('failed');
 
     // Assert: ForbiddenHostname entry created with type account_blocked
     $forbiddenHostname = ForbiddenHostname::where('account_id', $account->id)
         ->where('api_system_id', $apiSystem->id)
         ->first();
 
-    expect($forbiddenHostname)->not->toBeNull();
-    expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
+    expect($forbiddenHostname)->toBeNull();
 });
 
-it('handles 40018 invalid passphrase by creating forbidden_hostname', function (): void {
+it('handles current 40018 invalid IP as an IP whitelist failure', function (): void {
     // Arrange: Create BitGet account
     $apiSystem = ApiSystem::factory()->create(['canonical' => 'bitget']);
     $user = User::factory()->create();
@@ -243,13 +242,13 @@ it('handles 40018 invalid passphrase by creating forbidden_hostname', function (
     $step->refresh();
     expect($step->state->value())->toBe('pending');
 
-    // Assert: ForbiddenHostname entry created with type account_blocked
+    // Assert: ForbiddenHostname entry is account-scoped IP whitelist failure.
     $forbiddenHostname = ForbiddenHostname::where('account_id', $account->id)
         ->where('api_system_id', $apiSystem->id)
         ->first();
 
     expect($forbiddenHostname)->not->toBeNull();
-    expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_ACCOUNT_BLOCKED);
+    expect($forbiddenHostname->type)->toBe(ForbiddenHostname::TYPE_IP_NOT_WHITELISTED);
 });
 
 it('handles 403 forbidden by failing step', function (): void {

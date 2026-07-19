@@ -1,3 +1,47 @@
+# WhereAreWe — 2026-07-19 (safe Bitget opening and API-key onboarding)
+
+## Date
+
+2026-07-19
+
+## This release (2026-07-19)
+
+- **Bitget openings begin from live exchange truth:** each USDT or USDC
+  opening reads the current position mode before changing margin, leverage, or
+  orders. Hedge and one-way orders use the V2 field shape expected by Bitget.
+- **Bitget protection is retry-safe:** combined TP and SL identities exist
+  before the exchange mutation, so a worker retry resumes the same protection
+  instead of creating duplicates.
+- **Bitget pacing covers shared exchange limits:** every request respects its
+  endpoint tier, a shared private endpoint budget, and the aggregate source-IP
+  ceiling. Signed retries wait and receive fresh authentication.
+- **Registration rejects dangerous API keys:** Binance and Bitget onboarding
+  explains the required permissions and cannot activate an account when
+  withdrawal access is enabled or cannot be verified across the fleet.
+
+---
+
+# WhereAreWe — 2026-07-18 (focused public site and direct billing checkout)
+
+## Date
+
+2026-07-18
+
+## This release (2026-07-18)
+
+- **The public site is focused on one decision:** navigation, a single DCA
+  compounding hero, live fleet performance, registration action, and footer.
+  Longer product, pricing, and FAQ sections are removed from the landing page.
+- **Public performance includes realized profit:** the hero shows the
+  since-launch realized PnL from closed positions on active tradeable accounts,
+  alongside realized ROI. Cancelled and failed histories do not contribute.
+- **Wallet top-up goes straight to the gateway:** a valid amount opens the
+  NOWPayments checkout in a new tab without an intermediate confirmation.
+- **Cloned local users remain easy and safe to inspect:** the local-only login
+  quick-pick uses the configured clone password and is absent outside local.
+
+---
+
 # WhereAreWe — 2026-07-18 (Bitget pacing and clean fast-track history)
 
 ## Date

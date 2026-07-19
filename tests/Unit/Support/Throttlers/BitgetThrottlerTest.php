@@ -20,6 +20,7 @@ beforeEach(function (): void {
 
     config()->set('kraite.throttlers.bitget.safety_threshold', 1.0);
     config()->set('kraite.throttlers.bitget.min_delay_ms', 0);
+    config()->set('kraite.throttlers.bitget.aggregate_requests_per_minute', 6_000);
 });
 
 afterEach(function (): void {
@@ -86,24 +87,28 @@ it('paces each Bitget endpoint at its documented limit', function (
     ],
 ]);
 
-it('keeps private request reservations separate for different Bitget UIDs', function (): void {
+it('conservatively shares a private endpoint budget when Bitget UID cannot be derived', function (): void {
     BitgetThrottler::throttleRequest('/api/v2/mix/order/place-order', 'UID_A_KEY');
     BitgetThrottler::throttleRequest('/api/v2/mix/order/place-order', 'UID_B_KEY');
-
-    Sleep::assertNeverSlept();
-
-    BitgetThrottler::throttleRequest('/api/v2/mix/order/place-order', 'UID_A_KEY');
 
     Sleep::assertSequence([
         Sleep::for(100)->milliseconds(),
     ]);
 });
 
-it('keeps independent Bitget endpoint budgets separate for the same UID', function (): void {
+it('enforces Bitget aggregate IP pacing across otherwise independent endpoints', function (): void {
     BitgetThrottler::throttleRequest('/api/v2/mix/order/place-order', 'UID_A_KEY');
     BitgetThrottler::throttleRequest('/api/v2/mix/order/cancel-order', 'UID_A_KEY');
 
-    Sleep::assertNeverSlept();
+    Sleep::assertSequence([
+        Sleep::for(10)->milliseconds(),
+    ]);
+});
+
+it('uses the documented five-minute default IP-ban recovery window', function (): void {
+    BitgetThrottler::recordIpBan();
+
+    expect(BitgetThrottler::isSafeToDispatch())->toBe(300_000);
 });
 
 it('applies the configured safety headroom below the vendor ceiling', function (): void {
@@ -161,7 +166,7 @@ it('fails closed without sending HTTP when the atomic reservation lock is unavai
     }
 });
 
-it('derives the private UID scope from the signed API key at the HTTP boundary', function (): void {
+it('derives signed request identity at the HTTP boundary while sharing the safe private pace', function (): void {
     Sleep::fake(syncWithCarbon: true);
 
     ApiSystem::factory()->exchange()->create([
@@ -199,13 +204,11 @@ it('derives the private UID scope from the signed API key at the HTTP boundary',
 
     $uidA->signRequest($makeRequest());
     $uidB->signRequest($makeRequest());
-
-    Sleep::assertNeverSlept();
-
     $uidA->signRequest($makeRequest());
 
     Http::assertSentCount(3);
     Sleep::assertSequence([
+        Sleep::for(100)->milliseconds(),
         Sleep::for(100)->milliseconds(),
     ]);
 
@@ -227,7 +230,7 @@ it('derives the private UID scope from the signed API key at the HTTP boundary',
         true
     ));
 
-    expect($thirdTimestamp - $firstTimestamp)->toBe(100)
+    expect($thirdTimestamp - $firstTimestamp)->toBe(200)
         ->and($sentRequests[2]->header('ACCESS-SIGN')[0])
         ->not->toBe($sentRequests[0]->header('ACCESS-SIGN')[0])
         ->and($sentRequests[2]->header('ACCESS-SIGN')[0])->toBe($thirdExpectedSignature);

@@ -21,8 +21,9 @@ use Kraite\Core\Support\ApiDataMappers\Bitget\BitgetApiDataMapper;
 | (`accounts.on_hedge_mode = false`).
 |
 | Bitget V2 contract per https://www.bitget.com/api-doc:
-|   HEDGE   — every order/leverage/TPSL call carries `posSide`/`tradeSide`
-|             /`holdSide` to disambiguate the LONG vs SHORT slot.
+|   HEDGE   — regular orders carry `tradeSide`; leverage/TPSL calls use
+|             `holdSide` to disambiguate the LONG vs SHORT slot. `posSide`
+|             is not a V2 place-order request field.
 |   ONE-WAY — those params are rejected (40034 / "param error" / "the
 |             order type for unilateral position must also be the
 |             unilateral position type"); closing-intent orders express
@@ -86,26 +87,43 @@ function bitgetMockResponse(array $data, int $status = 200): Response
 // MapsPlaceOrder — request payload branching
 // =============================================================================
 
-test('place-order in HEDGE mode carries posSide+tradeSide and omits reduceOnly', function (): void {
+test('place-order in HEDGE mode carries tradeSide without undocumented posSide', function (): void {
     $position = bitgetTestPosition(hedgeMode: true);
     $order = bitgetTestOrder($position, ['type' => 'LIMIT']);
 
     $properties = (new BitgetApiDataMapper)->preparePlaceOrderProperties($order);
 
     expect($properties->get('options.tradeSide'))->toBe('open');
-    expect($properties->get('options.posSide'))->toBe('long');
+    expect($properties->get('options.posSide'))->toBeNull();
     expect($properties->get('options.reduceOnly'))->toBeNull();
 });
 
-test('place-order in HEDGE mode carries tradeSide=close on closing intent', function (): void {
-    $position = bitgetTestPosition(hedgeMode: true);
-    $order = bitgetTestOrder($position, ['type' => 'PROFIT-LIMIT']);
+test('place-order in HEDGE mode closes LONG with position direction side', function (): void {
+    $position = bitgetTestPosition(hedgeMode: true, direction: 'LONG');
+    $order = bitgetTestOrder($position, [
+        'side' => 'SELL',
+        'type' => 'PROFIT-LIMIT',
+    ]);
 
     $properties = (new BitgetApiDataMapper)->preparePlaceOrderProperties($order);
 
     expect($properties->get('options.tradeSide'))->toBe('close');
-    expect($properties->get('options.posSide'))->toBe('long');
+    expect($properties->get('options.side'))->toBe('buy');
+    expect($properties->get('options.posSide'))->toBeNull();
     expect($properties->get('options.reduceOnly'))->toBeNull();
+});
+
+test('place-order in HEDGE mode closes SHORT with position direction side', function (): void {
+    $position = bitgetTestPosition(hedgeMode: true, direction: 'SHORT');
+    $order = bitgetTestOrder($position, [
+        'side' => 'BUY',
+        'type' => 'PROFIT-LIMIT',
+    ]);
+
+    $properties = (new BitgetApiDataMapper)->preparePlaceOrderProperties($order);
+
+    expect($properties->get('options.tradeSide'))->toBe('close');
+    expect($properties->get('options.side'))->toBe('sell');
 });
 
 test('place-order in ONE-WAY mode opening order omits posSide/tradeSide/reduceOnly', function (): void {
@@ -121,11 +139,15 @@ test('place-order in ONE-WAY mode opening order omits posSide/tradeSide/reduceOn
 
 test('place-order in ONE-WAY mode PROFIT-LIMIT carries reduceOnly=YES', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
-    $order = bitgetTestOrder($position, ['type' => 'PROFIT-LIMIT']);
+    $order = bitgetTestOrder($position, [
+        'side' => 'SELL',
+        'type' => 'PROFIT-LIMIT',
+    ]);
 
     $properties = (new BitgetApiDataMapper)->preparePlaceOrderProperties($order);
 
     expect($properties->get('options.reduceOnly'))->toBe('YES');
+    expect($properties->get('options.side'))->toBe('sell');
     expect($properties->get('options.tradeSide'))->toBeNull();
     expect($properties->get('options.posSide'))->toBeNull();
 });
@@ -143,24 +165,45 @@ test('place-order in ONE-WAY mode MARKET-CANCEL carries reduceOnly=YES', functio
 // MapsPlacePlanOrder — STOP-MARKET / trigger orders
 // =============================================================================
 
-test('plan-order in HEDGE mode carries tradeSide', function (): void {
-    $position = bitgetTestPosition(hedgeMode: true);
-    $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
+test('plan-order in HEDGE mode closes LONG with position direction side', function (): void {
+    $position = bitgetTestPosition(hedgeMode: true, direction: 'LONG');
+    $order = bitgetTestOrder($position, [
+        'side' => 'SELL',
+        'type' => 'STOP-MARKET',
+    ]);
 
     $properties = (new BitgetApiDataMapper)->preparePlacePlanOrderProperties($order);
 
     expect($properties->get('options.tradeSide'))->toBe('close');
+    expect($properties->get('options.side'))->toBe('buy');
     expect($properties->get('options.reduceOnly'))->toBeNull();
+});
+
+test('plan-order in HEDGE mode closes SHORT with position direction side', function (): void {
+    $position = bitgetTestPosition(hedgeMode: true, direction: 'SHORT');
+    $order = bitgetTestOrder($position, [
+        'side' => 'BUY',
+        'type' => 'STOP-MARKET',
+    ]);
+
+    $properties = (new BitgetApiDataMapper)->preparePlacePlanOrderProperties($order);
+
+    expect($properties->get('options.tradeSide'))->toBe('close');
+    expect($properties->get('options.side'))->toBe('sell');
 });
 
 test('plan-order in ONE-WAY mode omits tradeSide and carries reduceOnly=YES', function (): void {
     $position = bitgetTestPosition(hedgeMode: false);
-    $order = bitgetTestOrder($position, ['type' => 'STOP-MARKET']);
+    $order = bitgetTestOrder($position, [
+        'side' => 'SELL',
+        'type' => 'STOP-MARKET',
+    ]);
 
     $properties = (new BitgetApiDataMapper)->preparePlacePlanOrderProperties($order);
 
     expect($properties->get('options.tradeSide'))->toBeNull();
     expect($properties->get('options.reduceOnly'))->toBe('YES');
+    expect($properties->get('options.side'))->toBe('sell');
 });
 
 // =============================================================================
@@ -194,6 +237,68 @@ test('place-pos-tpsl in ONE-WAY mode maps SHORT to holdSide sell', function (): 
     expect($properties->get('options.holdSide'))->toBe('sell');
 });
 
+test('place-pos-tpsl carries durable client IDs for both protection legs', function (): void {
+    $position = bitgetTestPosition(hedgeMode: true);
+
+    $properties = (new BitgetApiDataMapper)->preparePlacePosTpslProperties(
+        $position,
+        '50000',
+        '30000',
+        'TP-CLIENT-1',
+        'SL-CLIENT-1',
+    );
+
+    expect($properties->get('options.stopSurplusClientOid'))->toBe('TP-CLIENT-1')
+        ->and($properties->get('options.stopLossClientOid'))->toBe('SL-CLIENT-1');
+});
+
+test('place-pos-tpsl response maps exchange IDs by their client IDs', function (): void {
+    $response = bitgetMockResponse([
+        'code' => '00000',
+        'data' => [
+            [
+                'orderId' => 'TP-EXCHANGE-1',
+                'stopSurplusClientOid' => 'TP-CLIENT-1',
+                'stopLossClientOid' => '',
+            ],
+            [
+                'orderId' => 'SL-EXCHANGE-1',
+                'stopSurplusClientOid' => '',
+                'stopLossClientOid' => 'SL-CLIENT-1',
+            ],
+        ],
+    ]);
+
+    $result = (new BitgetApiDataMapper)->resolvePlacePosTpslResponse($response);
+
+    expect($result['ordersByClientOid'])->toBe([
+        'TP-CLIENT-1' => 'TP-EXCHANGE-1',
+        'SL-CLIENT-1' => 'SL-EXCHANGE-1',
+    ]);
+});
+
+test('place-pos-tpsl response rejects ambiguous client-to-exchange ID mappings', function (): void {
+    $response = bitgetMockResponse([
+        'code' => '00000',
+        'data' => [
+            [
+                'orderId' => 'EXCHANGE-1',
+                'stopSurplusClientOid' => 'TP-CLIENT-1',
+                'stopLossClientOid' => 'SL-CLIENT-1',
+            ],
+            [
+                'orderId' => 'EXCHANGE-2',
+                'stopSurplusClientOid' => 'TP-CLIENT-1',
+                'stopLossClientOid' => 'SL-CLIENT-1',
+            ],
+        ],
+    ]);
+
+    $result = (new BitgetApiDataMapper)->resolvePlacePosTpslResponse($response);
+
+    expect($result['ordersByClientOid'])->toBe([]);
+});
+
 // =============================================================================
 // MapsPlaceTpslOrder — single TP or SL recreate
 // =============================================================================
@@ -223,6 +328,36 @@ test('place-tpsl-order in ONE-WAY mode maps SHORT to holdSide sell', function ()
     $properties = (new BitgetApiDataMapper)->preparePlaceTpslOrderProperties($order);
 
     expect($properties->get('options.holdSide'))->toBe('sell');
+});
+
+test('single-leg stop recreation carries its durable client ID', function (): void {
+    $position = bitgetTestPosition(hedgeMode: true);
+    $order = bitgetTestOrder($position, [
+        'type' => 'STOP-MARKET',
+        'client_order_id' => 'SL-RECREATE-CLIENT',
+    ]);
+
+    $properties = (new BitgetApiDataMapper)->preparePlaceTpslOrderProperties($order);
+
+    expect($properties->get('options.stopLossClientOid'))->toBe('SL-RECREATE-CLIENT')
+        ->and($properties->get('options.stopSurplusClientOid'))->toBeNull();
+});
+
+test('single-leg TP/SL response exposes the returned exchange and client IDs', function (): void {
+    $response = bitgetMockResponse([
+        'code' => '00000',
+        'data' => [[
+            'orderId' => 'SL-RECREATE-EXCHANGE',
+            'stopSurplusClientOid' => '',
+            'stopLossClientOid' => 'SL-RECREATE-CLIENT',
+        ]],
+    ]);
+
+    $result = (new BitgetApiDataMapper)->resolvePlaceTpslOrderResponse($response);
+
+    expect($result['orderId'])->toBe('SL-RECREATE-EXCHANGE')
+        ->and($result['clientOid'])->toBe('SL-RECREATE-CLIENT')
+        ->and($result['_requiresOrderIdFetch'])->toBeFalse();
 });
 
 // =============================================================================

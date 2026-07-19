@@ -7,6 +7,7 @@ use Kraite\Core\Jobs\Atomic\Order\Bitget\PlacePositionTpslJob;
 use Kraite\Core\Jobs\Atomic\Order\DispatchLimitOrdersJob;
 use Kraite\Core\Jobs\Atomic\Order\PlaceMarketOrderJob;
 use Kraite\Core\Jobs\Atomic\Position\ActivatePositionJob;
+use Kraite\Core\Jobs\Atomic\Position\Bitget\SyncPositionModeJob;
 use Kraite\Core\Jobs\Atomic\Position\DetermineLeverageJob;
 use Kraite\Core\Jobs\Atomic\Position\PreparePositionDataJob;
 use Kraite\Core\Jobs\Atomic\Position\SetLeverageJob;
@@ -84,6 +85,7 @@ it('builds the complete Bitget opening chain once with combined TP and SL protec
         'message' => 'Position dispatching initiated',
     ])->and($defaultSteps->pluck('class')->all())->toBe([
         VerifyTradingPairNotOpenJob::class,
+        SyncPositionModeJob::class,
         SetMarginModeJob::class,
         PreparePositionDataJob::class,
         DetermineLeverageJob::class,
@@ -93,7 +95,7 @@ it('builds the complete Bitget opening chain once with combined TP and SL protec
         DispatchLimitOrdersJob::class,
         PlacePositionTpslJob::class,
         ActivatePositionJob::class,
-    ])->and($defaultSteps->pluck('index')->all())->toBe(range(1, 10))
+    ])->and($defaultSteps->pluck('index')->all())->toBe(range(1, 11))
         ->and($resolverStep->class)->toBe(CancelPositionJob::class)
         ->and($resolverStep->index)->toBe(1)
         ->and($resolverStep->arguments['positionId'])->toBe($position->id)
@@ -104,5 +106,5 @@ it('builds the complete Bitget opening chain once with combined TP and SL protec
     expect($secondResult)->toBe([
         'position_id' => $position->id,
         'message' => 'Retry detected — child block already populated, no-op.',
-    ])->and(Step::query()->where('block_uuid', $childBlockUuid)->count())->toBe(11);
+    ])->and(Step::query()->where('block_uuid', $childBlockUuid)->count())->toBe(12);
 });

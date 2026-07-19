@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.69.0 - 2026-07-19
+
+Ships `kraitebot/core` 1.74.0.
+
+### Safe Bitget position opening
+
+- [FIXED] **Bitget uses live position mode before opening exposure.** Hedge and
+  one-way orders now carry the exact V2 side, intent, and reduce-only shape
+  expected by the exchange.
+- [FIXED] **Combined TP and SL placement is retry-safe.** Durable client
+  identities prevent a restarted worker from duplicating protection.
+- [FIXED] **Bitget throttling covers endpoint, shared-private, and aggregate-IP
+  limits.** Every retry reserves again and signed requests are refreshed.
+
+### Registration safety
+
+- [ADDED] Fleet connectivity checks expose Binance and Bitget withdrawal
+  permission state so public registration can reject dangerous API keys.
+
+### Tests
+
+- [ADDED] Regression coverage for live Bitget mode synchronization, hedge and
+  one-way request shapes, protection idempotency, signing, current error codes,
+  shared throttling limits, and withdrawal-permission discovery.
+- [VERIFIED] Full ingestion suite passes: 2,824 tests / 8,971 assertions.
+- [VERIFIED] Step Dispatcher passes: 200 tests / 482 assertions.
+
 ## 1.68.5 - 2026-07-18
 
 Ships `kraitebot/core` 1.73.7.

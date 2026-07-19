@@ -1096,22 +1096,16 @@ final class ResponseException
         return self::bitget(200, '40014', 'Invalid API-Key');
     }
 
-    /**
-     * BitGet Case 4: Account blocked - not a trader.
-     * BitGet code 40017.
-     */
+    /** BitGet: generic parameter verification failure. */
     public static function bitgetNotATrader(): RequestException
     {
         return self::bitget(200, '40017', 'Parameter verification failed or not a trader');
     }
 
-    /**
-     * BitGet Case 4: Account blocked - invalid passphrase.
-     * BitGet code 40018.
-     */
+    /** BitGet Case 1: current invalid-IP / whitelist failure code. */
     public static function bitgetInvalidPassphrase(): RequestException
     {
-        return self::bitget(200, '40018', 'Invalid passphrase');
+        return self::bitget(200, '40018', 'Invalid IP');
     }
 
     /**
@@ -1238,6 +1232,12 @@ final class ResponseException
             '40774',
             'The order type for unilateral position must also be the unilateral position type'
         );
+    }
+
+    /** BitGet: current position-pattern mismatch code. */
+    public static function bitgetCurrentPositionModeMismatch(): RequestException
+    {
+        return self::bitget(400, '43075', 'Position pattern mismatch');
     }
 
     /**
