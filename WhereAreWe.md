@@ -1,3 +1,24 @@
+# WhereAreWe — 2026-07-19 (read-only mobile API)
+
+## Date
+
+2026-07-19
+
+## This release (2026-07-19)
+
+- **Mobile authentication is isolated and revocable:** valid trader
+  credentials issue a 30-day device token limited to dashboard reads. Logout
+  revokes only the current device token, and failed logins are rate-limited.
+- **Mobile data stays trader-owned:** the API returns only the authenticated
+  trader's accounts. A foreign account identifier receives the same missing
+  response and never reveals ownership.
+- **The first API surface is deliberately read-only:** account switching,
+  dashboard KPIs, and open positions are exposed through bounded, briefly
+  cached responses. Trading, account edits, billing, and engine controls are
+  absent.
+
+---
+
 # WhereAreWe — 2026-07-19 (safe Bitget opening and API-key onboarding)
 
 ## Date

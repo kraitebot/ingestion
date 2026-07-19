@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.69.1 - 2026-07-19
+
+Ships `kraitebot/core` 1.75.0.
+
+### Mobile API authentication
+
+- [ADDED] The shared database schema stores expiring, ability-scoped personal
+  access tokens used by the read-only mobile API.
+
+### Tests
+
+- [VERIFIED] Full ingestion suite passes: 2,824 tests / 8,971 assertions.
+- [VERIFIED] Step Dispatcher passes: 200 tests / 482 assertions.
+
 ## 1.69.0 - 2026-07-19
 
 Ships `kraitebot/core` 1.74.0.
