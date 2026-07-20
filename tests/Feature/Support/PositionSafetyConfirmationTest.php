@@ -35,6 +35,7 @@ function positionSafetyFixture(string $canonical = 'binance', string $direction 
             'bitget_api_key' => 'TESTKEY',
             'bitget_api_secret' => 'TESTSECRET',
             'bitget_passphrase' => 'TESTPASS',
+            'bitget_account_mode' => 'classic',
         ],
         default => [
             'binance_api_key' => 'TESTKEY',

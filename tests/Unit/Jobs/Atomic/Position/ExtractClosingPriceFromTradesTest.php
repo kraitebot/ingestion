@@ -122,3 +122,47 @@ it('ignores trades whose price is zero or missing', function (): void {
 
     expect(invokeExtractor($trades, 'LONG'))->toBe('6.890');
 });
+
+// =============================================================================
+// One-way mode — Binance tags every userTrades fill positionSide=BOTH.
+// The side-verified match must treat BOTH as a wildcard, otherwise the
+// extractor silently degrades to the side-blind last-trade fallback and
+// can record a non-reducing fill (e.g. the user's own trade on an
+// allow_other_positions account) as the closing price.
+// =============================================================================
+
+it('one-way: picks the SELL close among BOTH-tagged trades even when a later BUY fill exists', function (): void {
+    $trades = [
+        ['side' => 'SELL', 'positionSide' => 'BOTH', 'price' => '6.890', 'time' => 1000],
+        ['side' => 'BUY', 'positionSide' => 'BOTH', 'price' => '6.950', 'time' => 2000],
+    ];
+
+    expect(invokeExtractor($trades, 'LONG'))->toBe('6.890');
+});
+
+it('one-way: picks the BUY close among BOTH-tagged trades even when a later SELL fill exists', function (): void {
+    $trades = [
+        ['side' => 'BUY', 'positionSide' => 'BOTH', 'price' => '0.3024', 'time' => 1000],
+        ['side' => 'SELL', 'positionSide' => 'BOTH', 'price' => '0.3014', 'time' => 2000],
+    ];
+
+    expect(invokeExtractor($trades, 'SHORT'))->toBe('0.3024');
+});
+
+it('one-way: returns the most recent BOTH-tagged closing fill when several exist', function (): void {
+    $trades = [
+        ['side' => 'SELL', 'positionSide' => 'BOTH', 'price' => '6.900', 'time' => 1000],
+        ['side' => 'SELL', 'positionSide' => 'BOTH', 'price' => '6.890', 'time' => 2000],
+    ];
+
+    expect(invokeExtractor($trades, 'LONG'))->toBe('6.890');
+});
+
+it('one-way: falls back to the last trade when no BOTH-tagged fill matches the closing side', function (): void {
+    $trades = [
+        ['side' => 'BUY', 'positionSide' => 'BOTH', 'price' => '6.894', 'time' => 1000],
+        ['side' => 'BUY', 'positionSide' => 'BOTH', 'price' => '6.950', 'time' => 2000],
+    ];
+
+    expect(invokeExtractor($trades, 'LONG'))->toBe('6.950');
+});

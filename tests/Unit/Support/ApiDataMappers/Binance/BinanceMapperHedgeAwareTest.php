@@ -65,7 +65,9 @@ function buildBinanceContext(bool $hedge, string $orderType, string $direction =
     return Order::create([
         'position_id' => $position->id,
         'type' => $orderType,
-        'side' => $direction === 'LONG' ? ($orderType === 'PROFIT-LIMIT' ? 'SELL' : 'BUY') : ($orderType === 'PROFIT-LIMIT' ? 'BUY' : 'SELL'),
+        'side' => in_array($orderType, ['PROFIT-LIMIT', 'MARKET-CANCEL', 'STOP-MARKET'], strict: true)
+            ? ($direction === 'LONG' ? 'SELL' : 'BUY')   // closing intent flips the side
+            : ($direction === 'LONG' ? 'BUY' : 'SELL'),
         'position_side' => $direction,
         'status' => 'NEW',
         'price' => '50000.00',
@@ -126,6 +128,26 @@ it('one-way: PROFIT-LIMIT (TP) omits positionSide and sets reduceOnly=true', fun
         'true',
         'In one-way mode a SELL with no reduceOnly opens a SHORT instead of closing the LONG. '
         .'TP must carry reduceOnly=true to close the existing position.'
+    );
+});
+
+it('hedge: LIMIT (DCA) open carries positionSide=LONG and no reduceOnly', function (): void {
+    $order = buildBinanceContext(hedge: true, orderType: 'LIMIT');
+    $properties = (new BinanceApiDataMapper)->preparePlaceOrderProperties($order);
+
+    expect($properties->get('options.positionSide'))->toBe('LONG');
+    expect($properties->has('options.reduceOnly'))->toBeFalse();
+});
+
+it('hedge: MARKET-CANCEL emergency close carries positionSide and NEVER reduceOnly', function (): void {
+    // Hedge mode encodes close intent via (side, positionSide); Binance
+    // rejects reduceOnly outright in hedge mode with -1106 PARAM_NOT_REQUIRED.
+    $order = buildBinanceContext(hedge: true, orderType: 'MARKET-CANCEL');
+    $properties = (new BinanceApiDataMapper)->preparePlaceOrderProperties($order);
+
+    expect($properties->get('options.positionSide'))->toBe('LONG');
+    expect($properties->has('options.reduceOnly'))->toBeFalse(
+        'reduceOnly cannot be sent in hedge mode (-1106); close intent rides on side+positionSide.'
     );
 });
 

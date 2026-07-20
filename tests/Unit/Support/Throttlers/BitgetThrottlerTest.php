@@ -344,3 +344,40 @@ it('re-reserves and re-signs every private HTTP retry', function (): void {
         ->and($timestamps[2] - $timestamps[1])->toBe(100)
         ->and(array_unique($signatures))->toHaveCount(3);
 });
+
+it('honours a warm reservation value that Redis returns as a numeric string', function (): void {
+    $endpoint = '/api/v3/account/info';
+    $apiKey = 'UID_STRING_RESERVATION_KEY';
+    $reservationKey = sprintf(
+        'bitget_throttler:request:uid:%s:%s',
+        hash('sha256', $apiKey),
+        hash('sha256', $endpoint),
+    );
+
+    $nowMs = (int) round(now()->getPreciseTimestamp(3));
+
+    // Production Redis stores integers raw and returns them UNCAST as
+    // numeric strings — simulate that exact round-trip on the array store.
+    Cache::put($reservationKey, (string) ($nowMs + 500), now()->addSeconds(5));
+
+    BitgetThrottler::throttleRequest($endpoint, $apiKey);
+
+    Sleep::assertSequence([
+        Sleep::for(500)->milliseconds(),
+    ]);
+});
+
+it('still rejects a non-numeric reservation cache value', function (): void {
+    $endpoint = '/api/v3/account/info';
+    $apiKey = 'UID_GARBAGE_RESERVATION_KEY';
+    $reservationKey = sprintf(
+        'bitget_throttler:request:uid:%s:%s',
+        hash('sha256', $apiKey),
+        hash('sha256', $endpoint),
+    );
+
+    Cache::put($reservationKey, 'garbage', now()->addSeconds(5));
+
+    expect(fn () => BitgetThrottler::throttleRequest($endpoint, $apiKey))
+        ->toThrow(UnexpectedValueException::class, 'Bitget throttle reservation cache value must be an integer.');
+});

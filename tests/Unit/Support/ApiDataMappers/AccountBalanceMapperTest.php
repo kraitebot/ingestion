@@ -117,6 +117,69 @@ it('prepares Bitget balance queries per portfolio quote and exposes total and av
         ]);
 });
 
+it('maps Bitget unified (v3 assets) balance for the portfolio quote with zero PnL', function (): void {
+    $mapper = new BitgetApiDataMapper;
+    $account = balanceMapperAccount();
+
+    $balance = $mapper->resolveGetBalanceResponse(jsonBalanceResponse([
+        'code' => '00000',
+        'data' => [
+            'accountEquity' => '311.50',
+            'unrealisedPnl' => '3.00',
+            'assets' => [
+                ['coin' => 'USDT', 'equity' => '100.00', 'available' => '60.00'],
+                ['coin' => 'USDC', 'equity' => '211.50', 'available' => '150.00'],
+            ],
+        ],
+    ]), $account);
+
+    expect($balance)
+        ->toMatchArray([
+            'total-wallet-balance' => '211.50',
+            'wallet-balance' => '211.50',
+            'available-balance' => '150.00',
+            'cross-wallet-balance' => '211.50',
+            'cross-unrealized-pnl' => '0',
+        ]);
+});
+
+it('maps a Bitget unified balance to zeros when the quote coin is not held', function (): void {
+    $mapper = new BitgetApiDataMapper;
+    $account = balanceMapperAccount();
+
+    $balance = $mapper->resolveGetBalanceResponse(jsonBalanceResponse([
+        'code' => '00000',
+        'data' => [
+            'accountEquity' => '100.00',
+            'assets' => [
+                ['coin' => 'USDT', 'equity' => '100.00', 'available' => '60.00'],
+            ],
+        ],
+    ]), $account);
+
+    expect($balance)
+        ->toMatchArray([
+            'total-wallet-balance' => '0',
+            'wallet-balance' => '0',
+            'available-balance' => '0',
+            'cross-wallet-balance' => '0',
+            'cross-unrealized-pnl' => '0',
+        ]);
+});
+
+it('maps a Bitget unified balance with an empty assets list to zeros', function (): void {
+    $mapper = new BitgetApiDataMapper;
+    $account = balanceMapperAccount();
+
+    $balance = $mapper->resolveGetBalanceResponse(jsonBalanceResponse([
+        'code' => '00000',
+        'data' => ['accountEquity' => '0', 'assets' => []],
+    ]), $account);
+
+    expect($balance['total-wallet-balance'])->toBe('0')
+        ->and($balance['available-balance'])->toBe('0');
+});
+
 it('falls back to trading quote when portfolio quote is empty', function (): void {
     $mapper = new BinanceApiDataMapper;
     $account = balanceMapperAccount([

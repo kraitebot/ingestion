@@ -205,3 +205,48 @@ test('hasInflightPositions=false (default) preserves prior behaviour', function 
     expect($report->ordersToCancel)->toEqualCanonicalizing(['111', '222', '333']);
     expect($report->positionsToClose)->toBe(['BTCUSDT:LONG']);
 });
+
+test('with allow_other_positions=true, ignores truly foreign positions', function (): void {
+    $report = OrphanReconciler::reconcile(
+        exchangeOpenOrderIds: [],
+        exchangePositionKeys: ['DOGEUSDT:LONG'],
+        kraiteOpenOrderIds: [],
+        kraitePositionKeys: [],
+        kraiteRecentlyClosedOrderIds: [],
+        allowOtherOrders: true,
+        allowOtherPositions: true,
+        kraiteRecentlyClosedPositionKeys: [],
+    );
+
+    expect($report->positionsToClose)->toBe([]);
+});
+
+test('with allow_other_positions=true, closes a Kraite leftover matching a recently-closed position key', function (): void {
+    $report = OrphanReconciler::reconcile(
+        exchangeOpenOrderIds: [],
+        exchangePositionKeys: ['ETHUSDT:SHORT', 'DOGEUSDT:LONG'],
+        kraiteOpenOrderIds: [],
+        kraitePositionKeys: [],
+        kraiteRecentlyClosedOrderIds: [],
+        allowOtherOrders: true,
+        allowOtherPositions: true,
+        kraiteRecentlyClosedPositionKeys: ['ETHUSDT:SHORT'],
+    );
+
+    expect($report->positionsToClose)->toBe(['ETHUSDT:SHORT']);
+});
+
+test('with allow_other_positions=false, recent-position keys change nothing — all unknowns close', function (): void {
+    $report = OrphanReconciler::reconcile(
+        exchangeOpenOrderIds: [],
+        exchangePositionKeys: ['ETHUSDT:SHORT', 'DOGEUSDT:LONG'],
+        kraiteOpenOrderIds: [],
+        kraitePositionKeys: [],
+        kraiteRecentlyClosedOrderIds: [],
+        allowOtherOrders: false,
+        allowOtherPositions: false,
+        kraiteRecentlyClosedPositionKeys: ['ETHUSDT:SHORT'],
+    );
+
+    expect($report->positionsToClose)->toEqualCanonicalizing(['ETHUSDT:SHORT', 'DOGEUSDT:LONG']);
+});

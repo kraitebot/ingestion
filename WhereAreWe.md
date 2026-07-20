@@ -1,3 +1,55 @@
+# WhereAreWe — 2026-07-20 (Bitget unified accounts + own-activity protection)
+
+## Date
+
+2026-07-20
+
+## This release (2026-07-20)
+
+- **Bitget unified (UTA) accounts are first-class for onboarding and reads:**
+  the account's mode (classic vs unified) is detected automatically on first
+  contact and cached; balance, positions, open orders, and the
+  withdrawal-safety check route to the correct Bitget API generation.
+  Unified accounts register and are fully readable but cannot trade until
+  the v3 order surface ships (hard readiness gate).
+- **A user's own trading can never be destroyed by the bot:** the
+  `allow_other_*` protection flags are now evidence-driven in both
+  directions — synced from live exchange state by the health watchdog
+  (before any cleanup decision) and by the position-opening chain (before
+  any sizing). A user position appearing on a Kraite-exclusive account
+  enables protection instead of being auto-closed; activity disappearing
+  restores exclusive mode. A standing user limit order counts as positions
+  scope. The Binance ghost-algo scrub is skipped on shared accounts.
+- **Shared accounts still get leftover hygiene:** provable Kraite leftovers
+  (locally closed within the match window, still alive on the exchange) are
+  flat-closed even with protection on.
+- **Registration failures speak human:** the wizard names the exact missing
+  permission, whitelist gap, or key rejection per probe, never hangs on a
+  dead orchestrator, and stale connectivity bans can no longer poison a
+  retry (diagnostic steps bypass the ban veto).
+- **Throttling survives warm Redis:** a framework quirk returning cached
+  integers as strings crashed Bitget bursts; normalised and
+  regression-tested.
+
+---
+
+# WhereAreWe — 2026-07-19 (mobile BSCS visibility)
+
+## Date
+
+2026-07-19
+
+## This release (2026-07-19)
+
+- **The trader can see global market risk on the iPhone dashboard:** one
+  full-width BSCS tile shows the score, band, current posture, freshness, block
+  state, and block threshold.
+- **The mobile API remains bounded and read-only:** it exposes the actionable
+  regime summary without sub-signal composition or cooldown internals, and it
+  adds no trading control.
+
+---
+
 # WhereAreWe — 2026-07-19 (read-only mobile API)
 
 ## Date

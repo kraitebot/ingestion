@@ -236,3 +236,137 @@ it('sends the existing whitelist notification for a failed server result', funct
             && str_contains($notification->message, '203.0.113.10')
     );
 });
+
+it('probes a unified Bitget account end-to-end over the v3 API', function (): void {
+    $account = createConnectivityAccount('bitget');
+    $account->forceFill([
+        'bitget_api_key' => 'uta-probe-key',
+        'bitget_api_secret' => 'uta-probe-secret',
+        'bitget_passphrase' => 'uta-probe-passphrase',
+        'bitget_account_mode' => 'unified',
+    ])->save();
+    $server = createConnectivityServer();
+
+    Http::fake(function (HttpRequest $request) {
+        return match (true) {
+            str_contains($request->url(), '/api/v3/account/assets') => Http::response([
+                'code' => '00000',
+                'data' => ['accountEquity' => '10', 'assets' => [['coin' => 'USDT', 'equity' => '10', 'available' => '10']]],
+            ], 200),
+            str_contains($request->url(), '/api/v3/trade/unfilled-orders') => Http::response([
+                'code' => '00000',
+                'data' => ['list' => [], 'cursor' => null],
+            ], 200),
+            str_contains($request->url(), '/api/v3/account/info') => Http::response([
+                'code' => '00000',
+                'data' => ['permissions' => ['uta_trade']],
+            ], 200),
+            default => Http::response(['message' => 'Unexpected test URL'], 500),
+        };
+    });
+
+    $result = runConnectivityChildStep($account, $server);
+
+    expect($result['result'])->toBe('ok')
+        ->and($result['balance_checked'])->toBeTrue()
+        ->and($result['open_orders_count'])->toBe(0)
+        ->and($result['withdrawals_enabled'])->toBeFalse();
+
+    Http::assertNotSent(fn (HttpRequest $request): bool => str_contains($request->url(), '/api/v2/mix/'));
+});
+
+it('translates a Bitget missing-management-scope refusal into a plain permission message', function (): void {
+    $account = createConnectivityAccount('bitget');
+    $account->forceFill([
+        'bitget_api_key' => 'uta-noscope-key',
+        'bitget_api_secret' => 'uta-noscope-secret',
+        'bitget_passphrase' => 'uta-noscope-passphrase',
+        'bitget_account_mode' => 'unified',
+    ])->save();
+    $server = createConnectivityServer();
+
+    Http::fake([
+        'api.bitget.com/api/v3/account/assets*' => Http::response([
+            'code' => '40014',
+            'msg' => 'Incorrect permissions, need UTA manage read or UTA manage write permissions',
+        ], 400),
+    ]);
+
+    expect(fn (): array => runConnectivityChildStep($account, $server))
+        ->toThrow(Exception::class, 'The API key is missing a required permission on Bitget: enable "Unified account management (read-only)" on the key, then run the test again.');
+});
+
+it('translates a Bitget non-whitelisted IP refusal into a plain whitelist message', function (): void {
+    $account = createConnectivityAccount('bitget');
+    $account->forceFill([
+        'bitget_api_key' => 'classic-noip-key',
+        'bitget_api_secret' => 'classic-noip-secret',
+        'bitget_passphrase' => 'classic-noip-passphrase',
+        'bitget_account_mode' => 'classic',
+    ])->save();
+    $server = createConnectivityServer();
+
+    Http::fake([
+        'api.bitget.com/api/v2/mix/account/accounts*' => Http::response([
+            'code' => '40018',
+            'msg' => 'Invalid IP',
+        ], 400),
+    ]);
+
+    expect(fn (): array => runConnectivityChildStep($account, $server))
+        ->toThrow(Exception::class, "This server's IP is not whitelisted on Bitget. Add every listed IP address to the API key, then run the test again.");
+});
+
+it('translates the ambiguous Binance -2015 refusal into the combined key/permission/IP message', function (): void {
+    $account = createConnectivityAccount();
+    $account->forceFill([
+        'binance_api_key' => 'ambiguous-2015-key',
+        'binance_api_secret' => 'ambiguous-2015-secret',
+    ])->save();
+    $server = createConnectivityServer();
+
+    Http::fake([
+        'api.binance.com/*' => Http::response([
+            'code' => -2015,
+            'msg' => 'Invalid API-key, IP, or permissions for action.',
+        ], 401),
+    ]);
+
+    expect(fn (): array => runConnectivityChildStep($account, $server))
+        ->toThrow(Exception::class, 'Binance rejected this API key — it is invalid, missing permissions, or a server IP is not whitelisted. Fix the key (every permission and every IP listed), then run the test again.');
+});
+
+it('reports a failed parent step as a complete run with every server not connected', function (): void {
+    $account = createConnectivityAccount();
+    createConnectivityServer(['hostname' => 'apollo', 'ip_address' => '203.0.113.10']);
+    createConnectivityServer(['hostname' => 'ares', 'ip_address' => '203.0.113.11']);
+
+    $payload = app(AccountServerConnectivityService::class)->start($account);
+
+    Step::query()
+        ->where('block_uuid', $payload['block_uuid'])
+        ->update([
+            'state' => Failed::class,
+            'error_message' => 'NoCleanWorkerException: routing refused before any probe ran.',
+        ]);
+
+    $status = app(AccountServerConnectivityService::class)->status($payload['block_uuid']);
+    $rows = collect($status['servers']);
+
+    expect($status['is_complete'])->toBeTrue()
+        ->and($rows)->toHaveCount(2)
+        ->and($rows->pluck('status')->unique()->all())->toBe(['not_connected'])
+        ->and($rows->first()['error_message'])->toBe('NoCleanWorkerException: routing refused before any probe ran.');
+});
+
+it('keeps reporting testing while the parent is still pending without children', function (): void {
+    $account = createConnectivityAccount();
+    createConnectivityServer(['hostname' => 'apollo', 'ip_address' => '203.0.113.10']);
+
+    $payload = app(AccountServerConnectivityService::class)->start($account);
+
+    $status = app(AccountServerConnectivityService::class)->status($payload['block_uuid']);
+
+    expect($status['is_complete'])->toBeFalse()
+        ->and(collect($status['servers'])->pluck('status')->unique()->all())->toBe(['testing']);
+});

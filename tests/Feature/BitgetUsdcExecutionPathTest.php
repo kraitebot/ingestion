@@ -48,6 +48,9 @@ function bitgetUsdcExecutionFixture(): array
         'bitget_api_key' => 'USDC_ACCOUNT_KEY',
         'bitget_api_secret' => 'USDC_ACCOUNT_SECRET',
         'bitget_passphrase' => 'USDC_ACCOUNT_PASSPHRASE',
+        // Steady state: mode already detected. A null mode adds a one-time
+        // v2 probe request, which would skew the exact request-count asserts.
+        'bitget_account_mode' => 'classic',
     ]);
 
     return compact('account', 'apiSystem', 'exchangeSymbol');

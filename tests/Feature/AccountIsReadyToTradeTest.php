@@ -152,3 +152,40 @@ it('account isReadyToTrade returns false when subscription is paused (gate 3)', 
 
     expect($account->isReadyToTrade())->toBeFalse();
 });
+
+it('account isReadyToTrade blocks a unified BitGet account until the v3 order surface ships', function (): void {
+    $bitget = Kraite\Core\Models\ApiSystem::firstOrCreate(
+        ['canonical' => 'bitget'],
+        ['name' => 'BitGet', 'is_exchange' => true, 'recvwindow_margin' => 1000]
+    );
+
+    [, $account] = freshUserAndAccount(accountOverrides: [
+        'api_system_id' => $bitget->id,
+        'bitget_account_mode' => 'unified',
+    ]);
+
+    expect($account->isReadyToTrade())->toBeFalse();
+});
+
+it('account isReadyToTrade allows a classic BitGet account through the mode gate', function (): void {
+    $bitget = Kraite\Core\Models\ApiSystem::firstOrCreate(
+        ['canonical' => 'bitget'],
+        ['name' => 'BitGet', 'is_exchange' => true, 'recvwindow_margin' => 1000]
+    );
+
+    [, $account] = freshUserAndAccount(accountOverrides: [
+        'api_system_id' => $bitget->id,
+        'bitget_account_mode' => 'classic',
+    ]);
+
+    expect($account->isReadyToTrade())->toBeTrue();
+});
+
+it('account isReadyToTrade ignores a stray unified marker on a non-BitGet account', function (): void {
+    [, $account] = freshUserAndAccount(accountOverrides: [
+        'bitget_account_mode' => 'unified',
+    ]);
+
+    expect($account->apiSystem->canonical)->not->toBe('bitget');
+    expect($account->isReadyToTrade())->toBeTrue();
+});

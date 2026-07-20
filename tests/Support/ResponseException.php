@@ -235,6 +235,38 @@ final class ResponseException
     }
 
     /**
+     * Binance: position mode cannot change while open orders exist.
+     * HTTP 400 with vendor code -4067. Part of the position-side family
+     * the auto-flip catch listens for.
+     */
+    public static function binancePositionSideChangeBlocked(): RequestException
+    {
+        return self::binance(400, -4067, 'Position side cannot be changed if there exists open orders.');
+    }
+
+    /**
+     * Binance: reduceOnly sent to a hedge-mode account. Hedge mode
+     * rejects the parameter outright with the GENERIC -1106
+     * PARAM_NOT_REQUIRED — not a -406x position-side code — so the
+     * auto-flip catch must recognise this shape by (code + parameter
+     * name in the message).
+     */
+    public static function binanceReduceOnlyNotRequired(): RequestException
+    {
+        return self::binance(400, -1106, "Parameter 'reduceonly' sent when not required.");
+    }
+
+    /**
+     * Binance: -1106 for an UNRELATED parameter. Pins that the auto-flip
+     * catch keys on the reduceOnly parameter name, not on -1106 alone —
+     * a stray optional param must never flip the position-mode flag.
+     */
+    public static function binanceRecvWindowNotRequired(): RequestException
+    {
+        return self::binance(400, -1106, "Parameter 'recvWindow' sent when not required.");
+    }
+
+    /**
      * Create a Binance-style RequestException.
      *
      * @param  int  $httpStatus  HTTP status code

@@ -564,3 +564,72 @@ describe('Strip-suffix on retry', function (): void {
         expect($resolved)->toBeNull();
     });
 });
+
+describe('Routing — diagnostic exemption', function (): void {
+    it('routes a connectivity parent step normally despite a total permanent ban', function (): void {
+        $fleet = seedFleet();
+
+        $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
+        $user = User::factory()->create();
+        $account = Account::factory()->create([
+            'user_id' => $user->id,
+            'api_system_id' => $apiSystem->id,
+            'is_active' => true,
+        ]);
+
+        // Every cronjobs candidate (tyche) carries a PERMANENT ban — a
+        // regular account step would hit the deactivation cascade.
+        ForbiddenHostname::create([
+            'api_system_id' => $apiSystem->id,
+            'account_id' => null,
+            'ip_address' => $fleet['tyche']->ip_address,
+            'type' => ForbiddenHostname::TYPE_IP_NOT_WHITELISTED,
+            'forbidden_until' => now()->addHour(),
+        ]);
+
+        $router = new StepRouter;
+        $step = Step::factory()->create([
+            'queue' => 'cronjobs',
+            'state' => Pending::class,
+            'class' => Kraite\Core\Jobs\Lifecycles\Account\TestExchangeConnectivityStep::class,
+            'relatable_type' => Account::class,
+            'relatable_id' => $account->id,
+            'arguments' => ['accountId' => $account->id],
+        ]);
+
+        expect($router->resolveQueueName($step))->toBe('tyche-cronjobs')
+            ->and($account->fresh()->is_active)->toBeTrue();
+    });
+
+    it('still vetoes a regular account step under the same total permanent ban', function (): void {
+        $fleet = seedFleet();
+
+        $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
+        $user = User::factory()->create();
+        $account = Account::factory()->create([
+            'user_id' => $user->id,
+            'api_system_id' => $apiSystem->id,
+            'is_active' => true,
+        ]);
+
+        ForbiddenHostname::create([
+            'api_system_id' => $apiSystem->id,
+            'account_id' => null,
+            'ip_address' => $fleet['tyche']->ip_address,
+            'type' => ForbiddenHostname::TYPE_IP_NOT_WHITELISTED,
+            'forbidden_until' => now()->addHour(),
+        ]);
+
+        $router = new StepRouter;
+        $step = Step::factory()->create([
+            'queue' => 'cronjobs',
+            'state' => Pending::class,
+            'class' => TestBinanceApiableJob::class,
+            'arguments' => ['accountId' => $account->id],
+        ]);
+
+        expect(fn (): ?string => $router->resolveQueueName($step))
+            ->toThrow(NoCleanWorkerException::class)
+            ->and($account->fresh()->is_active)->toBeFalse();
+    });
+});

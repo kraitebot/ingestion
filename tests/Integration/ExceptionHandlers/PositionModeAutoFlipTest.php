@@ -162,6 +162,81 @@ it('flips on -4062 (REDUCE_ONLY_CONFLICT) — family-of-codes coverage', functio
     expect($account->fresh()->on_hedge_mode)->toBeFalse();
 });
 
+it('flips on -4067 (POSITION_SIDE_CHANGE_EXISTS_OPEN_ORDERS) — family-of-codes coverage', function (): void {
+    $account = buildHedgeAccount();
+
+    $step = StepTester::createSteps([
+        ['arguments' => [
+            'accountId' => $account->id,
+            'throw_exception_stub' => 'binancePositionSideChangeBlocked',
+        ]],
+    ], TestBinanceApiableJob::class)[0];
+
+    StepTester::withSteps([$step])
+        ->withStatusMatrix([1 => [$step->id => 'pending']])
+        ->withLabel('position_mode_flip_4067')
+        ->test();
+
+    expect($account->fresh()->on_hedge_mode)->toBeFalse();
+});
+
+it('flips on -1106 when the not-required parameter is reduceOnly', function (): void {
+    // A one-way-flagged account against a real hedge-mode exchange sends
+    // reduceOnly on closing orders. Binance rejects that with the GENERIC
+    // -1106 PARAM_NOT_REQUIRED, not a -406x code — without this catch the
+    // step would fail into the cancel cascade instead of self-healing.
+    $account = buildOneWayAccount();
+    expect($account->on_hedge_mode)->toBeFalse();
+
+    $step = StepTester::createSteps([
+        ['arguments' => [
+            'accountId' => $account->id,
+            'throw_exception_stub' => 'binanceReduceOnlyNotRequired',
+        ]],
+    ], TestBinanceApiableJob::class)[0];
+
+    StepTester::withSteps([$step])
+        ->withStatusMatrix([1 => [$step->id => 'pending']])
+        ->withLabel('position_mode_flip_1106_reduceonly')
+        ->test();
+
+    $account->refresh();
+    expect($account->on_hedge_mode)->toBeTrue(
+        'A reduceOnly rejection (-1106) means the live exchange is in hedge mode; '
+        .'the flag must auto-correct so the retry sends positionSide instead.'
+    );
+
+    $step->refresh();
+    expect($step->state->value())->toBe('pending');
+    expect($step->dispatch_after)->not->toBeNull();
+    expect($step->dispatch_after->isFuture())->toBeTrue();
+});
+
+it('does NOT flip on -1106 for an unrelated parameter (recvWindow)', function (): void {
+    $account = buildOneWayAccount();
+    expect($account->on_hedge_mode)->toBeFalse();
+
+    $step = StepTester::createSteps([
+        ['arguments' => [
+            'accountId' => $account->id,
+            'throw_exception_stub' => 'binanceRecvWindowNotRequired',
+        ]],
+    ], TestBinanceApiableJob::class)[0];
+
+    // An unrelated -1106 matches no handler branch: the exception
+    // rethrows and the step fails — it must NOT be absorbed as a
+    // position-mode mismatch reschedule.
+    StepTester::withSteps([$step])
+        ->withStatusMatrix([1 => [$step->id => 'failed']])
+        ->withLabel('position_mode_no_flip_1106_unrelated')
+        ->test();
+
+    expect($account->fresh()->on_hedge_mode)->toBeFalse(
+        '-1106 alone is a generic param error; only the reduceOnly parameter name '
+        .'signals a position-mode mismatch. Anything else must not poison the flag.'
+    );
+});
+
 it('writes Log::warning AND Account::modelLog when flipping', function (): void {
     $account = buildHedgeAccount();
     Log::spy();

@@ -26,6 +26,7 @@ it('does not replace the last trusted snapshot with an HTTP 200 vendor error', f
         'bitget_api_key' => 'TESTKEY',
         'bitget_api_secret' => 'TESTSECRET',
         'bitget_passphrase' => 'TESTPASS',
+        'bitget_account_mode' => 'classic',
     ]);
     $trustedPositions = [
         'BTCUSDT:LONG' => [

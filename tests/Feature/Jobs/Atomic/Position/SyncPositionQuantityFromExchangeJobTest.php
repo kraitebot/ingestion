@@ -63,6 +63,7 @@ function buildPartialFillPosition(string $exchange, string $direction = 'SHORT')
         $accountAttributes['bitget_api_key'] = 'TESTKEY';
         $accountAttributes['bitget_api_secret'] = 'TESTSECRET';
         $accountAttributes['bitget_passphrase'] = 'TESTPASS';
+        $accountAttributes['bitget_account_mode'] = 'classic';
     }
 
     $account = Account::factory()->create($accountAttributes);

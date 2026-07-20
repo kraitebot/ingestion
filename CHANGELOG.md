@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.70.0 - 2026-07-20
+
+Ships `kraitebot/core` 1.76.0.
+
+### Bitget unified accounts + own-activity protection
+
+- [ADDED] `accounts.bitget_account_mode` migration — cached classic/unified
+  detection powering mode-aware Bitget reads.
+- [ADDED] `BitgetAdminCredentialsSeeder` — standalone sync of the service
+  Bitget key into the engine row (refuses blank values).
+- [ADDED] `kraite:smoke-bitget-admin` — live read-only smoke of the seeded
+  admin credentials (mode, permissions/withdrawals, positions, balance).
+- [ADDED] Test batteries: unified-mode resolvers and probes, account-mode
+  detection, own-activity flag auto-sync (watchdog + opening chain),
+  Binance ghost-algo gate, diagnostic router exemption, throttler
+  Redis-type regression.
+
 ## 1.69.1 - 2026-07-19
 
 Ships `kraitebot/core` 1.75.0.
