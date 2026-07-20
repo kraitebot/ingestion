@@ -195,6 +195,28 @@ it('SyncPositionOrders: fails loud outside cleanup when no syncable orders exist
     'opening' => ['opening'],
 ]);
 
+it('SyncPositionOrders: does not query terminal orders on an active position', function (): void {
+    $position = buildPlacementReadyPosition(['status' => 'active']);
+
+    foreach (['FILLED', 'CANCELLED', 'EXPIRED', 'REJECTED'] as $index => $status) {
+        Order::create([
+            'position_id' => $position->id,
+            'uuid' => Str::uuid()->toString(),
+            'client_order_id' => Str::uuid()->toString(),
+            'side' => 'SELL',
+            'position_side' => $position->direction,
+            'type' => 'LIMIT',
+            'exchange_order_id' => 'TERMINAL-'.$status,
+            'price' => '0.'.($index + 20),
+            'quantity' => '100',
+            'status' => $status,
+            'reference_status' => $status,
+        ]);
+    }
+
+    expect((new SyncPositionOrdersJob($position->id))->startOrFail())->toBeFalse();
+});
+
 it('SyncPositionOrders: records an empty pre-order cleanup as Skipped instead of Failed', function (): void {
     $position = buildPlacementReadyPosition(['status' => 'cancelling']);
     $job = new SyncPositionOrdersJob($position->id);

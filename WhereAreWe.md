@@ -28,6 +28,10 @@
 - **The trader dashboard keeps showing protection after the DCA ladder:** the
   lifecycle track ends at stop-loss and uses it as the next adverse-price
   point once every limit rung is filled.
+- **Order fallback now asks only useful questions:** polling includes only
+  working orders and leaves final local history untouched. Signed retries on
+  every exchange regenerate time-sensitive authentication after waiting, so
+  the original exchange response is not masked by an expired timestamp.
 
 ---
 

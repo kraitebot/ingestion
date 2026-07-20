@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.71.2 - 2026-07-20
+
+Ships `kraitebot/core` 1.77.2 and `brunocfalcao/step-dispatcher` 1.19.0.
+
+### Order synchronization
+
+- [FIXED] The polling fallback queries only working orders, avoiding repeated
+  exchange lookups for immutable terminal history.
+- [FIXED] Signed retries on Binance, Bybit, and KuCoin regenerate timestamps
+  and signatures after backoff instead of reusing expired authentication.
+- [ADDED] Regression coverage proves working-status selection, lifecycle
+  no-ops for terminal-only positions, and fresh retry signatures on all four
+  exchanges.
+
+### Verification
+
+- [VERIFIED] Full ingestion suite passes: 2,966 tests / 9,441 assertions.
+
 ## 1.71.1 - 2026-07-20
 
 Ships `kraitebot/core` 1.77.1 and `brunocfalcao/step-dispatcher` 1.19.0.

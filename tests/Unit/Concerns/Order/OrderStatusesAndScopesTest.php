@@ -60,6 +60,21 @@ it('syncable() excludes orders without an exchange_order_id (never placed)', fun
         ->and($rows->first()->exchange_order_id)->toBe('L2');
 });
 
+it('syncable() includes only non-terminal orders still able to change on the exchange', function (): void {
+    $position = Position::factory()->long()->create(['total_limit_orders' => 8]);
+
+    foreach (['NEW', 'PARTIALLY_FILLED', 'FILLED', 'CANCELLED', 'EXPIRED', 'REJECTED'] as $index => $status) {
+        makeStatusOrder($position, [
+            'exchange_order_id' => 'STATUS-'.$status,
+            'price' => '0.'.($index + 10),
+            'status' => $status,
+        ]);
+    }
+
+    expect(Order::syncable()->orderBy('id')->pluck('exchange_order_id')->all())
+        ->toBe(['STATUS-NEW', 'STATUS-PARTIALLY_FILLED']);
+});
+
 it('cancellable() admits LIMIT, STOP-LOSS, PROFIT-LIMIT, PROFIT-MARKET — and rejects MARKET', function (): void {
     $position = Position::factory()->long()->create(['total_limit_orders' => 4]);
     makeStatusOrder($position, ['type' => 'MARKET']);
