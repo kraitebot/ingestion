@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.71.1 - 2026-07-20
+
+Ships `kraitebot/core` 1.77.1 and `brunocfalcao/step-dispatcher` 1.19.0.
+
+### Deployment safety
+
+- [FIXED] Cooldown no longer deadlocks on populated workflow parents after
+  pausing dispatch; only executable leaf steps block the drain.
+- [ADDED] Dual-prefix regression coverage keeps real default and trading work
+  blocking shutdown while waiting parents remain safely resumable.
+
 ## 1.71.0 - 2026-07-20
 
 Ships `kraitebot/core` 1.77.0 and `brunocfalcao/step-dispatcher` 1.19.0.
