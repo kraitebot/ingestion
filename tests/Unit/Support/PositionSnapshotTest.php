@@ -69,6 +69,17 @@ it('recognizes an exact open position across every supported exchange response e
         ['BTCUSDT:BOTH' => ['symbol' => 'BTCUSDT', 'positionSide' => 'BOTH', 'positionAmt' => '-2']],
         'SHORT',
     ],
+    'Bitget UTA hedge LONG' => [
+        'bitget',
+        ['code' => '00000', 'data' => ['list' => [[
+            'symbol' => 'BTCUSDT',
+            'total' => '0.4',
+            'posSide' => 'long',
+            'holdMode' => 'hedge_mode',
+        ]]]],
+        ['BTCUSDT:LONG' => ['symbol' => 'BTCUSDT', 'positionSide' => 'LONG', 'positionAmt' => '0.4']],
+        'LONG',
+    ],
     'Bybit one-way LONG' => [
         'bybit',
         ['retCode' => 0, 'result' => ['list' => [['symbol' => 'BTCUSDT', 'side' => 'Buy', 'size' => '3']]]],
@@ -120,6 +131,7 @@ it('treats a valid empty exchange response as flat', function (string $canonical
 })->with([
     'Binance' => ['binance', []],
     'Bitget' => ['bitget', ['code' => '00000', 'data' => []]],
+    'Bitget UTA' => ['bitget', ['code' => '00000', 'data' => ['list' => []]]],
     'Bybit' => ['bybit', ['retCode' => 0, 'result' => ['list' => []]]],
     'KuCoin' => ['kucoin', ['code' => '200000', 'data' => []]],
 ]);

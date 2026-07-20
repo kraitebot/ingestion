@@ -14,7 +14,8 @@ it('routes every orchestrator child build through the locked helper', function (
 
         $source = file_get_contents($file->getPathname());
 
-        if (str_contains($source, '$this->step->makeItAParent()')) {
+        if (str_contains($source, '$this->step->makeItAParent()')
+            || str_contains($source, '$this->step->update([\'child_block_uuid\'')) {
             $offenders[] = str_replace($jobsDirectory.'/', '', $file->getPathname());
         }
     }

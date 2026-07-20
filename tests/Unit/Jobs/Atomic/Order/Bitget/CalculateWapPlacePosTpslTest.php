@@ -133,18 +133,16 @@ it('findSiblingStopLossOrder returns null when no SL leg exists on the position'
     expect($job->findSiblingStopLossOrder())->toBeNull();
 });
 
-it('source code routes Bitget WAP through placePosTpsl (not the broken apiModifyTpsl)', function (): void {
-    // Pin the structural fix at the source level so a future refactor
-    // that "simplifies" back to apiModifyTpsl is caught at test time
-    // instead of in production. The Bitget modify-tpsl-order endpoint
-    // returns HTTP 400 / code 400172 for pos_profit / pos_loss orders
-    // (verified 2026-04-26 + 2026-04-29). place-pos-tpsl is the only
-    // proven path for atomic TP/SL modify on position-attached orders.
+it('keeps classic paired replacement while UTA uses individual strategy modification', function (): void {
+    // Classic position-attached TP/SL legs still require place-pos-tpsl.
+    // UTA creates standalone strategy legs, so WAP must modify only the
+    // profit strategy and leave the stop strategy untouched.
     $source = file_get_contents(
         (new ReflectionClass(CalculateWapAndModifyProfitOrderJob::class))->getFileName()
     );
 
-    expect($source)->not->toContain('apiModifyTpsl(')
+    expect($source)->toContain('BitgetAccountMode::Unified')
+        ->and($source)->toContain('apiModifyTpsl(')
         ->and($source)->toContain('placePosTpsl');
 });
 

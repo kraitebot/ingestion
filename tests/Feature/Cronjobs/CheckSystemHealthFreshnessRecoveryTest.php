@@ -215,3 +215,65 @@ it('alerts again after the post-warmup recovery marker is gone', function (): vo
         fn (AlertNotification $notification): bool => $notification->title === "Account balance history stale (#{$account->id})",
     );
 });
+
+function makeStaleHealthSiblingOn(string $canonical, string $token, Carbon\CarbonInterface $syncedAt): ExchangeSymbol
+{
+    $apiSystem = ApiSystem::query()->firstOrCreate(
+        ['canonical' => $canonical],
+        [
+            'name' => ucfirst($canonical),
+            'is_exchange' => true,
+            'recvwindow_margin' => 1_000,
+        ],
+    );
+
+    return ExchangeSymbol::factory()
+        ->taapiVerified()
+        ->long()
+        ->create([
+            'api_system_id' => $apiSystem->id,
+            'token' => $token,
+            'quote' => 'USDT',
+            'symbol_id' => random_int(100_000, 999_999),
+            'leverage_brackets' => [['initialLeverage' => 20]],
+            'indicators_timeframe' => '1h',
+            'indicators_synced_at' => $syncedAt,
+            'btc_correlation_pearson' => ['1h' => 0.8],
+            'btc_correlation_spearman' => ['1h' => 0.8],
+            'btc_correlation_rolling' => ['1h' => 0.8],
+            'btc_correlation_stability' => ['1h' => 0.8],
+            'btc_elasticity_long' => ['1h' => 1.0],
+            'btc_elasticity_short' => ['1h' => 1.0],
+        ]);
+}
+
+it('suppresses a stale non-Binance sibling while its Binance source is fresh', function (): void {
+    $token = 'COPYLAG'.Str::upper(Str::random(6));
+
+    // Source signal engine provably current; sibling merely awaiting its copy turn.
+    makeStaleHealthSiblingOn('binance', $token, now()->subMinutes(5));
+    makeStaleHealthSiblingOn('bybit', $token, now()->subMinutes(121));
+
+    $this->artisan('kraite:cron-check-system-health')->assertSuccessful();
+
+    Notification::assertNotSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->title === "Indicators stale for {$token}USDT",
+    );
+});
+
+it('still alerts a stale non-Binance sibling when its Binance source is also stale', function (): void {
+    $token = 'SRCDEAD'.Str::upper(Str::random(6));
+
+    makeStaleHealthSiblingOn('binance', $token, now()->subMinutes(121));
+    makeStaleHealthSiblingOn('bybit', $token, now()->subMinutes(121));
+
+    $this->artisan('kraite:cron-check-system-health')->assertSuccessful();
+
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->title === "Indicators stale for {$token}USDT",
+    );
+});

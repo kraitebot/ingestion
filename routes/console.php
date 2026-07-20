@@ -227,7 +227,11 @@ if (! $isCoolingDown()) {
         ->withoutOverlapping();
 
     Schedule::command('kraite:cron-refresh-exchange-symbols')
-        ->hourlyAt(15)
+        ->cron('15 1-5,7-11,13-17,19-23 * * *')
+        ->withoutOverlapping();
+
+    Schedule::command('kraite:cron-refresh-exchange-symbols --with-brackets')
+        ->cron('15 */6 * * *')
         ->withoutOverlapping();
 
     Schedule::command('kraite:cron-conclude-symbols-direction')

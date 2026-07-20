@@ -34,8 +34,9 @@ it('keeps the open-slot unique constraint active while a position is waping', fu
         ->and($wapingPosition->fresh()->status)->toBe('waping');
 });
 
-it('still permits the opposite direction while an account is in hedge mode', function (): void {
+it('rejects the opposite direction while an account is in hedge mode', function (): void {
     [$account, $exchangeSymbol] = makeOpenSlotFixture('WAPHEDGE');
+    $account->update(['on_hedge_mode' => true]);
 
     Position::factory()->create([
         'account_id' => $account->id,
@@ -44,18 +45,15 @@ it('still permits the opposite direction while an account is in hedge mode', fun
         'status' => 'waping',
     ]);
 
-    $short = Position::factory()->create([
+    expect(fn () => Position::factory()->create([
         'account_id' => $account->id,
         'exchange_symbol_id' => $exchangeSymbol->id,
         'direction' => 'SHORT',
         'status' => 'new',
-    ]);
-
-    expect($short->fresh()->direction)->toBe('SHORT')
-        ->and($short->status)->toBe('new');
+    ]))->toThrow(QueryException::class);
 });
 
-it('still permits a new slot after the previous position is terminal', function (): void {
+it('still permits either direction after all previous positions are terminal', function (): void {
     [$account, $exchangeSymbol] = makeOpenSlotFixture('WAPTERMINAL');
 
     $closed = Position::factory()->create([
@@ -65,13 +63,21 @@ it('still permits a new slot after the previous position is terminal', function 
         'status' => 'closed',
     ]);
 
+    $previousOppositeSide = Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'direction' => 'SHORT',
+        'status' => 'closed',
+    ]);
+
     $new = Position::factory()->create([
         'account_id' => $account->id,
         'exchange_symbol_id' => $exchangeSymbol->id,
-        'direction' => 'LONG',
+        'direction' => 'SHORT',
         'status' => 'new',
     ]);
 
     expect($closed->fresh()->status)->toBe('closed')
+        ->and($previousOppositeSide->fresh()->status)->toBe('closed')
         ->and($new->fresh()->status)->toBe('new');
 });

@@ -61,6 +61,7 @@ function buildBitgetTpslJobFixture(?string $tpExchangeId, ?string $slExchangeId)
     $account = Account::factory()->create([
         'api_system_id' => $apiSystem->id,
         'stop_market_initial_percentage' => '2.50',
+        'bitget_account_mode' => 'classic',
     ]);
 
     $position = Position::factory()->long()->create([

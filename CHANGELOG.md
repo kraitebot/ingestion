@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.71.0 - 2026-07-20
+
+Ships `kraitebot/core` 1.77.0 and `brunocfalcao/step-dispatcher` 1.19.0.
+
+### Trading and fleet capacity
+
+- [ADDED] Full Bitget Classic/Unified and one-way/hedge trading regression
+  coverage across entry, protection, sync, correction, close, and recovery.
+- [CHANGED] Leverage-bracket sweeps run explicitly every six hours; ordinary
+  hourly catalogue runs create no bracket steps.
+- [CHANGED] Athena's indicator pool grows from 10 to 16 processes.
+- [ADDED] Dispatcher atomicity, rerun safety, bounded-query, indicator rollback,
+  catalogue cadence, and connectivity fast-pass coverage.
+
+### Verification
+
+- [VERIFIED] Full local ingestion, dispatcher, admin, website, and syntax gates
+  pass before release.
+
 ## 1.70.0 - 2026-07-20
 
 Ships `kraitebot/core` 1.76.0.

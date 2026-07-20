@@ -239,6 +239,60 @@ test('override falls back silently when symbol already has an active position on
     expect($newSlotPosition->exchange_symbol_id)->toBe($alternative->id);
 });
 
+test('override cannot reuse an active symbol in the opposite direction on a hedge account', function (): void {
+    $account = createAccountForTokenDiscoveryTest();
+    $account->updateSaving(['on_hedge_mode' => true]);
+    createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
+
+    $alreadyOpen = createExchangeSymbolWithData(
+        'HEDGEOPENED',
+        'LONG',
+        ['1h' => -0.95],
+        ['1h' => 0.1],
+        ['1h' => -2.0],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $alreadyOpen->id,
+        'parsed_trading_pair' => $alreadyOpen->parsed_trading_pair,
+        'status' => 'active',
+        'direction' => 'LONG',
+        'opened_at' => now()->subMinutes(30),
+    ]);
+
+    $alreadyOpen->update(['direction' => 'SHORT']);
+
+    $alternative = createExchangeSymbolWithData(
+        'HEDGEALTERNATIVE',
+        'SHORT',
+        ['1h' => -0.5],
+        ['1h' => 0.1],
+        ['1h' => -1.0],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    Config::set('kraite.position_creation.symbol_override', [
+        'account_id' => $account->id,
+        'symbol' => $alreadyOpen->parsed_trading_pair,
+    ]);
+
+    createPositionSlot($account, 'SHORT');
+
+    $account->assignBestTokenToNewPositions();
+
+    $newSlotPosition = Position::query()
+        ->where('account_id', $account->id)
+        ->where('status', 'new')
+        ->sole();
+
+    expect($newSlotPosition->exchange_symbol_id)->toBe($alternative->id)
+        ->and($newSlotPosition->exchange_symbol_id)->not->toBe($alreadyOpen->id);
+});
+
 test('override falls back silently when symbol direction does not match the slot direction', function (): void {
     $account = createAccountForTokenDiscoveryTest();
     createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);

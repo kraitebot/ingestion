@@ -122,6 +122,77 @@ it('fans out child checks only to API execution servers that need whitelisting',
         ->and($children->pluck('arguments.serverId')->sort()->values()->all())->toBe([$apollo->id, $ares->id]);
 });
 
+it('rolls back every connectivity child and rebuilds the full fan-out after a partial creation failure', function (): void {
+    $account = createConnectivityAccount();
+    $apollo = createConnectivityServer([
+        'hostname' => 'atomic-connectivity-apollo',
+        'ip_address' => '203.0.113.20',
+    ]);
+    $ares = createConnectivityServer([
+        'hostname' => 'atomic-connectivity-ares',
+        'ip_address' => '203.0.113.21',
+    ]);
+    $unrelatedAccount = Account::factory()->create([
+        'api_system_id' => $account->api_system_id,
+        'user_id' => User::factory()->create()->id,
+    ]);
+    $unrelatedChild = Step::create([
+        'class' => TestServerConnectivityStep::class,
+        'queue' => 'default',
+        'relatable_type' => Account::class,
+        'relatable_id' => $unrelatedAccount->id,
+        'arguments' => [
+            'accountId' => $unrelatedAccount->id,
+            'serverId' => $apollo->id,
+        ],
+        'block_uuid' => '11111111-1111-4111-8111-111111111111',
+        'index' => 1,
+    ]);
+
+    $payload = app(AccountServerConnectivityService::class)->start($account);
+    $parent = Step::query()->where('block_uuid', $payload['block_uuid'])->sole();
+
+    $childrenForAccount = fn () => Step::query()
+        ->where('class', TestServerConnectivityStep::class)
+        ->where('relatable_type', Account::class)
+        ->where('relatable_id', $account->id)
+        ->get();
+
+    expect($parent->child_block_uuid)->toBeNull()
+        ->and($childrenForAccount())->toHaveCount(0)
+        ->and($unrelatedChild->fresh())->not->toBeNull();
+
+    $failAresCreation = true;
+    Step::creating(function (Step $step) use ($ares, &$failAresCreation): void {
+        if ($failAresCreation
+            && $step->class === TestServerConnectivityStep::class
+            && ($step->arguments['serverId'] ?? null) === $ares->id) {
+            throw new RuntimeException('Simulated connectivity child creation failure.');
+        }
+    });
+
+    try {
+        expect(fn () => runConnectivityParentStep($parent->fresh(), $account))
+            ->toThrow(RuntimeException::class, 'Simulated connectivity child creation failure.');
+    } finally {
+        $failAresCreation = false;
+    }
+
+    expect($parent->fresh()->child_block_uuid)->toBeNull()
+        ->and($childrenForAccount())->toHaveCount(0)
+        ->and($unrelatedChild->fresh())->not->toBeNull();
+
+    runConnectivityParentStep($parent->fresh(), $account);
+
+    $children = $childrenForAccount();
+
+    expect($parent->fresh()->child_block_uuid)->not->toBeNull()
+        ->and($children)->toHaveCount(2)
+        ->and($children->pluck('arguments.serverId')->sort()->values()->all())->toBe([$apollo->id, $ares->id])
+        ->and($children->pluck('priority')->unique()->all())->toBe(['high'])
+        ->and($unrelatedChild->fresh())->not->toBeNull();
+});
+
 it('maps per-server step states into console connectivity statuses', function (): void {
     $account = createConnectivityAccount();
     $apollo = createConnectivityServer(['hostname' => 'apollo', 'ip_address' => '203.0.113.10']);
@@ -369,4 +440,37 @@ it('keeps reporting testing while the parent is still pending without children',
 
     expect($status['is_complete'])->toBeFalse()
         ->and(collect($status['servers'])->pluck('status')->unique()->all())->toBe(['testing']);
+});
+
+it('queues the connectivity orchestrator on the priority lane, never behind bulk work', function (): void {
+    $account = createConnectivityAccount();
+    createConnectivityServer(['hostname' => 'apollo', 'ip_address' => '203.0.113.10']);
+
+    $payload = app(AccountServerConnectivityService::class)->start($account);
+
+    $parent = Step::query()
+        ->where('block_uuid', $payload['block_uuid'])
+        ->where('class', TestExchangeConnectivityStep::class)
+        ->sole();
+
+    expect($parent->queue)->toBe('priority')
+        ->and($parent->priority)->toBe('high');
+});
+
+it('creates the per-server probe children on the dispatcher fast pass', function (): void {
+    $account = createConnectivityAccount();
+    createConnectivityServer(['hostname' => 'apollo', 'ip_address' => '203.0.113.10']);
+    createConnectivityServer(['hostname' => 'ares', 'ip_address' => '203.0.113.11']);
+
+    $payload = app(AccountServerConnectivityService::class)->start($account);
+    $parent = Step::query()->where('block_uuid', $payload['block_uuid'])->sole();
+    runConnectivityParentStep($parent->fresh(), $account);
+
+    $children = Step::query()
+        ->where('block_uuid', $parent->fresh()->child_block_uuid)
+        ->where('class', TestServerConnectivityStep::class)
+        ->get();
+
+    expect($children)->toHaveCount(2)
+        ->and($children->pluck('priority')->unique()->all())->toBe(['high']);
 });

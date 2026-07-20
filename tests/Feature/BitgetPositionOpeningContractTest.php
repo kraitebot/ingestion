@@ -84,8 +84,8 @@ it('builds the complete Bitget opening chain once with combined TP and SL protec
         'position_id' => $position->id,
         'message' => 'Position dispatching initiated',
     ])->and($defaultSteps->pluck('class')->all())->toBe([
-        VerifyTradingPairNotOpenJob::class,
         SyncPositionModeJob::class,
+        VerifyTradingPairNotOpenJob::class,
         SetMarginModeJob::class,
         PreparePositionDataJob::class,
         DetermineLeverageJob::class,

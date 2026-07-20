@@ -85,6 +85,51 @@ it('paces each Bitget endpoint at its documented limit', function (
         'UID_A_KEY',
         50,
     ],
+    'UTA position reads are limited to 20 requests per second per UID' => [
+        '/api/v3/position/current-position?category=USDT-FUTURES',
+        'UID_A_KEY',
+        50,
+    ],
+    'UTA account settings reads are limited to 20 requests per second per UID' => [
+        '/api/v3/account/settings',
+        'UID_A_KEY',
+        50,
+    ],
+    'UTA regular open-order reads are limited to 20 requests per second per UID' => [
+        '/api/v3/trade/unfilled-orders?category=USDT-FUTURES',
+        'UID_A_KEY',
+        50,
+    ],
+    'UTA strategy reads are limited to 20 requests per second per UID' => [
+        '/api/v3/trade/unfilled-strategy-orders?category=USDT-FUTURES&type=tpsl',
+        'UID_A_KEY',
+        50,
+    ],
+    'UTA fill reads are limited to 20 requests per second per UID' => [
+        '/api/v3/trade/fills?category=USDT-FUTURES',
+        'UID_A_KEY',
+        50,
+    ],
+    'UTA mutations are limited to 10 requests per second per UID' => [
+        '/api/v3/trade/place-strategy-order',
+        'UID_A_KEY',
+        100,
+    ],
+    'UTA leverage changes are limited to 10 requests per second per UID' => [
+        '/api/v3/account/set-leverage',
+        'UID_A_KEY',
+        100,
+    ],
+    'UTA close position is limited to 5 requests per second per UID' => [
+        '/api/v3/trade/close-positions',
+        'UID_A_KEY',
+        200,
+    ],
+    'UTA cancel all is limited to 5 requests per second per UID' => [
+        '/api/v3/trade/cancel-symbol-order',
+        'UID_A_KEY',
+        200,
+    ],
 ]);
 
 it('conservatively shares a private endpoint budget when Bitget UID cannot be derived', function (): void {

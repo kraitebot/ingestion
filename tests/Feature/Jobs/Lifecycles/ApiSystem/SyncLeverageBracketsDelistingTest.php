@@ -17,15 +17,12 @@ use StepDispatcher\Models\Step;
  * otherwise the exchange returns a "contract removed" error and the whole
  * parent step cascades as failed on every hourly refresh.
  */
-function runSyncLeverageBracketsLifecycle(string $jobClass, ApiSystem $apiSystem): string
+function runSyncLeverageBracketsLifecycle(string $jobClass, ApiSystem $apiSystem): ?string
 {
-    $childBlockUuid = (string) Str::uuid();
-
     $step = Step::create([
         'class' => $jobClass,
         'arguments' => ['apiSystemId' => $apiSystem->id],
         'block_uuid' => (string) Str::uuid(),
-        'child_block_uuid' => $childBlockUuid,
         'index' => 1,
     ]);
 
@@ -33,7 +30,7 @@ function runSyncLeverageBracketsLifecycle(string $jobClass, ApiSystem $apiSystem
     $job->step = $step;
     $job->compute();
 
-    return $childBlockUuid;
+    return $step->fresh()->child_block_uuid;
 }
 
 function createExchangeSymbolForLifecycle(ApiSystem $apiSystem, string $token, bool $delisted): ExchangeSymbol

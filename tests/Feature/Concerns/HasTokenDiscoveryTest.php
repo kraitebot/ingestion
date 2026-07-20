@@ -24,6 +24,52 @@ beforeEach(function (): void {
     );
 });
 
+it('keeps the symbol unavailable across directions in hedge mode', function (): void {
+    $account = createAccountForTokenDiscoveryTest('hedge-opposite');
+    $account->updateSaving(['on_hedge_mode' => true]);
+    $symbol = createExchangeSymbolWithData(
+        'HEDGEOPP',
+        'SHORT',
+        ['1h' => 0.5],
+        ['1h' => 1.0],
+        ['1h' => 1.0],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $symbol->id,
+        'direction' => 'LONG',
+        'status' => 'active',
+    ]);
+
+    expect($account->availableExchangeSymbols()->pluck('id'))
+        ->not->toContain($symbol->id);
+});
+
+it('keeps the symbol unavailable across directions in one-way mode', function (): void {
+    $account = createAccountForTokenDiscoveryTest('one-way-opposite');
+    $account->updateSaving(['on_hedge_mode' => false]);
+    $symbol = createExchangeSymbolWithData(
+        'ONEWAYOPP',
+        'SHORT',
+        ['1h' => 0.5],
+        ['1h' => 1.0],
+        ['1h' => 1.0],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $symbol->id,
+        'direction' => 'LONG',
+        'status' => 'active',
+    ]);
+
+    expect($account->availableExchangeSymbols()->pluck('id'))
+        ->not->toContain($symbol->id);
+});
+
 /**
  * Helper to create a test account with all required relationships
  */
@@ -1594,6 +1640,80 @@ test('excludes tokens with open positions on exchange from api_snapshots', funct
 
     // Should select NOTOPEN (OPENEXCHANGE is excluded due to api_snapshots)
     expect($position->exchange_symbol_id)->toBe($availableToken->id);
+});
+
+test('excludes the opposite exchange snapshot side in hedge mode', function (): void {
+    $account = createAccountForTokenDiscoveryTest('hedge-snapshot-opposite');
+    $account->updateSaving(['on_hedge_mode' => true]);
+    createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
+    $oppositeCandidate = createExchangeSymbolWithData(
+        'HEDGESNAPSHOT',
+        'SHORT',
+        ['1h' => -0.95],
+        ['1h' => 2.0],
+        ['1h' => -1.5],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    $fallback = createExchangeSymbolWithData(
+        'HEDGEFALLBACK',
+        'SHORT',
+        ['1h' => -0.5],
+        ['1h' => 1.0],
+        ['1h' => -0.5],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    Kraite\Core\Models\ApiSnapshot::storeFor($account, 'account-positions', [
+        $oppositeCandidate->parsed_trading_pair.':LONG' => [
+            'symbol' => $oppositeCandidate->parsed_trading_pair,
+            'positionSide' => 'LONG',
+            'positionAmt' => '0.5',
+        ],
+    ]);
+    createPositionSlot($account, 'SHORT');
+
+    $account->assignBestTokenToNewPositions();
+
+    expect($account->positions()->where('status', 'new')->sole()->exchange_symbol_id)
+        ->toBe($fallback->id);
+});
+
+test('blocks the opposite exchange snapshot side in one-way mode', function (): void {
+    $account = createAccountForTokenDiscoveryTest('one-way-snapshot-opposite');
+    $account->updateSaving(['on_hedge_mode' => false]);
+    createBtcExchangeSymbol('LONG', '1h', $account->api_system_id, $account->trading_quote);
+    $occupiedCandidate = createExchangeSymbolWithData(
+        'ONEWAYSNAPSHOT',
+        'SHORT',
+        ['1h' => -0.95],
+        ['1h' => 2.0],
+        ['1h' => -1.5],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    $fallback = createExchangeSymbolWithData(
+        'ONEWAYFALLBACK',
+        'SHORT',
+        ['1h' => -0.5],
+        ['1h' => 1.0],
+        ['1h' => -0.5],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    Kraite\Core\Models\ApiSnapshot::storeFor($account, 'account-positions', [
+        $occupiedCandidate->parsed_trading_pair.':LONG' => [
+            'symbol' => $occupiedCandidate->parsed_trading_pair,
+            'positionSide' => 'LONG',
+            'positionAmt' => '0.5',
+        ],
+    ]);
+    createPositionSlot($account, 'SHORT');
+
+    $account->assignBestTokenToNewPositions();
+
+    expect($account->positions()->where('status', 'new')->sole()->exchange_symbol_id)
+        ->toBe($fallback->id);
 });
 
 test('excludes tokens with open orders on exchange from api_snapshots', function (): void {

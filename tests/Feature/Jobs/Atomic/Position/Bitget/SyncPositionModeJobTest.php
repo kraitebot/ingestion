@@ -35,6 +35,7 @@ function bitgetPositionModeSyncFixture(bool $hedgeMode, string $quote = 'USDC'):
         'bitget_api_key' => 'MODE-KEY',
         'bitget_api_secret' => 'MODE-SECRET',
         'bitget_passphrase' => 'MODE-PASSPHRASE',
+        'bitget_account_mode' => 'classic',
     ]);
     $account = ($hedgeMode ? $accountFactory->hedgeMode() : $accountFactory->oneWayMode())->create();
     $position = Position::factory()->long()->create([

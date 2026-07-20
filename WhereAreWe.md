@@ -1,3 +1,36 @@
+# WhereAreWe — 2026-07-20 (exchange modes and dispatcher capacity)
+
+## Date
+
+2026-07-20
+
+## This release (2026-07-20)
+
+- **Bitget trading now spans every supported account shape:** Classic and
+  Unified accounts can use either one-way or hedge exchange mode across the
+  full USDT and USDC position lifecycle. Binance remains compatible with both
+  one-way and hedge accounts.
+- **Exchange hedge mode does not change Kraite's strategy:** one account and
+  trading pair can still own only one non-terminal Kraite position. The mode
+  changes API request and response handling, never authorizes simultaneous
+  long and short positions.
+- **Dispatcher recovery cannot replay a settled child tree:** populated parent
+  workflows remain durable, empty child blocks stay recoverable, and scans
+  remain bounded to actionable rows.
+- **Connectivity probes are fast and complete:** the root uses the priority
+  lane, server children keep their exact queues, and fan-out is atomic.
+- **Hourly symbol refresh no longer floods leverage work:** normal hourly runs
+  create zero bracket steps; the full-universe refresh runs every six hours.
+  Athena's indicator pool increases from 10 to 16 workers.
+- **Health alerts distinguish stale analysis from copy lag:** a fresh Binance
+  source suppresses stale copied indicator rows, while a stale source still
+  alerts.
+- **The trader dashboard keeps showing protection after the DCA ladder:** the
+  lifecycle track ends at stop-loss and uses it as the next adverse-price
+  point once every limit rung is filled.
+
+---
+
 # WhereAreWe — 2026-07-20 (Bitget unified accounts + own-activity protection)
 
 ## Date

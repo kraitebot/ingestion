@@ -112,6 +112,33 @@ it('maps a USDC Bitget account response instead of filtering for USDT', function
     ]);
 });
 
+it('maps the UTA account assets envelope into the shared account shape', function (): void {
+    $response = new Response(200, ['Content-Type' => 'application/json'], json_encode([
+        'code' => '00000',
+        'msg' => 'success',
+        'data' => [
+            'accountEquity' => '311.50',
+            'unrealisedPnl' => '3.25',
+            'effEquity' => '204.75',
+            'mmr' => '12.50',
+            'imr' => '94.20',
+            'assets' => [
+                ['coin' => 'USDT', 'equity' => '100.00', 'available' => '60.00'],
+                ['coin' => 'BGB', 'equity' => '1.15582129', 'available' => '1.15582129'],
+            ],
+        ],
+    ]));
+
+    expect((new BitgetApiDataMapper)->resolveQueryAccountResponse($response))->toBe([
+        'totalWalletBalance' => '311.50',
+        'totalUnrealizedProfit' => '3.25',
+        'totalMaintMargin' => '12.50',
+        'totalMarginBalance' => '311.50',
+        'availableFunds' => '204.75',
+        'initialMargin' => '94.20',
+    ]);
+});
+
 it('uses the exchange-symbol quote for Bitget klines mark price and leverage brackets', function (): void {
     ['apiSystem' => $apiSystem, 'exchangeSymbol' => $exchangeSymbol] = bitgetUsdcRequestFixture();
     $mapper = new BitgetApiDataMapper;

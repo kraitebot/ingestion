@@ -153,7 +153,7 @@ it('account isReadyToTrade returns false when subscription is paused (gate 3)', 
     expect($account->isReadyToTrade())->toBeFalse();
 });
 
-it('account isReadyToTrade blocks a unified BitGet account until the v3 order surface ships', function (): void {
+it('account isReadyToTrade allows a unified BitGet account after the v3 order surface ships', function (): void {
     $bitget = Kraite\Core\Models\ApiSystem::firstOrCreate(
         ['canonical' => 'bitget'],
         ['name' => 'BitGet', 'is_exchange' => true, 'recvwindow_margin' => 1000]
@@ -164,7 +164,7 @@ it('account isReadyToTrade blocks a unified BitGet account until the v3 order su
         'bitget_account_mode' => 'unified',
     ]);
 
-    expect($account->isReadyToTrade())->toBeFalse();
+    expect($account->isReadyToTrade())->toBeTrue();
 });
 
 it('account isReadyToTrade allows a classic BitGet account through the mode gate', function (): void {

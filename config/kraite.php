@@ -596,7 +596,7 @@ return [
             // cores. Web stack moved to pheme on 2026-06-01.
             'athena' => [
                 'user-data-stream' => ['processes' => 5],
-                'indicators' => ['processes' => 10],
+                'indicators' => ['processes' => 16],
                 'athena' => ['processes' => 1],
             ],
             // Trading workers — interchangeable Horizon consumers on

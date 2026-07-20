@@ -24,9 +24,14 @@ use Kraite\Core\Support\Recovery\RecoveryReport;
  * loudly HERE instead of at 3am mid-disaster. The Binance API-shape
  * mapping is validated separately by the live `--dry-run`.
  */
-function testRecoverer(Account $account, array $positions, array $openOrders, array $fills): AbstractPositionRecoverer
-{
-    return new class($account, new RecoveryReport, null, $positions, $openOrders, $fills) extends AbstractPositionRecoverer
+function testRecoverer(
+    Account $account,
+    array $positions,
+    array $openOrders,
+    array $fills,
+    ?RecoveryReport $report = null,
+): AbstractPositionRecoverer {
+    return new class($account, $report ?? new RecoveryReport, null, $positions, $openOrders, $fills) extends AbstractPositionRecoverer
     {
         public function __construct(
             Account $account,
@@ -175,4 +180,52 @@ it('is idempotent — a second recovery run creates nothing new', function (): v
 
     expect(Position::count())->toBe($positionsAfterFirst);
     expect(Order::count())->toBe($ordersAfterFirst);
+});
+
+it('rejects both exchange sides for one symbol without partially recovering either side', function (): void {
+    $account = seedBinanceAccountAndSymbol();
+    $report = new RecoveryReport;
+    $long = cannedLongPosition()[0];
+    $short = [
+        ...$long,
+        'positionAmt' => '-4',
+        'positionSide' => 'SHORT',
+    ];
+
+    testRecoverer($account, [$long, $short], cannedOpenOrders(), cannedFills(), $report)->run();
+
+    expect(Position::query()->where('account_id', $account->id)->count())->toBe(0)
+        ->and(Order::query()->count())->toBe(0)
+        ->and($report->positionsCreated)->toBe(0)
+        ->and($report->positionsSkipped)->toBe(2)
+        ->and($report->warnings)->toHaveCount(1)
+        ->and($report->warnings[0])->toContain('simultaneous LONG and SHORT exchange positions');
+});
+
+it('does not replace an open local side with the opposite exchange side', function (): void {
+    $account = seedBinanceAccountAndSymbol();
+    $exchangeSymbol = ExchangeSymbol::query()->where('api_system_id', $account->api_system_id)->firstOrFail();
+    $localLong = Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'parsed_trading_pair' => 'APEUSDT',
+        'direction' => 'LONG',
+        'status' => 'active',
+        'opened_at' => now()->subHour(),
+    ]);
+    $short = [
+        ...cannedLongPosition()[0],
+        'positionAmt' => '-4',
+        'positionSide' => 'SHORT',
+    ];
+    $report = new RecoveryReport;
+
+    testRecoverer($account, [$short], [], [], $report)->run();
+
+    expect(Position::query()->where('account_id', $account->id)->get())->toHaveCount(1)
+        ->and($localLong->fresh()->direction)->toBe('LONG')
+        ->and($report->positionsCreated)->toBe(0)
+        ->and($report->positionsSkipped)->toBe(1)
+        ->and($report->warnings)->toHaveCount(1)
+        ->and($report->warnings[0])->toContain('already has an open LONG position');
 });

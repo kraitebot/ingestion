@@ -1113,3 +1113,143 @@ test('still concludes when a same-run set has minor sub-tolerance timestamp spre
     expect($result['result'])->toBe('concluded')
         ->and($result['direction'])->toBe('LONG');
 });
+
+test('reuses one child workflow and preserves workflow identity when a stale conclusion job reruns', function (): void {
+    seedIndicatorsForConcludeTest();
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONCHAINONCE');
+    $parent = createStepForConcludeJob($exchangeSymbol, '1m');
+    createInconclusiveIndicatorHistories($exchangeSymbol, '1m');
+
+    $firstJob = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1m');
+    $firstJob->step = Step::findOrFail($parent->id);
+
+    expect($firstJob->compute()['result'])->toBe('inconclusive');
+
+    $firstChildBlockUuid = $parent->fresh()->child_block_uuid;
+    $firstChildren = Step::where('block_uuid', $firstChildBlockUuid)->orderBy('index')->get();
+
+    expect($firstChildBlockUuid)->not->toBeNull()
+        ->and($firstChildren)->toHaveCount(2)
+        ->and($firstChildren->pluck('workflow_id')->unique()->values()->all())->toBe([$parent->workflow_id])
+        ->and($firstChildren->pluck('group')->unique()->values()->all())->toBe(['alpha']);
+
+    $staleJob = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1m');
+    $staleJob->step = Step::findOrFail($parent->id);
+
+    expect($staleJob->compute()['result'])->toBe('inconclusive')
+        ->and($parent->fresh()->child_block_uuid)->toBe($firstChildBlockUuid)
+        ->and(Step::whereIn('class', [
+            QuerySymbolIndicatorsJob::class,
+            ConcludeSymbolDirectionAtTimeframeJob::class,
+        ])->whereKeyNot($parent->id)
+            ->where('arguments->exchangeSymbolId', $exchangeSymbol->id)
+            ->count())->toBe(2);
+});
+
+test('rolls back an incomplete next-timeframe child workflow', function (): void {
+    seedIndicatorsForConcludeTest();
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONCHAINROLLBACK');
+    $parent = createStepForConcludeJob($exchangeSymbol, '1m');
+    createInconclusiveIndicatorHistories($exchangeSymbol, '1m');
+
+    Step::creating(static function (Step $candidate) use ($parent): void {
+        if ($candidate->class === ConcludeSymbolDirectionAtTimeframeJob::class
+            && $candidate->block_uuid !== $parent->block_uuid) {
+            throw new RuntimeException('simulated second child insert failure');
+        }
+    });
+
+    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1m');
+    $job->step = Step::findOrFail($parent->id);
+
+    expect(fn () => $job->compute())->toThrow(RuntimeException::class, 'simulated second child insert failure')
+        ->and($parent->fresh()->child_block_uuid)->toBeNull()
+        ->and(Step::where('class', QuerySymbolIndicatorsJob::class)
+            ->where('arguments->exchangeSymbolId', $exchangeSymbol->id)
+            ->exists())->toBeFalse();
+});
+
+test('does not duplicate finalization steps when a stale conclusion job sees fresher indicators', function (): void {
+    seedIndicatorsForConcludeTest();
+    KraiteSettings::whereKey(1)->update(['corr_enabled' => true]);
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONFINALONCE');
+    $parent = createStepForConcludeJob($exchangeSymbol, '1h');
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    $firstJob = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h');
+    $firstJob->step = Step::findOrFail($parent->id);
+
+    expect($firstJob->compute()['result'])->toBe('concluded');
+
+    $firstFinalizationIds = Step::where('block_uuid', $parent->block_uuid)
+        ->whereKeyNot($parent->id)
+        ->orderBy('id')
+        ->pluck('id')
+        ->all();
+
+    expect($firstFinalizationIds)->toHaveCount(6);
+
+    $this->travel(10)->minutes();
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    $staleJob = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h');
+    $staleJob->step = Step::findOrFail($parent->id);
+
+    expect($staleJob->compute()['result'])->toBe('concluded')
+        ->and(Step::where('block_uuid', $parent->block_uuid)
+            ->whereKeyNot($parent->id)
+            ->orderBy('id')
+            ->pluck('id')
+            ->all())->toBe($firstFinalizationIds);
+});
+
+test('fills a partial finalization set without duplicating its existing step', function (): void {
+    seedIndicatorsForConcludeTest();
+    KraiteSettings::whereKey(1)->update(['corr_enabled' => true]);
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONFINALPARTIAL');
+    $parent = createStepForConcludeJob($exchangeSymbol, '1h');
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    $existingConfirm = Step::create([
+        'class' => ConfirmPriceAlignmentWithDirectionJob::class,
+        'queue' => 'indicators',
+        'block_uuid' => $parent->block_uuid,
+        'group' => $parent->group,
+        'index' => 3,
+        'arguments' => ['exchangeSymbolId' => $exchangeSymbol->id],
+    ]);
+
+    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h');
+    $job->step = Step::findOrFail($parent->id);
+
+    expect($job->compute()['result'])->toBe('concluded')
+        ->and(Step::where('block_uuid', $parent->block_uuid)->whereKeyNot($parent->id)->count())->toBe(6)
+        ->and(Step::where('block_uuid', $parent->block_uuid)
+            ->where('class', ConfirmPriceAlignmentWithDirectionJob::class)
+            ->pluck('id')
+            ->all())->toBe([$existingConfirm->id]);
+});
+
+test('rolls back the symbol conclusion when finalization insertion fails', function (): void {
+    seedIndicatorsForConcludeTest();
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONFINALROLLBACK');
+    $parent = createStepForConcludeJob($exchangeSymbol, '1h');
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    expect($exchangeSymbol->fresh()->direction)->toBeNull()
+        ->and(Step::where('block_uuid', $parent->block_uuid)->whereKeyNot($parent->id)->exists())->toBeFalse();
+
+    Step::creating(static function (Step $candidate): void {
+        if ($candidate->class === CopyDirectionToOtherExchangesJob::class) {
+            throw new RuntimeException('simulated finalization insert failure');
+        }
+    });
+
+    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h');
+    $job->step = Step::findOrFail($parent->id);
+
+    expect(fn () => $job->compute())->toThrow(RuntimeException::class, 'simulated finalization insert failure')
+        ->and($exchangeSymbol->fresh()->direction)->toBeNull()
+        ->and($exchangeSymbol->fresh()->indicators_values)->toBeNull()
+        ->and(Step::where('block_uuid', $parent->block_uuid)->whereKeyNot($parent->id)->exists())->toBeFalse();
+});
