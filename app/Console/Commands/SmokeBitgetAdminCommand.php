@@ -85,7 +85,8 @@ final class SmokeBitgetAdminCommand extends Command
     {
         try {
             $balance = $account->apiQueryBalance()->result ?? [];
-            $this->info('Balance read OK — total wallet balance: '.($balance['total-wallet-balance'] ?? '0').' USDT.');
+            $total = $balance['total-wallet-balance'] ?? '0';
+            $this->info('Balance read OK — total wallet balance: '.(is_scalar($total) ? (string) $total : '?').' USDT.');
 
             return true;
         } catch (RequestException $exception) {
@@ -115,7 +116,12 @@ final class SmokeBitgetAdminCommand extends Command
 
         $payload = json_decode((string) $response->getBody(), associative: true);
 
-        return is_array($payload)
-            && (string) ($payload['code'] ?? '') === self::BITGET_PERMISSION_ERROR_CODE;
+        if (! is_array($payload)) {
+            return false;
+        }
+
+        $code = $payload['code'] ?? '';
+
+        return is_scalar($code) && (string) $code === self::BITGET_PERMISSION_ERROR_CODE;
     }
 }

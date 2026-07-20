@@ -25,9 +25,9 @@ final class BitgetAdminCredentialsSeeder extends Seeder
 {
     public function run(): void
     {
-        $apiKey = (string) config('kraite.api.credentials.bitget.api_key');
-        $apiSecret = (string) config('kraite.api.credentials.bitget.api_secret');
-        $passphrase = (string) config('kraite.api.credentials.bitget.passphrase');
+        $apiKey = config()->string('kraite.api.credentials.bitget.api_key', '');
+        $apiSecret = config()->string('kraite.api.credentials.bitget.api_secret', '');
+        $passphrase = config()->string('kraite.api.credentials.bitget.passphrase', '');
 
         if ($apiKey === '' || $apiSecret === '' || $passphrase === '') {
             throw new RuntimeException(
@@ -44,7 +44,5 @@ final class BitgetAdminCredentialsSeeder extends Seeder
         $engine->bitget_passphrase = $passphrase;
 
         $engine->save();
-
-        $this->command?->info('BitGet admin credentials synced into the engine row.');
     }
 }
