@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\Position\CancelPositionOpenOrdersJob;
 use Kraite\Core\Jobs\Atomic\Position\ConfirmPositionFlatAndCancelOpeningOrdersJob;
+use Kraite\Core\Jobs\Lifecycles\Position\ClosePositionJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
@@ -105,7 +106,20 @@ it('schedules one delayed high-priority confirmation for a first flat signal', f
         ->and($steps->first()->dispatch_after->between(now()->addSeconds(19), now()->addSeconds(21)))->toBeTrue();
 });
 
-it('dispatches opening-order cancellation only after a second valid flat response', function (): void {
+it('schedules flat confirmation even when no opening orders remain', function (): void {
+    $position = positionSafetyFixture();
+    $position->orders()->delete();
+
+    $scheduled = Steps::usingPrefix('trading', fn (): bool => PositionSafety::scheduleFlatConfirmation(
+        $position,
+        'drift',
+    ));
+
+    expect($scheduled)->toBeTrue()
+        ->and(positionSafetySteps($position, ConfirmPositionFlatAndCancelOpeningOrdersJob::class))->toHaveCount(1);
+});
+
+it('dispatches opening-order cancellation and the close lifecycle after a second valid flat response', function (): void {
     Http::fake([
         '*/fapi/v3/positionRisk*' => Http::response('[]'),
     ]);
@@ -120,9 +134,13 @@ it('dispatches opening-order cancellation only after a second valid flat respons
 
     expect($result['confirmed_flat'])->toBeTrue()
         ->and($result['opening_orders_cancel_dispatched'])->toBeTrue()
+        ->and($result['close_lifecycle_dispatched'])->toBeTrue()
         ->and($steps)->toHaveCount(1)
         ->and($steps->first()->priority)->toBe('high')
-        ->and($steps->first()->arguments['openingOrdersOnly'])->toBeTrue();
+        ->and($steps->first()->arguments['openingOrdersOnly'])->toBeTrue()
+        ->and(positionSafetySteps($position, ClosePositionJob::class))->toHaveCount(1)
+        ->and(positionSafetySteps($position, ClosePositionJob::class)->sole()->arguments['positionConfirmedFlat'])->toBeTrue()
+        ->and($position->refresh()->status)->toBe('closing');
 });
 
 it('does not cancel when the confirmation response still contains the exact position', function (): void {
@@ -141,7 +159,10 @@ it('does not cancel when the confirmation response still contains the exact posi
     ))->computeApiable());
 
     expect($result['confirmed_flat'])->toBeFalse()
-        ->and(positionSafetySteps($position, CancelPositionOpenOrdersJob::class))->toHaveCount(0);
+        ->and($result['close_lifecycle_dispatched'])->toBeFalse()
+        ->and(positionSafetySteps($position, CancelPositionOpenOrdersJob::class))->toHaveCount(0)
+        ->and(positionSafetySteps($position, ClosePositionJob::class))->toHaveCount(0)
+        ->and($position->refresh()->status)->toBe('active');
 });
 
 it('rejects an unsuccessful confirmation envelope without cancelling', function (): void {

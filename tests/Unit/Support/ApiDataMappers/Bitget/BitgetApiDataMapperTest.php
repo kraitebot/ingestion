@@ -603,6 +603,20 @@ test('resolveUpdateLeverageRatioResponse parses leverage confirmation', function
     expect($result['shortLeverage'])->toBe('20');
 });
 
+test('resolveUpdateLeverageRatioResponse normalises a unified scalar confirmation', function (): void {
+    $mapper = new BitgetApiDataMapper;
+
+    $response = createBitgetMockResponse([
+        'code' => '00000',
+        'msg' => 'success',
+        'data' => 'success',
+    ]);
+
+    expect($mapper->resolveUpdateLeverageRatioResponse($response))->toBe([
+        'result' => 'success',
+    ]);
+});
+
 // =============================================================================
 // MapsSymbolMarginType Tests
 // =============================================================================

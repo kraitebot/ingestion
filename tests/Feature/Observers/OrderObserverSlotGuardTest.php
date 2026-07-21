@@ -21,10 +21,10 @@ use Kraite\Core\Models\Position;
  *     slot — guard message normalised to "PROFIT").
  *   - LIMIT: capped by position->total_limit_orders.
  *
- * INACTIVE_STATUSES = [CANCELLED, EXPIRED] — those rows DO NOT
+ * INACTIVE_STATUSES = [CANCELLED, EXPIRED, REJECTED] — those rows DO NOT
  * count toward the slot. (Note: FILLED MARKET still counts as
  * "occupying" the slot in the current implementation — only
- * CANCELLED/EXPIRED frees a slot.)
+ * terminal non-fill states free a slot.)
  */
 function makeSlotOrder(Position $position, array $attrs = []): ?Order
 {
@@ -102,6 +102,29 @@ it('admits a new STOP-MARKET when the prior STOP-MARKET is EXPIRED (slot freed)'
 
     expect($second)->not->toBeNull();
 });
+
+it('admits a new protection order when the prior order is REJECTED', function (string $type): void {
+    $position = Position::factory()->long()->create(['total_limit_orders' => 4]);
+    makeSlotOrder($position, [
+        'type' => $type,
+        'side' => 'SELL',
+        'price' => '0.05',
+        'status' => 'REJECTED',
+    ]);
+
+    $replacement = makeSlotOrder($position, [
+        'type' => $type,
+        'side' => 'SELL',
+        'price' => '0.05',
+        'status' => 'NEW',
+    ]);
+
+    expect($replacement)->not->toBeNull()
+        ->and($replacement->status)->toBe('NEW');
+})->with([
+    'take profit' => 'PROFIT-LIMIT',
+    'stop loss' => 'STOP-MARKET',
+]);
 
 it('admits unrelated type after a MARKET is in flight (slots are per-type)', function (): void {
     $position = Position::factory()->long()->create(['total_limit_orders' => 4]);

@@ -121,7 +121,8 @@ it('cancels opening orders before closing locally after confirmed absence', func
     expect($position->refresh()->status)->toBe('closing')
         ->and($result['position_exists_on_exchange'])->toBeFalse()
         ->and(replacementSteps($position, CancelPositionOpenOrdersJob::class))->toHaveCount(1)
-        ->and(replacementSteps($position, ClosePositionJob::class))->toHaveCount(1);
+        ->and(replacementSteps($position, ClosePositionJob::class))->toHaveCount(1)
+        ->and(replacementSteps($position, ClosePositionJob::class)->sole()->arguments['positionConfirmedFlat'])->toBeTrue();
 });
 
 it('does not confuse an opposite hedge side with the local position', function (): void {

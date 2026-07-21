@@ -56,6 +56,28 @@ it('bitget: ignoreException returns true for code 43001 (order does not exist)',
     expect($handler->ignoreException($exception))->toBeTrue();
 });
 
+it('bitget: ignoreException returns true for UTA HTTP 400 code 25575 (strategy does not exist)', function (): void {
+    $handler = new BitgetExceptionHandler;
+
+    $exception = buildOrderNotFoundException(400, [
+        'code' => '25575',
+        'msg' => 'Failed to stop the strategy because the corresponding strategy ID could not be found',
+    ], 'POST', '/api/v3/trade/cancel-strategy-order');
+
+    expect($handler->ignoreException($exception))->toBeTrue();
+});
+
+it('bitget: ignoreException returns true for UTA HTTP 400 code 25204 (order does not exist)', function (): void {
+    $handler = new BitgetExceptionHandler;
+
+    $exception = buildOrderNotFoundException(400, [
+        'code' => '25204',
+        'msg' => 'Order does not exist',
+    ], 'POST', '/api/v3/trade/cancel-order');
+
+    expect($handler->ignoreException($exception))->toBeTrue();
+});
+
 it('bitget: ignoreException returns false for unrelated codes', function (): void {
     // Sanity guard: ignorable expansion must not absorb actual error
     // codes. 40808 is "Parameter verification exception" — a real

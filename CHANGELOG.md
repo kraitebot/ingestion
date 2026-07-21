@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.71.3 - 2026-07-21
+
+Ships `kraitebot/core` 1.77.3 and `brunocfalcao/step-dispatcher` 1.19.0.
+
+### Bitget lifecycle verification
+
+- [FIXED] Unified combined protection, confirmed-flat manual closure,
+  idempotent missing-order cleanup, and rejected-order replacement are covered
+  across placement, sync, drift, recovery, cancellation, and close.
+- [FIXED] The Bitget admin smoke command keeps full static type coverage.
+- [SECURITY] Guzzle and PSR-7 are refreshed to advisory-free releases.
+
+### Verification
+
+- [VERIFIED] Targeted trading tests pass; a triggered full regression gate,
+  type coverage, static analysis, formatting, and integration tests are green.
+
 ## 1.71.2 - 2026-07-20
 
 Ships `kraitebot/core` 1.77.2 and `brunocfalcao/step-dispatcher` 1.19.0.

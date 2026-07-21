@@ -142,6 +142,72 @@ it('returns synced when DB and exchange agree on every field', function (): void
     expect($report->driftingPositions())->toHaveCount(0);
 });
 
+it('pairs both local protection legs to one Bitget UTA strategy id by functional type', function (): void {
+    $f = makeDriftFixture();
+    $position = $f['position'];
+    makeOrder($position->id, [
+        'type' => 'MARKET',
+        'status' => 'FILLED',
+        'price' => '1.00000000',
+        'quantity' => '10.00000000',
+    ]);
+    $profitOrder = makeOrder($position->id, [
+        'type' => 'PROFIT-LIMIT',
+        'side' => 'SELL',
+        'price' => '1.10000000',
+        'quantity' => '10.00000000',
+        'exchange_order_id' => 'UTA-SHARED-PROTECTION',
+        'is_algo' => true,
+    ]);
+    makeOrder($position->id, [
+        'type' => 'STOP-MARKET',
+        'side' => 'SELL',
+        'price' => '0.90000000',
+        'quantity' => '10.00000000',
+        'exchange_order_id' => 'UTA-SHARED-PROTECTION',
+        'is_algo' => true,
+    ]);
+    $position->load('orders');
+
+    $report = (new DriftCheckService)->analyse(
+        $f['account'],
+        [$position],
+        [[
+            'symbol' => $f['pair'],
+            'positionSide' => 'LONG',
+            'positionAmt' => '10',
+            'entryPrice' => '1.00000000',
+            'leverage' => '10',
+            'marginType' => 'CROSSED',
+        ]],
+        [
+            [
+                'symbol' => $f['pair'],
+                'clientOrderId' => $profitOrder->client_order_id,
+                'orderId' => 'UTA-SHARED-PROTECTION',
+                'status' => 'NEW',
+                'side' => 'SELL',
+                '_orderType' => 'TAKE_PROFIT',
+                '_price' => '1.10000000',
+                'qty' => '0',
+            ],
+            [
+                'symbol' => $f['pair'],
+                'orderId' => 'UTA-SHARED-PROTECTION',
+                'status' => 'NEW',
+                'side' => 'SELL',
+                '_orderType' => 'STOP_MARKET',
+                '_price' => '0.90000000',
+                'qty' => '0',
+            ],
+        ],
+    );
+
+    expect($report->positions[0]->status)->toBe(PositionDriftReport::STATUS_SYNCED)
+        ->and($report->positions[0]->orders)->toHaveCount(3)
+        ->and($report->orphanOrders)->toBe([]);
+});
+
 it('reports an HTTP 200 vendor error as snapshot failure instead of db-only drift', function (): void {
     Http::fake([
         '*' => Http::response(json_encode([

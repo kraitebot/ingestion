@@ -296,6 +296,37 @@ it('dispatches PreparePositionReplacementJob when a STOP-MARKET order is cancell
     // Note: reference_status is NOT updated immediately for replacements.
 });
 
+it('verifies the position before recovering a rejected order', function (string $type): void {
+    $position = createTestPosition();
+    $initialStatus = $position->status;
+    $order = createOrderOnPosition($position, [
+        'type' => $type,
+        'status' => 'NEW',
+        'reference_status' => 'NEW',
+    ]);
+
+    expect(Steps::usingPrefix('trading', fn (): bool => Step::query()
+        ->forRelatable($position)
+        ->forClasses(PreparePositionReplacementJob::class)
+        ->exists()))->toBeFalse();
+
+    $order->update(['status' => 'REJECTED']);
+
+    $steps = Steps::usingPrefix('trading', fn () => Step::query()
+        ->forRelatable($position)
+        ->forClasses(PreparePositionReplacementJob::class)
+        ->get());
+
+    expect($steps)->toHaveCount(1)
+        ->and($steps->sole()->arguments['positionId'])->toBe($position->id)
+        ->and($steps->sole()->arguments['triggerStatus'])->toBe('REJECTED')
+        ->and($position->refresh()->status)->toBe($initialStatus);
+})->with([
+    'DCA limit' => 'LIMIT',
+    'take profit' => 'PROFIT-LIMIT',
+    'stop loss' => 'STOP-MARKET',
+]);
+
 it('does not dispatch PreparePositionReplacementJob when reference_status is already EXPIRED', function (): void {
     $position = createTestPosition();
     $order = createOrderOnPosition($position, [

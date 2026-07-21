@@ -74,3 +74,40 @@ it('stores a valid empty positions response', function (): void {
 
     expect(ApiSnapshot::getFrom($account, 'account-positions'))->toBe([]);
 });
+
+it('stores a valid empty Bitget unified positions response when the list is null', function (): void {
+    Http::fake([
+        '*/api/v3/position/current-position*' => Http::response([
+            'code' => '00000',
+            'msg' => 'success',
+            'data' => ['list' => null],
+        ]),
+    ]);
+
+    $apiSystem = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'bitget',
+        'name' => 'Bitget',
+    ]);
+    $account = Account::factory()->create([
+        'api_system_id' => $apiSystem->id,
+        'trading_quote' => 'USDT',
+        'bitget_api_key' => 'TESTKEY',
+        'bitget_api_secret' => 'TESTSECRET',
+        'bitget_passphrase' => 'TESTPASS',
+        'bitget_account_mode' => 'unified',
+    ]);
+    ApiSnapshot::storeFor($account, 'account-positions', [
+        'BTCUSDT:LONG' => [
+            'symbol' => 'BTCUSDT',
+            'positionSide' => 'LONG',
+            'positionAmt' => '1',
+        ],
+    ]);
+
+    expect(ApiSnapshot::getFrom($account, 'account-positions'))->toHaveKey('BTCUSDT:LONG');
+
+    $job = new QueryAccountPositionsJob($account->id);
+    $job->computeApiable();
+
+    expect(ApiSnapshot::getFrom($account, 'account-positions'))->toBe([]);
+});

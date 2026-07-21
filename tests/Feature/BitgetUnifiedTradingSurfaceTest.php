@@ -10,9 +10,14 @@ use Kraite\Core\Commands\Cronjobs\CheckSystemHealthCommand;
 use Kraite\Core\Jobs\Atomic\Order\Bitget\CalculateWapAndModifyProfitOrderJob;
 use Kraite\Core\Jobs\Atomic\Order\Bitget\ModifyAlgoOrderJob;
 use Kraite\Core\Jobs\Atomic\Order\Bitget\PlacePositionTpslJob;
+use Kraite\Core\Jobs\Atomic\Order\CancelSingleAlgoOrderJob;
+use Kraite\Core\Jobs\Atomic\Order\RecreateCancelledOrderJob;
 use Kraite\Core\Jobs\Atomic\Position\Bitget\FetchAccountPositionsPnlJob;
 use Kraite\Core\Jobs\Atomic\Position\Bitget\SyncPositionModeJob;
+use Kraite\Core\Jobs\Atomic\Position\CancelAlgoOpenOrdersJob;
+use Kraite\Core\Jobs\Atomic\Position\CancelPositionOpenOrdersJob;
 use Kraite\Core\Jobs\Atomic\Position\SetMarginModeJob;
+use Kraite\Core\Jobs\Lifecycles\Position\SmartReplaceOrdersJob;
 use Kraite\Core\Jobs\Recovery\RecoverAccountPositionsJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSnapshot;
@@ -267,8 +272,10 @@ it('queries all UTA strategy families for account synchronization', function ():
         'data' => [
             [
                 'orderId' => 'UTA-ACCOUNT-TPSL',
+                'clientOid' => 'uta-account-tpsl',
                 'symbol' => 'BTCUSDT',
                 'status' => 'pending',
+                'takeProfit' => '65000',
                 'stopLoss' => '57000',
                 'qty' => '0.1',
                 'posSide' => 'long',
@@ -287,11 +294,23 @@ it('queries all UTA strategy families for account synchronization', function ():
     $orders = $account->apiQueryPlanOrders()->result;
     $triggerOrder = collect($orders)->firstWhere('orderId', 'UTA-ACCOUNT-TRIGGER');
 
-    expect($orders)->toHaveCount(2)
+    $protectionOrders = collect($orders)->where('orderId', 'UTA-ACCOUNT-TPSL');
+
+    expect($orders)->toHaveCount(3)
         ->and(collect($orders)->pluck('orderId'))->toContain(
             'UTA-ACCOUNT-TPSL',
             'UTA-ACCOUNT-TRIGGER',
         )
+        ->and($protectionOrders)->toHaveCount(2)
+        ->and($protectionOrders->pluck('_orderType')->sort()->values()->all())->toBe([
+            'STOP_MARKET',
+            'TAKE_PROFIT',
+        ])
+        ->and($protectionOrders->pluck('_price')->sort()->values()->all())->toBe([
+            '57000',
+            '65000',
+        ])
+        ->and($protectionOrders->pluck('status')->unique()->values()->all())->toBe(['NEW'])
         ->and($triggerOrder['_orderType'])->toBe('STOP_MARKET')
         ->and($triggerOrder['_price'])->toBe('3000');
 
@@ -403,6 +422,35 @@ it('aborts Bitget orphan reconciliation when the UTA strategy catalogue fails', 
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/current-position'));
 });
 
+it('treats a vanished UTA orphan position as already closed during watchdog cleanup', function (): void {
+    ['account' => $account] = bitgetUnifiedTradingFixture(hedgeMode: true);
+    Http::fake(['*' => Http::response([
+        'code' => '25227',
+        'msg' => 'No position available to close',
+    ], 400)]);
+
+    $command = app(CheckSystemHealthCommand::class);
+    $closeOrphan = Closure::bind(
+        function (Account $target): void {
+            $this->closeOrphanPosition(
+                $target,
+                'BTCUSDT',
+                'LONG',
+                '0.1',
+            );
+        },
+        $command,
+        CheckSystemHealthCommand::class,
+    );
+
+    $closeOrphan($account);
+
+    Http::assertSent(fn (Request $request): bool => str_contains(
+        $request->url(),
+        '/api/v3/trade/close-positions',
+    ));
+});
+
 it('uses UTA account settings for position mode and symbol configuration', function (): void {
     ['account' => $account, 'position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: false);
 
@@ -474,9 +522,11 @@ it('parses each UTA hedge side independently when the exchange returns both', fu
 it('sets UTA leverage with category margin mode and hedge side', function (): void {
     ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'SHORT');
 
-    Http::fake(['*' => Http::response(['code' => '00000', 'data' => ['leverage' => '25']])]);
+    Http::fake(['*' => Http::response(['code' => '00000', 'data' => 'success'])]);
 
-    $position->apiUpdateLeverageRatio(25);
+    $response = $position->apiUpdateLeverageRatio(25);
+
+    expect($response->result)->toBe(['result' => 'success']);
 
     Http::assertSent(function (Request $request): bool {
         $body = bitgetUnifiedBody($request);
@@ -936,11 +986,12 @@ it('recovers a UTA position with regular strategy and fill history', function ()
                 'code' => '00000',
                 'data' => [
                     [
-                        'orderId' => 'UTA-RECOVERY-STOP',
-                        'clientOid' => 'uta-recovery-stop',
+                        'orderId' => 'UTA-RECOVERY-PROTECTION',
+                        'clientOid' => 'uta-recovery-protection',
                         'symbol' => 'BTCUSDT',
                         'status' => 'pending',
                         'qty' => '0.1',
+                        'takeProfit' => '63000',
                         'stopLoss' => '57000',
                         'side' => 'sell',
                         'posSide' => 'long',
@@ -986,12 +1037,18 @@ it('recovers a UTA position with regular strategy and fill history', function ()
 
     expect($report->warnings)->toBe([])
         ->and($report->positionsCreated)->toBe(1)
-        ->and($report->ordersCreated)->toBe(3)
+        ->and($report->ordersCreated)->toBe(4)
         ->and($position->orders()->pluck('exchange_order_id'))->toContain(
             'UTA-RECOVERY-ENTRY',
             'UTA-RECOVERY-LIMIT',
-            'UTA-RECOVERY-STOP',
+            'UTA-RECOVERY-PROTECTION',
         )
+        ->and($position->orders()->where('exchange_order_id', 'UTA-RECOVERY-PROTECTION')->count())->toBe(2)
+        ->and($position->orders()->where('exchange_order_id', 'UTA-RECOVERY-PROTECTION')
+            ->orderBy('type')->pluck('price', 'type')->all())->toBe([
+                'PROFIT-LIMIT' => '63000',
+                'STOP-MARKET' => '57000',
+            ])
         ->and($position->orders()->where('exchange_order_id', 'UTA-RECOVERY-TRIGGER')->exists())->toBeFalse();
 
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/api/v2/mix/'));
@@ -1013,7 +1070,7 @@ it('defers UTA margin mode to leverage and order requests without a fake API mut
     Http::assertNothingSent();
 });
 
-it('places initial UTA take-profit and stop-loss as two independently manageable strategies', function (): void {
+it('places initial UTA take-profit and stop-loss as one combined full-position strategy', function (): void {
     ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
     $position->updateSaving([
         'status' => 'opening',
@@ -1038,12 +1095,11 @@ it('places initial UTA take-profit and stop-loss as two independently manageable
         }
 
         $body = bitgetUnifiedBody($request);
-        $isStopLoss = array_key_exists('stopLoss', $body);
 
         return Http::response([
             'code' => '00000',
             'data' => [
-                'orderId' => $isStopLoss ? 'UTA-INITIAL-SL' : 'UTA-INITIAL-TP',
+                'orderId' => 'UTA-INITIAL-PROTECTION',
                 'clientOid' => $body['clientOid'],
             ],
         ]);
@@ -1052,31 +1108,27 @@ it('places initial UTA take-profit and stop-loss as two independently manageable
     $job = new PlacePositionTpslJob($position->id);
     $result = $job->computeApiable();
 
-    expect($result['take_profit_id'])->toBe('UTA-INITIAL-TP')
-        ->and($result['stop_loss_id'])->toBe('UTA-INITIAL-SL')
+    expect($result['take_profit_id'])->toBe('UTA-INITIAL-PROTECTION')
+        ->and($result['stop_loss_id'])->toBe('UTA-INITIAL-PROTECTION')
         ->and($job->doubleCheck())->toBeTrue()
-        ->and($position->orders()->where('type', 'PROFIT-LIMIT')->sole()->exchange_order_id)->toBe('UTA-INITIAL-TP')
-        ->and($position->orders()->where('type', 'STOP-MARKET')->sole()->exchange_order_id)->toBe('UTA-INITIAL-SL');
+        ->and($position->orders()->where('type', 'PROFIT-LIMIT')->sole()->exchange_order_id)->toBe('UTA-INITIAL-PROTECTION')
+        ->and($position->orders()->where('type', 'STOP-MARKET')->sole()->exchange_order_id)->toBe('UTA-INITIAL-PROTECTION');
 
     $strategyRequests = Http::recorded(fn (Request $request): bool => str_contains(
         $request->url(),
         '/api/v3/trade/place-strategy-order',
     ))->values();
 
-    expect($strategyRequests)->toHaveCount(2)
-        ->and(collect($strategyRequests)->map(
-            fn (array $record): array => array_keys(bitgetUnifiedBody($record[0]))
-        )->every(fn (array $keys): bool => ! in_array('takeProfit', $keys, true)
-            || ! in_array('stopLoss', $keys, true)))->toBeTrue()
-        ->and(collect($strategyRequests)->map(
-            fn (array $record): int => mb_strlen((string) bitgetUnifiedBody($record[0])['clientOid'])
-        )->all())->toBe([32, 32])
-        ->and($position->orders()->whereIn('type', ['PROFIT-LIMIT', 'STOP-MARKET'])
-            ->pluck('client_order_id')
-            ->every(fn (string $clientOrderId): bool => mb_strlen($clientOrderId) === 32))->toBeTrue();
+    $strategyBody = bitgetUnifiedBody($strategyRequests->sole()[0]);
+
+    expect($strategyRequests)->toHaveCount(1)
+        ->and($strategyBody)->toHaveKeys(['takeProfit', 'stopLoss'])
+        ->and($strategyBody['tpslMode'])->toBe('full')
+        ->and(mb_strlen((string) $strategyBody['clientOid']))->toBe(32)
+        ->and($position->orders()->where('type', 'PROFIT-LIMIT')->sole()->client_order_id)->toBe($strategyBody['clientOid']);
 });
 
-it('does not resend a confirmed UTA protection leg when retrying the missing sibling', function (): void {
+it('repairs a missing local UTA protection identity without resending the combined strategy', function (): void {
     ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
     $position->updateSaving([
         'status' => 'opening',
@@ -1126,16 +1178,7 @@ it('does not resend a confirmed UTA protection leg when retrying the missing sib
             ]);
         }
 
-        $body = bitgetUnifiedBody($request);
-
-        if (array_key_exists('takeProfit', $body)) {
-            throw new RuntimeException('Confirmed take-profit must not be sent again.');
-        }
-
-        return Http::response([
-            'code' => '00000',
-            'data' => ['orderId' => 'UTA-RETRY-SL-NEW', 'clientOid' => $body['clientOid']],
-        ]);
+        throw new RuntimeException('A confirmed combined protection strategy must not be sent again.');
     });
 
     $result = (new PlacePositionTpslJob(
@@ -1145,18 +1188,464 @@ it('does not resend a confirmed UTA protection leg when retrying the missing sib
     ))->computeApiable();
 
     expect($result['take_profit_id'])->toBe('UTA-RETRY-TP-CONFIRMED')
-        ->and($result['stop_loss_id'])->toBe('UTA-RETRY-SL-NEW')
+        ->and($result['stop_loss_id'])->toBe('UTA-RETRY-TP-CONFIRMED')
         ->and($profitOrder->fresh()->exchange_order_id)->toBe('UTA-RETRY-TP-CONFIRMED')
-        ->and($stopLossOrder->fresh()->exchange_order_id)->toBe('UTA-RETRY-SL-NEW');
+        ->and($stopLossOrder->fresh()->exchange_order_id)->toBe('UTA-RETRY-TP-CONFIRMED');
 
     $strategyRequests = Http::recorded(fn (Request $request): bool => str_contains(
         $request->url(),
         '/api/v3/trade/place-strategy-order',
     ))->values();
 
-    expect($strategyRequests)->toHaveCount(1)
-        ->and(bitgetUnifiedBody($strategyRequests[0][0]))->toHaveKey('stopLoss')
-        ->not->toHaveKey('takeProfit');
+    expect($strategyRequests)->toHaveCount(0);
+});
+
+it('syncs both local UTA protection legs from one combined strategy snapshot', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+    $profitOrder = Order::withoutEvents(fn () => Order::create([
+        'uuid' => Str::uuid()->toString(),
+        'position_id' => $position->id,
+        'type' => 'PROFIT-LIMIT',
+        'status' => 'NEW',
+        'side' => 'SELL',
+        'position_side' => 'LONG',
+        'quantity' => '0.1',
+        'price' => '62000',
+        'client_order_id' => 'uta-combined-profit',
+        'exchange_order_id' => 'UTA-COMBINED-1',
+        'is_algo' => true,
+    ]));
+    $stopLossOrder = Order::withoutEvents(fn () => Order::create([
+        'uuid' => Str::uuid()->toString(),
+        'position_id' => $position->id,
+        'type' => 'STOP-MARKET',
+        'status' => 'NEW',
+        'side' => 'SELL',
+        'position_side' => 'LONG',
+        'quantity' => '0.1',
+        'price' => '58000',
+        'client_order_id' => 'uta-combined-stop',
+        'exchange_order_id' => 'UTA-COMBINED-1',
+        'is_algo' => true,
+    ]));
+    Http::fake(['*' => Http::response([
+        'code' => '00000',
+        'data' => [[
+            'orderId' => 'UTA-COMBINED-1',
+            'clientOid' => 'uta-combined-profit',
+            'symbol' => 'BTCUSDT',
+            'status' => 'pending',
+            'qty' => '0.1',
+            'takeProfit' => '63000',
+            'stopLoss' => '57000',
+            'posSide' => 'long',
+        ]],
+    ])]);
+
+    $profitOrder->apiSyncPlanOrder();
+    $stopLossOrder->apiSyncPlanOrder();
+
+    expect((string) $profitOrder->fresh()->price)->toBe(api_format_price('63000', $position->exchangeSymbol))
+        ->and((string) $stopLossOrder->fresh()->price)->toBe(api_format_price('57000', $position->exchangeSymbol))
+        ->and($profitOrder->fresh()->status)->toBe('NEW')
+        ->and($stopLossOrder->fresh()->status)->toBe('NEW');
+    Http::assertSentCount(2);
+});
+
+it('preserves the last meaningful update time when UTA protection sync is unchanged', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+    $profitOrder = Order::withoutEvents(fn () => Order::create([
+        'uuid' => Str::uuid()->toString(),
+        'position_id' => $position->id,
+        'type' => 'PROFIT-LIMIT',
+        'status' => 'NEW',
+        'reference_status' => 'NEW',
+        'side' => 'SELL',
+        'position_side' => 'LONG',
+        'quantity' => '0.1',
+        'price' => api_format_price('63000', $position->exchangeSymbol),
+        'reference_price' => api_format_price('63000', $position->exchangeSymbol),
+        'reference_quantity' => '0.1',
+        'client_order_id' => 'uta-unchanged-profit',
+        'exchange_order_id' => 'UTA-UNCHANGED-1',
+        'is_algo' => true,
+    ]));
+    $meaningfulUpdateAt = now()->subMinutes(20);
+    $profitOrder->timestamps = false;
+    $profitOrder->forceFill(['updated_at' => $meaningfulUpdateAt])->saveQuietly();
+    $profitOrder->timestamps = true;
+    $storedMeaningfulUpdateAt = $profitOrder->fresh()->updated_at;
+
+    Http::fake(['*' => Http::response([
+        'code' => '00000',
+        'data' => [[
+            'orderId' => 'UTA-UNCHANGED-1',
+            'clientOid' => 'uta-unchanged-profit',
+            'symbol' => 'BTCUSDT',
+            'status' => 'pending',
+            'qty' => '0.1',
+            'takeProfit' => '63000',
+            'stopLoss' => '57000',
+            'posSide' => 'long',
+        ]],
+    ])]);
+
+    expect($storedMeaningfulUpdateAt?->lessThan(now()))->toBeTrue();
+
+    $profitOrder->refresh()->apiSyncPlanOrder();
+
+    expect($profitOrder->fresh()->updated_at?->equalTo($storedMeaningfulUpdateAt))->toBeTrue()
+        ->and($profitOrder->fresh()->status)->toBe('NEW')
+        ->and((string) $profitOrder->fresh()->price)->toBe(api_format_price('63000', $position->exchangeSymbol))
+        ->and((string) $profitOrder->fresh()->quantity)->toBe('0.1');
+});
+
+it('maps combined UTA protection history to the correct local leg prices', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+    $orders = collect([
+        ['PROFIT-LIMIT', 'uta-history-profit'],
+        ['STOP-MARKET', 'uta-history-stop'],
+    ])->mapWithKeys(function (array $definition) use ($position): array {
+        [$type, $clientOrderId] = $definition;
+
+        $order = Order::withoutEvents(fn () => Order::create([
+            'uuid' => Str::uuid()->toString(),
+            'position_id' => $position->id,
+            'type' => $type,
+            'status' => 'NEW',
+            'side' => 'SELL',
+            'position_side' => 'LONG',
+            'quantity' => '0.1',
+            'price' => $type === 'PROFIT-LIMIT' ? '63000' : '57000',
+            'client_order_id' => $clientOrderId,
+            'exchange_order_id' => 'UTA-HISTORY-COMBINED-1',
+            'is_algo' => true,
+        ]));
+
+        return [$type => $order];
+    });
+    Http::fake(['*' => Http::response([
+        'code' => '00000',
+        'data' => ['list' => [[
+            'orderId' => 'UTA-HISTORY-COMBINED-1',
+            'clientOid' => 'uta-history-profit',
+            'symbol' => 'BTCUSDT',
+            'status' => 'success',
+            'triggerType' => 'stopLoss',
+            'qty' => '0.1',
+            'takeProfit' => '63000',
+            'stopLoss' => '57000',
+            'posSide' => 'long',
+        ]]],
+    ])]);
+
+    $profit = $orders['PROFIT-LIMIT']->apiQueryPlanOrderHistory()->result;
+    $stopLoss = $orders['STOP-MARKET']->apiQueryPlanOrderHistory()->result;
+
+    expect($profit['status'])->toBe('FILLED')
+        ->and($profit['price'])->toBe('63000')
+        ->and($stopLoss['status'])->toBe('FILLED')
+        ->and($stopLoss['price'])->toBe('57000');
+    Http::assertSentCount(2);
+});
+
+it('cancels a shared UTA protection strategy once and reconciles both local legs', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+
+    foreach ([['PROFIT-LIMIT', '63000'], ['STOP-MARKET', '57000']] as [$type, $price]) {
+        Order::withoutEvents(fn () => Order::create([
+            'uuid' => Str::uuid()->toString(),
+            'position_id' => $position->id,
+            'type' => $type,
+            'status' => 'NEW',
+            'side' => 'SELL',
+            'position_side' => 'LONG',
+            'quantity' => '0.1',
+            'price' => $price,
+            'client_order_id' => Str::uuid()->toString(),
+            'exchange_order_id' => 'UTA-CANCEL-COMBINED-1',
+            'is_algo' => true,
+        ]));
+    }
+    Http::fake(['*' => Http::response(['code' => '00000', 'data' => null])]);
+
+    $job = new CancelAlgoOpenOrdersJob($position->id);
+    $job->assignExceptionHandler();
+    $result = $job->computeApiable();
+
+    expect($result['cancelled_count'])->toBe(1)
+        ->and($position->orders()->where('exchange_order_id', 'UTA-CANCEL-COMBINED-1')
+            ->pluck('status')->unique()->all())->toBe(['CANCELLED']);
+    Http::assertSentCount(1);
+});
+
+it('skips a rejected UTA protection strategy during close cleanup', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+
+    foreach ([['PROFIT-LIMIT', '63000'], ['STOP-MARKET', '57000']] as [$type, $price]) {
+        Order::withoutEvents(fn () => Order::create([
+            'uuid' => Str::uuid()->toString(),
+            'position_id' => $position->id,
+            'type' => $type,
+            'status' => 'REJECTED',
+            'side' => 'SELL',
+            'position_side' => 'LONG',
+            'quantity' => '0.1',
+            'price' => $price,
+            'client_order_id' => Str::uuid()->toString(),
+            'exchange_order_id' => 'UTA-REJECTED-COMBINED-1',
+            'is_algo' => true,
+        ]));
+    }
+    Http::fake();
+
+    $job = new CancelAlgoOpenOrdersJob($position->id);
+    $job->assignExceptionHandler();
+    $result = $job->computeApiable();
+
+    expect($result['cancelled_count'])->toBe(0)
+        ->and($result['idempotent_count'])->toBe(0)
+        ->and($position->orders()->pluck('status')->unique()->all())->toBe(['REJECTED']);
+    Http::assertNothingSent();
+});
+
+it('reconciles a vanished UTA protection strategy returned as HTTP 400 code 25575', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+
+    foreach ([['PROFIT-LIMIT', '63000'], ['STOP-MARKET', '57000']] as [$type, $price]) {
+        Order::withoutEvents(fn () => Order::create([
+            'uuid' => Str::uuid()->toString(),
+            'position_id' => $position->id,
+            'type' => $type,
+            'status' => 'NEW',
+            'side' => 'SELL',
+            'position_side' => 'LONG',
+            'quantity' => '0.1',
+            'price' => $price,
+            'client_order_id' => Str::uuid()->toString(),
+            'exchange_order_id' => 'UTA-VANISHED-COMBINED-1',
+            'is_algo' => true,
+        ]));
+    }
+    Http::fake(['*' => Http::response([
+        'code' => '25575',
+        'msg' => 'Failed to stop the strategy because the corresponding strategy ID could not be found',
+        'data' => null,
+    ], 400)]);
+
+    $job = new CancelAlgoOpenOrdersJob($position->id);
+    $job->assignExceptionHandler();
+    $result = $job->computeApiable();
+
+    expect($result['cancelled_count'])->toBe(0)
+        ->and($result['idempotent_count'])->toBe(1)
+        ->and($position->orders()->pluck('status')->unique()->all())->toBe(['CANCELLED']);
+    Http::assertSentCount(1);
+});
+
+it('reconciles a vanished UTA regular order returned as HTTP 400 code 25204', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+
+    $order = Order::withoutEvents(fn () => Order::create([
+        'uuid' => Str::uuid()->toString(),
+        'position_id' => $position->id,
+        'type' => 'LIMIT',
+        'status' => 'NEW',
+        'reference_status' => 'NEW',
+        'side' => 'BUY',
+        'position_side' => 'LONG',
+        'quantity' => '0.1',
+        'price' => '57000',
+        'client_order_id' => Str::uuid()->toString(),
+        'exchange_order_id' => 'UTA-VANISHED-REGULAR-1',
+        'is_algo' => false,
+    ]));
+    Http::fake(['*' => Http::response([
+        'code' => '25204',
+        'msg' => 'Order does not exist',
+        'data' => null,
+    ], 400)]);
+
+    $job = new CancelPositionOpenOrdersJob($position->id);
+    $job->assignExceptionHandler();
+    $result = $job->computeApiable();
+
+    expect($result['cancelled_count'])->toBe(0)
+        ->and($result['idempotent_count'])->toBe(1)
+        ->and($order->fresh()->status)->toBe('CANCELLED')
+        ->and($order->fresh()->reference_status)->toBe('CANCELLED');
+    Http::assertSentCount(1);
+    Http::assertSent(function (Request $request): bool {
+        $body = bitgetUnifiedBody($request);
+
+        return str_contains($request->url(), '/api/v3/trade/cancel-order')
+            && $body['orderId'] === 'UTA-VANISHED-REGULAR-1';
+    });
+});
+
+it('replaces a terminal UTA protection strategy as one combined TP and SL step', function (string $terminalStatus): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+    $position->updateSaving(['status' => 'active']);
+
+    $orders = collect([
+        ['PROFIT-LIMIT', $terminalStatus, '63000'],
+        ['STOP-MARKET', 'NEW', '57000'],
+    ])->map(function (array $definition) use ($position): Order {
+        [$type, $status, $price] = $definition;
+
+        return Order::withoutEvents(fn () => Order::create([
+            'uuid' => Str::uuid()->toString(),
+            'position_id' => $position->id,
+            'type' => $type,
+            'status' => $status,
+            'reference_status' => 'NEW',
+            'side' => 'SELL',
+            'position_side' => 'LONG',
+            'quantity' => '0.1',
+            'price' => $price,
+            'client_order_id' => Str::uuid()->toString(),
+            'exchange_order_id' => 'UTA-CANCELLED-PROTECTION-1',
+            'is_algo' => true,
+        ]));
+    });
+
+    $job = new SmartReplaceOrdersJob($position->id);
+    expect($job->startOrFail())->toBeTrue();
+
+    $job->step = Step::create([
+        'class' => SmartReplaceOrdersJob::class,
+        'arguments' => ['positionId' => $position->id],
+        'queue' => 'positions',
+        'index' => 1,
+        'block_uuid' => Str::uuid()->toString(),
+        'child_block_uuid' => Str::uuid()->toString(),
+    ]);
+
+    $job->compute();
+
+    $children = Step::query()
+        ->where('block_uuid', $job->uuid())
+        ->orderBy('index')
+        ->get();
+    $replacement = $children->firstWhere('class', PlacePositionTpslJob::class);
+
+    expect($children->where('class', RecreateCancelledOrderJob::class))->toBeEmpty()
+        ->and($replacement)->not->toBeNull()
+        ->and($replacement->arguments['replacedOrderIds'])->toEqualCanonicalizing($orders->pluck('id')->all());
+})->with([
+    'cancelled protection' => 'CANCELLED',
+    'rejected protection' => 'REJECTED',
+]);
+
+it('retires both old UTA protection rows before persisting their combined replacement', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+    $position->updateSaving([
+        'status' => 'active',
+        'opening_price' => '60000',
+        'quantity' => '0.1',
+        'profit_percentage' => '5',
+        'stop_market_percentage' => '5',
+        'total_limit_orders' => 0,
+    ]);
+    Kraite::query()->findOrFail(1)->update([
+        'bitget_api_key' => 'UTA_REPLACE_ADMIN_KEY',
+        'bitget_api_secret' => 'UTA_REPLACE_ADMIN_SECRET',
+        'bitget_passphrase' => 'UTA_REPLACE_ADMIN_PASSPHRASE',
+    ]);
+
+    $oldOrders = collect([
+        ['PROFIT-LIMIT', 'CANCELLED', '63000'],
+        ['STOP-MARKET', 'NEW', '57000'],
+    ])->map(function (array $definition) use ($position): Order {
+        [$type, $status, $price] = $definition;
+
+        return Order::withoutEvents(fn () => Order::create([
+            'uuid' => Str::uuid()->toString(),
+            'position_id' => $position->id,
+            'type' => $type,
+            'status' => $status,
+            'reference_status' => 'NEW',
+            'side' => 'SELL',
+            'position_side' => 'LONG',
+            'quantity' => '0.1',
+            'price' => $price,
+            'client_order_id' => Str::uuid()->toString(),
+            'exchange_order_id' => 'UTA-OLD-PROTECTION-1',
+            'is_algo' => true,
+        ]));
+    });
+
+    Http::fake(function (Request $request) {
+        if (str_contains($request->url(), '/symbol-price')) {
+            return Http::response([
+                'code' => '00000',
+                'data' => [['symbol' => 'BTCUSDT', 'markPrice' => '60000']],
+            ]);
+        }
+
+        $body = bitgetUnifiedBody($request);
+
+        return Http::response([
+            'code' => '00000',
+            'data' => [
+                'orderId' => 'UTA-NEW-PROTECTION-1',
+                'clientOid' => $body['clientOid'],
+            ],
+        ]);
+    });
+
+    $job = new PlacePositionTpslJob(
+        positionId: $position->id,
+        replacedOrderIds: $oldOrders->pluck('id')->all(),
+    );
+    $job->computeApiable();
+
+    expect(Order::query()->whereIn('id', $oldOrders->pluck('id'))->pluck('status')->unique()->all())
+        ->toBe(['CANCELLED'])
+        ->and(Order::query()->whereIn('id', $oldOrders->pluck('id'))->pluck('reference_status')->unique()->all())
+        ->toBe(['CANCELLED'])
+        ->and($position->orders()->where('exchange_order_id', 'UTA-NEW-PROTECTION-1')->count())->toBe(2)
+        ->and($position->orders()->where('exchange_order_id', 'UTA-NEW-PROTECTION-1')
+            ->pluck('type')->sort()->values()->all())->toBe(['PROFIT-LIMIT', 'STOP-MARKET']);
+
+    expect(Http::recorded(fn (Request $request): bool => str_contains(
+        $request->url(),
+        '/api/v3/trade/place-strategy-order',
+    )))->toHaveCount(1);
+});
+
+it('cancelling either UTA protection leg reconciles both rows sharing the strategy', function (): void {
+    ['position' => $position] = bitgetUnifiedTradingFixture(hedgeMode: true, direction: 'LONG');
+    $position->updateSaving(['status' => 'active']);
+
+    $orders = collect([['PROFIT-LIMIT', '63000'], ['STOP-MARKET', '57000']])
+        ->map(function (array $definition) use ($position): Order {
+            [$type, $price] = $definition;
+
+            return Order::withoutEvents(fn () => Order::create([
+                'uuid' => Str::uuid()->toString(),
+                'position_id' => $position->id,
+                'type' => $type,
+                'status' => 'NEW',
+                'reference_status' => 'NEW',
+                'side' => 'SELL',
+                'position_side' => 'LONG',
+                'quantity' => '0.1',
+                'price' => $price,
+                'client_order_id' => Str::uuid()->toString(),
+                'exchange_order_id' => 'UTA-SINGLE-CANCEL-PROTECTION-1',
+                'is_algo' => true,
+            ]));
+        });
+
+    Http::fake(['*' => Http::response(['code' => '00000', 'data' => null])]);
+
+    $result = (new CancelSingleAlgoOrderJob($position->id, $orders->first()->id))->computeApiable();
+
+    expect($result['order_id'])->toBe($orders->first()->id)
+        ->and($position->orders()->where('exchange_order_id', 'UTA-SINGLE-CANCEL-PROTECTION-1')
+            ->pluck('status')->unique()->all())->toBe(['CANCELLED']);
+    Http::assertSentCount(1);
 });
 
 it('repairs only the drifted UTA protection strategy without requiring its sibling', function (): void {
@@ -1232,7 +1721,7 @@ it('applies WAP by resizing only the UTA take-profit strategy', function (): voi
         'price' => '62000',
         'reference_price' => '62000',
         'client_order_id' => 'uta-wap-profit',
-        'exchange_order_id' => 'UTA-WAP-PROFIT-1',
+        'exchange_order_id' => 'UTA-WAP-PROTECTION-1',
         'is_algo' => true,
     ]));
     $stopOrder = Order::withoutEvents(fn () => Order::create([
@@ -1246,7 +1735,7 @@ it('applies WAP by resizing only the UTA take-profit strategy', function (): voi
         'price' => '57000',
         'reference_price' => '57000',
         'client_order_id' => 'uta-wap-stop',
-        'exchange_order_id' => 'UTA-WAP-STOP-1',
+        'exchange_order_id' => 'UTA-WAP-PROTECTION-1',
         'is_algo' => true,
     ]));
     ApiSnapshot::storeFor($account, 'account-positions', [
@@ -1275,7 +1764,7 @@ it('applies WAP by resizing only the UTA take-profit strategy', function (): voi
         $body = bitgetUnifiedBody($request);
 
         return str_contains($request->url(), '/api/v3/trade/modify-strategy-order')
-            && $body['orderId'] === 'UTA-WAP-PROFIT-1'
+            && $body['orderId'] === 'UTA-WAP-PROTECTION-1'
             && $body['qty'] === '0.1'
             && array_key_exists('takeProfit', $body)
             && ! array_key_exists('stopLoss', $body);

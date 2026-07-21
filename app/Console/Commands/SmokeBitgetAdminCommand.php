@@ -24,10 +24,12 @@ use Throwable;
  */
 final class SmokeBitgetAdminCommand extends Command
 {
-    private const BITGET_PERMISSION_ERROR_CODE = '40014';
+    private const string BITGET_PERMISSION_ERROR_CODE = '40014';
 
+    /** @var string */
     protected $signature = 'kraite:smoke-bitget-admin';
 
+    /** @var string */
     protected $description = 'Verify the seeded BitGet admin credentials against the live BitGet API (read-only)';
 
     public function handle(): int

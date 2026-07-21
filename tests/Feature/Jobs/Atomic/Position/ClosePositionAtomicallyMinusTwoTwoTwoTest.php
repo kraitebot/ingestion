@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\Position\ClosePositionAtomicallyJob;
@@ -106,6 +107,32 @@ it('treats Bitget 22002 "no position to close" as already-closed success', funct
 
     expect($result)->toBeArray();
     expect($result['result'])->toBe(['already_closed' => true]);
+});
+
+it('treats Bitget UTA 25227 "no position available to close" as already-closed success', function (): void {
+    Http::fake([
+        '*' => Http::response(
+            json_encode(['code' => '25227', 'msg' => 'No position available to close']),
+            400,
+        ),
+    ]);
+
+    $position = buildTpClosedPosition('bitget');
+    $position->account->updateSaving([
+        'bitget_account_mode' => 'unified',
+        'on_hedge_mode' => true,
+    ]);
+
+    $job = new ClosePositionAtomicallyJob($position->id);
+    $job->assignExceptionHandler();
+    $result = $job->computeApiable();
+
+    expect($result)->toBeArray()
+        ->and($result['result'])->toBe(['already_closed' => true]);
+    Http::assertSent(fn (Request $request): bool => str_contains(
+        $request->url(),
+        '/api/v3/trade/close-positions',
+    ));
 });
 
 it('treats Binance -2022 reduceOnly rejection as already-closed success', function (): void {

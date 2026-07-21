@@ -2,8 +2,34 @@
 
 declare(strict_types=1);
 
+use Kraite\Core\Jobs\Atomic\Position\ClosePositionAtomicallyJob;
 use Kraite\Core\Jobs\Lifecycles\Position\ClosePositionJob;
 use Kraite\Core\Models\Position;
+use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
+
+function closePositionChildClassesFor(Position $position, bool $positionConfirmedFlat): array
+{
+    return Steps::usingPrefix('trading', function () use ($position, $positionConfirmedFlat): array {
+        $job = new ClosePositionJob($position->id, null, $positionConfirmedFlat);
+        $job->step = Step::create([
+            'class' => ClosePositionJob::class,
+            'queue' => 'positions',
+            'relatable_type' => $position->getMorphClass(),
+            'relatable_id' => $position->getKey(),
+        ]);
+
+        $job->computeApiable();
+        $childBlockUuid = $job->step->fresh()->child_block_uuid;
+
+        return Step::query()
+            ->where('block_uuid', $childBlockUuid)
+            ->pluck('class')
+            ->filter()
+            ->values()
+            ->all();
+    });
+}
 
 /**
  * Pin the close-cascade entry gate. ClosePositionJob is fired by
@@ -42,3 +68,17 @@ it('startOrSkip returns false for terminal/non-opened statuses (close cascade is
     'failed' => ['failed'],
     'watching' => ['watching'],
 ]);
+
+it('skips the redundant exchange close after the position was confirmed flat twice', function (): void {
+    $position = Position::factory()->long()->create(['status' => 'closing']);
+
+    expect(closePositionChildClassesFor($position, positionConfirmedFlat: true))
+        ->not->toContain(ClosePositionAtomicallyJob::class);
+});
+
+it('keeps the exchange close step for ordinary close workflows', function (): void {
+    $position = Position::factory()->long()->create(['status' => 'closing']);
+
+    expect(closePositionChildClassesFor($position, positionConfirmedFlat: false))
+        ->toContain(ClosePositionAtomicallyJob::class);
+});

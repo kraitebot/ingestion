@@ -76,6 +76,15 @@ it('passes when the cancelled order is EXPIRED (TP expired during a close window
     expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
 });
 
+it('passes when the order is REJECTED and the position still needs protection', function (): void {
+    ['position' => $position, 'order' => $order] = buildRecreateScenario([
+        'type' => 'PROFIT-LIMIT',
+        'status' => 'REJECTED',
+    ]);
+
+    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+});
+
 // ───────────────────────── status guards ─────────────────────────
 
 it('refuses when the position has already terminated (closed/cancelled/failed)', function (string $terminalStatus): void {

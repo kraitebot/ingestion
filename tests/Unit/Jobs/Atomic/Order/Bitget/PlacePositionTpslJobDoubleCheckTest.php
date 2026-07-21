@@ -15,6 +15,12 @@ use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use StepDispatcher\Models\Step;
 
+it('defaults replacement ids for queued payloads created before the property existed', function (): void {
+    $job = (new ReflectionClass(PlacePositionTpslJob::class))->newInstanceWithoutConstructor();
+
+    expect($job->replacedOrderIds)->toBe([]);
+});
+
 /**
  * Regression guard for the THETAUSDT cancel on 2026-04-26 (position 423).
  *

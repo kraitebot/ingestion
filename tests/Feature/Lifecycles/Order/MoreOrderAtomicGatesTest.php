@@ -234,6 +234,23 @@ it('SyncPositionOrders: records an empty pre-order cleanup as Skipped instead of
         ->and($position->fresh()->status)->toBe('cancelling');
 });
 
+it('SyncPositionOrders: records an empty confirmed-flat close cleanup as Skipped instead of Failed', function (): void {
+    $position = buildPlacementReadyPosition(['status' => 'closing']);
+    $job = new SyncPositionOrdersJob($position->id);
+    $job->step = Step::create([
+        'class' => SyncPositionOrdersJob::class,
+        'queue' => 'positions',
+        'arguments' => ['positionId' => $position->id],
+        'block_uuid' => Str::uuid()->toString(),
+        'index' => 1,
+    ]);
+
+    $job->handle();
+
+    expect($job->step->fresh()->state)->toBeInstanceOf(Skipped::class)
+        ->and($position->fresh()->status)->toBe('closing');
+});
+
 it('SyncPositionOrders: does not skip cancelling cleanup when a syncable order exists', function (): void {
     $position = buildPlacementReadyPosition(['status' => 'cancelling']);
     Order::create([

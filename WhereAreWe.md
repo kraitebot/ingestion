@@ -1,3 +1,28 @@
+# WhereAreWe — 2026-07-21 (Bitget lifecycle, mobile, and registration)
+
+## Date
+
+2026-07-21
+
+## This release (2026-07-21)
+
+- **Bitget Unified protection matches the real exchange object:** TP and SL
+  stay separate logical rows while sharing one remote strategy identity.
+  Sync, drift, recovery, replacement, and cancellation keep both meanings
+  aligned without duplicating or partly replacing protection.
+- **Manual exchange closes finish the local lifecycle safely:** a second valid
+  flat snapshot starts the normal close workflow, clears remaining orders,
+  and records `closed` without sending a redundant exchange close.
+- **The native iPhone project is now versioned:** `kraitebot/kraite-app`
+  contains the read-only trader app and its verified API contract. The backend
+  passkey lifecycle is ready; native passkey controls stay release-gated until
+  signed-device association is proven.
+- **Public registration now has an explicit final consent gate:** risk,
+  responsible-trading, and legal acknowledgements are mandatory. New and
+  retried accounts default to six LONG and six SHORT slots.
+
+---
+
 # WhereAreWe — 2026-07-20 (exchange modes and dispatcher capacity)
 
 ## Date
