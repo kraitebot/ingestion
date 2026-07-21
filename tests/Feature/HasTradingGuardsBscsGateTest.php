@@ -9,7 +9,7 @@ use Kraite\Core\Trading\Kraite;
 
 /**
  * The BSCS cooldown is a global, ABSOLUTE gate that flows through
- * `HasTradingGuards::canOpenPositions()`. When BlackSwanIndex says
+ * `HasTradingGuards::canOpenPositions()`. When BscsState says
  * shouldBlockOpens=true (a Critical-armed cooldown in the future), every
  * account is blocked. As of Phase 3 there is no per-account opt-out
  * (`respect_bscs` removed) and no operator override (`bscs_override_until`

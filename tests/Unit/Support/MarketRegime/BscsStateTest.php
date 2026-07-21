@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Kraite\Core\Enums\RegimeBand;
 use Kraite\Core\Models\Kraite;
-use Kraite\Core\Support\MarketRegime\BlackSwanIndex;
+use Kraite\Core\Support\MarketRegime\Bscs;
 
 /**
  * Read-side façade over the kraite singleton's BSCS columns. Two
@@ -38,7 +38,7 @@ function setKraiteBscs(array $attrs): void
 it('reports score, band, and synced_at from the kraite singleton', function (): void {
     setKraiteBscs(['bscs_score' => 60, 'bscs_band' => RegimeBand::Fragile->value]);
 
-    $index = BlackSwanIndex::current();
+    $index = Bscs::current();
 
     expect($index->score())->toBe(60)
         ->and($index->band())->toBe(RegimeBand::Fragile)
@@ -52,7 +52,7 @@ it('shouldBlockOpens returns true while cooldown is in the future', function ():
         'bscs_cooldown_until' => now()->addHours(20),
     ]);
 
-    expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeTrue();
+    expect(Bscs::current()->shouldBlockOpens())->toBeTrue();
 });
 
 it('shouldBlockOpens returns false once cooldown has expired even if score still high', function (): void {
@@ -66,13 +66,13 @@ it('shouldBlockOpens returns false once cooldown has expired even if score still
         'bscs_cooldown_until' => now()->subHour(),
     ]);
 
-    expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeFalse();
+    expect(Bscs::current()->shouldBlockOpens())->toBeFalse();
 });
 
 it('shouldBlockOpens returns false when no cooldown is set', function (): void {
     setKraiteBscs(['bscs_score' => 20]);
 
-    expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeFalse();
+    expect(Bscs::current()->shouldBlockOpens())->toBeFalse();
 });
 
 it('isStale reports true when synced_at is older than freshness_max_seconds', function (): void {
@@ -81,7 +81,7 @@ it('isStale reports true when synced_at is older than freshness_max_seconds', fu
         'bscs_freshness_max_seconds' => 6900,         // 115min
     ]);
 
-    expect(BlackSwanIndex::current()->isStale())->toBeTrue();
+    expect(Bscs::current()->isStale())->toBeTrue();
 });
 
 it('isStale reports false when synced_at is within the freshness window', function (): void {
@@ -90,7 +90,7 @@ it('isStale reports false when synced_at is within the freshness window', functi
         'bscs_freshness_max_seconds' => 6900,
     ]);
 
-    expect(BlackSwanIndex::current()->isStale())->toBeFalse();
+    expect(Bscs::current()->isStale())->toBeFalse();
 });
 
 it('toArray exposes a full payload for dashboards', function (): void {
@@ -103,7 +103,7 @@ it('toArray exposes a full payload for dashboards', function (): void {
         'bscs_cooldown_until' => $cooldownUntil,
     ]);
 
-    $payload = BlackSwanIndex::current()->toArray();
+    $payload = Bscs::current()->toArray();
 
     expect($payload)->toHaveKey('score', 80)
         ->and($payload)->toHaveKey('band', 'critical')
@@ -115,7 +115,7 @@ it('toArray exposes a full payload for dashboards', function (): void {
 it('exposes DirectionalBookRisk via portfolioRisk()', function (): void {
     setKraiteBscs(['bscs_score' => 60, 'bscs_band' => RegimeBand::Fragile->value]);
 
-    $index = BlackSwanIndex::current();
+    $index = Bscs::current();
 
     expect($index->portfolioRisk())
         ->toBeInstanceOf(\Kraite\Core\Support\MarketRegime\DirectionalBookRisk::class);
@@ -124,7 +124,7 @@ it('exposes DirectionalBookRisk via portfolioRisk()', function (): void {
 it('toArray includes portfolio_risk block', function (): void {
     setKraiteBscs(['bscs_score' => 60]);
 
-    $payload = BlackSwanIndex::current()->toArray();
+    $payload = Bscs::current()->toArray();
 
     expect($payload)->toHaveKey('portfolio_risk')
         ->and($payload['portfolio_risk'])->toHaveKey('largest_side')
@@ -134,7 +134,7 @@ it('toArray includes portfolio_risk block', function (): void {
 it('staleness() returns Fresh when synced_at is recent', function (): void {
     setKraiteBscs(['bscs_synced_at' => now()->subMinutes(30), 'bscs_freshness_max_seconds' => 6900]);
 
-    expect(BlackSwanIndex::current()->staleness())
+    expect(Bscs::current()->staleness())
         ->toBe(\Kraite\Core\Enums\BscsStaleness::Fresh);
 });
 
@@ -142,21 +142,21 @@ it('staleness() returns StaleSoft between freshness_max and stale_hard cutoff', 
     // 3 hours old. freshness_max_seconds = 6900s (~115min). stale_hard cutoff = 6h (default).
     setKraiteBscs(['bscs_synced_at' => now()->subHours(3), 'bscs_freshness_max_seconds' => 6900]);
 
-    expect(BlackSwanIndex::current()->staleness())
+    expect(Bscs::current()->staleness())
         ->toBe(\Kraite\Core\Enums\BscsStaleness::StaleSoft);
 });
 
 it('staleness() returns StaleHard past the 6h cutoff', function (): void {
     setKraiteBscs(['bscs_synced_at' => now()->subHours(7), 'bscs_freshness_max_seconds' => 6900]);
 
-    expect(BlackSwanIndex::current()->staleness())
+    expect(Bscs::current()->staleness())
         ->toBe(\Kraite\Core\Enums\BscsStaleness::StaleHard);
 });
 
 it('staleness() returns StaleHard when synced_at is null (never computed)', function (): void {
     setKraiteBscs(['bscs_synced_at' => null]);
 
-    expect(BlackSwanIndex::current()->staleness())
+    expect(Bscs::current()->staleness())
         ->toBe(\Kraite\Core\Enums\BscsStaleness::StaleHard);
 });
 
@@ -170,7 +170,7 @@ it('shouldBlockOpens returns true under StaleSoft when cooldown is active (prese
         'bscs_cooldown_until' => now()->addHours(20),
     ]);
 
-    expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeTrue();
+    expect(Bscs::current()->shouldBlockOpens())->toBeTrue();
 });
 
 it('shouldBlockOpens fails open (returns false) under StaleHard even if cooldown is active', function (): void {
@@ -182,7 +182,7 @@ it('shouldBlockOpens fails open (returns false) under StaleHard even if cooldown
         'bscs_cooldown_until' => now()->addHours(20),
     ]);
 
-    expect(BlackSwanIndex::current()->shouldBlockOpens())->toBeFalse();
+    expect(Bscs::current()->shouldBlockOpens())->toBeFalse();
 });
 
 it('returns a sentinel "no data" instance when the kraite row is missing bscs_synced_at', function (): void {
@@ -191,7 +191,7 @@ it('returns a sentinel "no data" instance when the kraite row is missing bscs_sy
     // stale-true so the dashboard renders something sensible.
     setKraiteBscs(['bscs_synced_at' => null]);
 
-    $index = BlackSwanIndex::current();
+    $index = Bscs::current();
 
     expect($index->syncedAt())->toBeNull()
         ->and($index->isStale())->toBeTrue()

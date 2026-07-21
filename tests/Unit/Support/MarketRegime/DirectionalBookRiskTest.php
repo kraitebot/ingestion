@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Event;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Support\MarketRegime\DirectionalBookRisk;
@@ -11,7 +12,7 @@ use Kraite\Core\Support\MarketRegime\DirectionalBookRisk;
  * across all accounts and computes which side of the book carries
  * more risk. Consumed by:
  *
- *   - `BlackSwanIndex::portfolioRisk()` for dashboard rendering
+ *   - `BscsState::portfolioRisk()` for dashboard rendering
  *   - Phase 2.1C's directional crowding multiplier in
  *     `PreparePositionDataJob` (downscales the crowded side only)
  *
@@ -147,4 +148,20 @@ it('toArray exposes a flat dashboard payload', function (): void {
         ->and($payload)->toHaveKey('largest_side', 'LONG')
         ->and($payload)->toHaveKey('largest_side_ratio')
         ->and($payload)->toHaveKey('net_directional_bias');
+});
+
+it('aggregates the live book in SQL without hydrating every open position', function (): void {
+    makeOpenPositionForRisk('LONG', '100.00', 20);
+    makeOpenPositionForRisk('SHORT', '50.00', 10);
+    $retrievedPositions = 0;
+
+    Event::listen('eloquent.retrieved: '.Position::class, function () use (&$retrievedPositions): void {
+        $retrievedPositions++;
+    });
+
+    $risk = DirectionalBookRisk::current();
+
+    expect($retrievedPositions)->toBe(0)
+        ->and((float) $risk->longMarginAtRisk())->toBe(2000.0)
+        ->and((float) $risk->shortMarginAtRisk())->toBe(500.0);
 });

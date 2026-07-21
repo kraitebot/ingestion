@@ -2,14 +2,18 @@
 
 declare(strict_types=1);
 
+use Kraite\Core\Commands\Cronjobs\CreatePositionsCommand;
+use Kraite\Core\Jobs\Lifecycles\Account\PreparePositionsOpeningJob;
 use Kraite\Core\Jobs\Lifecycles\Position\Binance\DispatchPositionJob as BinanceDispatchPositionJob;
 use Kraite\Core\Jobs\Lifecycles\Position\DispatchPositionJob as BaseDispatchPositionJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Kraite as KraiteModel;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\User;
+use Kraite\Core\Trading\Kraite;
 use StepDispatcher\Models\Step;
 use StepDispatcher\States\Cancelled;
 use StepDispatcher\States\Completed;
@@ -225,6 +229,53 @@ it('treats terminal-state DispatchPositionJob steps as "no live step" for recove
         'Recovery must consider only NON-terminal DispatchPositionJob steps when deciding whether '
         .'a position is orphaned. A position whose only step ended Cancelled is still stranded.'
     );
+});
+
+it('does not dispatch account preparation when both directional BSCS caps are already full', function (): void {
+    $this->account->update([
+        'total_positions_long' => 6,
+        'total_positions_short' => 6,
+    ]);
+    KraiteModel::findOrFail(1)->updateSaving([
+        'allow_opening_positions' => true,
+        'can_trade' => true,
+        'bscs_score' => 50,
+        'bscs_band' => 'elevated',
+        'bscs_synced_at' => now(),
+        'bscs_cooldown_until' => null,
+    ]);
+    Position::factory()->count(4)->create([
+        'account_id' => $this->account->id,
+        'status' => 'active',
+        'direction' => 'LONG',
+        'total_limit_orders' => 4,
+    ]);
+    Position::factory()->count(4)->create([
+        'account_id' => $this->account->id,
+        'status' => 'active',
+        'direction' => 'SHORT',
+        'total_limit_orders' => 4,
+    ]);
+
+    $engine = Kraite::withAccount($this->account->refresh());
+    expect($engine->canOpenPositions())->toBeTrue()
+        ->and($engine->canOpenLongs())->toBeTrue()
+        ->and($engine->canOpenShorts())->toBeTrue()
+        ->and($this->account->apiSystem->inCooldown())->toBeFalse();
+
+    $method = new ReflectionMethod(CreatePositionsCommand::class, 'attemptOpeningPositionsForAccount');
+    Steps::usingPrefix('trading', fn () => $method->invoke(
+        app(CreatePositionsCommand::class),
+        $this->account->refresh(),
+    ));
+
+    $steps = Steps::usingPrefix('trading', fn () => Step::query()
+        ->where('class', PreparePositionsOpeningJob::class)
+        ->where('relatable_type', $this->account->getMorphClass())
+        ->where('relatable_id', $this->account->id)
+        ->get());
+
+    expect($steps)->toHaveCount(0);
 });
 
 function stepsForPosition(Position $position): Illuminate\Database\Eloquent\Collection

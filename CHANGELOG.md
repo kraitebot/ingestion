@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.72.1 - 2026-07-21
+
+Ships `kraitebot/core` 1.78.1 and `brunocfalcao/step-dispatcher` 1.19.0.
+
+### Architecture
+
+- [IMPROVED] Exchange operations, token selection, BSCS policies, and
+  health/drift remediation now expose unified domain entry points while
+  preserving existing trading behavior.
+- [IMPROVED] Directional book risk is aggregated in SQL instead of hydrating
+  every open position.
+
+### Registration inspection
+
+- [NEW FEATURE] Registration balance and account-activity reads execute as
+  high-priority worker steps instead of outbound web-request calls.
+
+### Verification
+
+- [VERIFIED] Full ingestion regression passes: 3,032 tests / 9,689 assertions.
+
 ## 1.72.0 - 2026-07-21
 
 Ships `kraitebot/core` 1.78.0 and `brunocfalcao/step-dispatcher` 1.19.0.

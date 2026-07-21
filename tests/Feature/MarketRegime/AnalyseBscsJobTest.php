@@ -6,7 +6,7 @@ use Carbon\CarbonImmutable;
 use Kraite\Core\Enums\RegimeBand;
 use Kraite\Core\Jobs\Models\MarketRegime\AnalyseBscsJob;
 use Kraite\Core\Models\Kraite;
-use Kraite\Core\Support\MarketRegime\BlackSwanIndex;
+use Kraite\Core\Support\MarketRegime\Bscs;
 
 /**
  * AnalyseBscsJob — system-driven cooldown gate.
@@ -58,7 +58,7 @@ it('arms a cooldown when score crosses threshold and no cooldown is active', fun
     expect($result['action'])->toBe('cooldown_armed')
         ->and($kraite->bscs_cooldown_until)->not->toBeNull()
         ->and($kraite->bscs_cooldown_until->isFuture())->toBeTrue()
-        ->and(BlackSwanIndex::current()->shouldBlockOpens())->toBeTrue();
+        ->and(Bscs::current()->shouldBlockOpens())->toBeTrue();
 });
 
 it('does not re-arm while a cooldown is already active', function (): void {
@@ -101,7 +101,7 @@ it('releases the cooldown when score drops below threshold after expiry', functi
     $kraite = Kraite::find(1)->refresh();
 
     expect($result['action'])->toBe('cooldown_released')
-        ->and(BlackSwanIndex::current()->shouldBlockOpens())->toBeFalse()
+        ->and(Bscs::current()->shouldBlockOpens())->toBeFalse()
         ->and($kraite->bscs_cooldown_until)->toBeNull();
 });
 

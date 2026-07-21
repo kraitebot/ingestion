@@ -18,6 +18,7 @@ Kraite Ingestion is the central nervous system of the Kraite trading infrastruct
 - **Dispatch Daemon** — persistent single-process step dispatcher replacing scheduler forks
 - **WebSocket Streams** — real-time mark price feeds and multiplexed user data streams
 - **Horizon Queue Management** — orchestrates job distribution across ingestion and worker servers
+- **Registration Inspection** — executes onboarding balance and open-trade reads on the high-priority worker lane
 - **Market Regime Analysis** — BTC correlation, cascade detection, regime scoring
 - **Cooldown/Warmup** — zero-downtime deploy cycle with queue draining
 - **Business Seeding** — deterministic admin/trader users and shared credentials for local, testing, and production environments

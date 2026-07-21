@@ -265,7 +265,7 @@ if (! $isCoolingDown()) {
     // BSCS gate state machine — runs 5 minutes after the compute cron so
     // it acts on the freshly-stamped score. Arms a 24h cooldown when score
     // crosses threshold, re-arms on expiry if score still high, releases
-    // when score recovers below threshold. Wires `BlackSwanIndex::shouldBlockOpens()`
+    // when score recovers below threshold. Wires `Bscs::current()->shouldBlockOpens()`
     // through `HasTradingGuards::canOpenPositions()` to pause new opens
     // while the cooldown is active. Existing positions untouched.
     Schedule::command('kraite:cron-analyse-bscs')
