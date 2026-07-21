@@ -1,3 +1,27 @@
+# WhereAreWe — 2026-07-21 (unified trading boundaries)
+
+## Date
+
+2026-07-21
+
+## This release (2026-07-21)
+
+- **Trading behavior now has one boundary per domain:** exchange access,
+  token selection, BSCS decisions, and health/drift remediation use shared
+  entry points while preserving the existing position and order lifecycle.
+- **BSCS decisions stay consistent across bot and dashboards:** opening,
+  effective position caps, leverage, margin, and presentation read one market
+  snapshot in an account-specific context.
+- **Mobile risk capacity is explicit:** traders see effective versus saved
+  LONG/SHORT caps and the selected account's latest clean position close.
+  Cancelled and failed history never qualifies as a successful close.
+- **Registration exchange reads leave the web request:** balance discovery and
+  the final existing-trade inspection run on the high-priority trading lane.
+  Activation waits for a successful session-bound result, and whitelist
+  failures identify the rejected worker IP.
+
+---
+
 # WhereAreWe — 2026-07-21 (Bitget lifecycle, mobile, and registration)
 
 ## Date
