@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.72.0 - 2026-07-21
+
+Ships `kraitebot/core` 1.78.0 and `brunocfalcao/step-dispatcher` 1.19.0.
+
+### Registration welcome
+
+- [ADDED] The notification catalogue now includes the mail-only registration
+  welcome with once-per-trader delivery, failed-send retry, exchange-activity
+  context, and trading-risk disclosure.
+- [FIXED] Welcome infrastructure failures cannot abort activation, while
+  existing accounts resumed later remain outside the onboarding flow.
+
+### Indicator pacing
+
+- [CHANGED] TAAPI admission is set to 68 requests per 15 seconds with 221 ms
+  pacing, keeping the existing throttler about 10% below the 75-request plan
+  ceiling.
+
+### Verification
+
+- [VERIFIED] Full regression passes: ingestion 3,006 tests / 9,583 assertions,
+  public website 73 / 300, and Step Dispatcher 209 / 526. Documentation build,
+  smoke routes, and changed-file formatting are green.
+
 ## 1.71.3 - 2026-07-21
 
 Ships `kraitebot/core` 1.77.3 and `brunocfalcao/step-dispatcher` 1.19.0.

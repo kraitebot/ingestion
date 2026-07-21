@@ -20,6 +20,14 @@
 - **Public registration now has an explicit final consent gate:** risk,
   responsible-trading, and legal acknowledgements are mandatory. New and
   retried accounts default to six LONG and six SHORT slots.
+- **Successful registration now welcomes the trader by email:** the message
+  explains the first trading cycle, reports existing exchange activity, and
+  includes the required risk disclosures. Successful delivery is once per
+  trader; failed mail remains retryable. Resuming an existing account does not
+  trigger a welcome.
+- **TAAPI runs with a small Expert-plan buffer:** 68 requests per 15 seconds
+  and 221 ms pacing keep the configured profile about 10% below the provider
+  ceiling while preserving indicator throughput.
 
 ---
 

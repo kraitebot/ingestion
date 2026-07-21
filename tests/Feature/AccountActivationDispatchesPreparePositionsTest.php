@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Kraite\Core\Jobs\Lifecycles\Account\PreparePositionsOpeningJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\Subscription;
@@ -68,6 +70,19 @@ it('dispatches PreparePositionsOpeningJob when can_trade flips false to true', f
     $account->update(['can_trade' => true]);
 
     expect(pendingPreparePositionsCount($account))->toBe(1);
+});
+
+it('does not welcome an existing account when trading is resumed', function (): void {
+    $account = freshActivatableAccount(startReady: false);
+
+    DB::shouldReceive('afterCommit')
+        ->zeroOrMoreTimes()
+        ->andReturnUsing(static fn (Closure $callback): mixed => $callback());
+    NotificationFacade::fake();
+
+    $account->update(['can_trade' => true]);
+
+    NotificationFacade::assertNothingSent();
 });
 
 it('does not dispatch when can_trade was already true (no false->true transition)', function (): void {
