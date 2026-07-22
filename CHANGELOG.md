@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.73.0 - 2026-07-22
+
+Ships `kraitebot/core` 1.79.0 and `brunocfalcao/step-dispatcher` 1.19.0.
+
+### Private single-host runtime
+
+- [CHANGED] Production uses one resource-bounded `kraite` host for every
+  trading, indicator, cron, stream, web, database, and Redis workload.
+- [CHANGED] Production seed creates exactly one configured sysadmin and no
+  trader accounts, positions, or orders.
+- [CHANGED] Binance is the only active exchange; disabled exchange data and
+  credentials remain stored but outside all processing paths.
+
+### Verification
+
+- [VERIFIED] Full ingestion regression passes: 3,043 tests / 9,745 assertions.
+- [VERIFIED] Static analysis has zero errors, type coverage is 100%, and
+  formatting plus Rector checks are green.
+
 ## 1.72.1 - 2026-07-21
 
 Ships `kraitebot/core` 1.78.1 and `brunocfalcao/step-dispatcher` 1.19.0.

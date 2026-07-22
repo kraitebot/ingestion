@@ -7,6 +7,8 @@ use Kraite\Core\Jobs\Atomic\Order\CalculateWapAndModifyProfitOrderJob;
 use Kraite\Core\Jobs\Atomic\Order\DispatchLimitOrdersJob;
 use Kraite\Core\Jobs\Atomic\Order\PlaceProfitOrderJob;
 use Kraite\Core\Jobs\Atomic\Order\SyncPositionOrdersJob;
+use Kraite\Core\Models\Account;
+use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
@@ -22,7 +24,14 @@ use StepDispatcher\States\Skipped;
  */
 function buildPlacementReadyPosition(array $overrides = []): Position
 {
+    $apiSystem = ApiSystem::factory()->exchange()->create([
+        'name' => 'Binance',
+        'canonical' => 'binance',
+    ]);
+    $account = Account::factory()->create(['api_system_id' => $apiSystem->id]);
+
     return Position::factory()->long()->create(array_merge([
+        'account_id' => $account->id,
         'status' => 'opening',
         'opening_price' => '0.10',
         'quantity' => '100',

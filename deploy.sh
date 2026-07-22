@@ -2,18 +2,16 @@
 set -Eeuo pipefail
 
 # =============================================================================
-# Kraite Deploy Script v5 (per-hostname-user)
-# Runs ON the server as ROOT (SSH as root).
-# Project commands (artisan, composer, git) run as the hostname-named user
-# via `su` (e.g. on athena → `su - athena`, on eos → `su - eos`). The
-# 2026-05-23 hardening principle replaced the old single-`waygou` user with
-# a sudo user matching each server's hostname. See
+# Kraite Deploy Script v6 (single-host)
+# Runs through sudo after connecting as the `kraite` user. Routine SSH never
+# uses root. Project commands (Artisan, Composer, and Git) run as `kraite`
+# via `su`; sudo is retained only for service and ownership operations. See
 # ~/Herd/.credentials/kraite/hardening.json → `principles`.
 # Called AFTER kraite:cooldown --status confirms STATUS:COOLED_DOWN.
 # Does NOT bring the server back online — kraite:warmup does that separately.
 #
 # SAFETY NOTES:
-# - Never run artisan/composer/git as root — the hostname-named user owns
+# - Never run artisan/composer/git as root — the `kraite` user owns
 #   the project files. Root-created files get root:root ownership and
 #   PHP-FPM (www-data) can't read them.
 # - The repo ships composer.json with ../packages/ path repos for local dev,
@@ -21,7 +19,7 @@ set -Eeuo pipefail
 #   production. After git checkout, this script swaps composer.production.json
 #   over composer.json so the resolved manifest is the one tracked in git for
 #   the deployed tag. End of server-local composer.json drift.
-# - config:cache must run as the hostname user — root-cached .php files
+# - config:cache must run as `kraite` — root-cached .php files
 #   block PHP-FPM.
 # - SERVER_ROLE is read from artisan AFTER reset, not from .env BEFORE reset,
 #   because .env survives the reset (gitignored) but composer.json does not.
@@ -39,14 +37,11 @@ echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 
 # --- Step 1: Verify cooldown ---
-# FORCE_DEPLOY=1 escape hatch: bypass the cooldown gate when athena's scheduler
-# is already dispatching to a queue this box would normally drain (cooldown
+# FORCE_DEPLOY=1 escape hatch: bypass the cooldown gate when the scheduler is
+# already dispatching to a queue this box would normally drain (cooldown
 # --status reports STATUS:ACTIVE because of accumulating queue depth even
-# though the app is in maintenance + Horizon is processing). Use sparingly —
-# only when the operator has independently verified the box is safe to deploy
-# (e.g., during the v1.49.8 release flow where workers showed STATUS:ACTIVE
-# while still in maintenance mode because athena's resumed scheduler was
-# filling the queue faster than Horizon drained it).
+# though the app is in maintenance + Horizon is processing). Use sparingly and
+# only when the operator has independently verified the box is safe to deploy.
 if [ "${FORCE_DEPLOY:-0}" = "1" ]; then
     echo "[1/9] Cooldown check BYPASSED (FORCE_DEPLOY=1)"
 elif ! su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:cooldown --status" 2>&1 | grep -q "STATUS:COOLED_DOWN"; then

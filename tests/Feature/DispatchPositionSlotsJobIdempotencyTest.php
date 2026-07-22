@@ -86,6 +86,38 @@ function dispatchPositionStepsForPosition(Position $position): Illuminate\Databa
         ->get();
 }
 
+it('refuses final position dispatch when the exchange is deactivated mid-workflow', function (): void {
+    $position = Position::factory()->create([
+        'account_id' => $this->account->id,
+        'exchange_symbol_id' => $this->exchangeSymbolA->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+    $parentStep = Step::create([
+        'class' => DispatchPositionSlotsJob::class,
+        'arguments' => ['accountId' => $this->account->id],
+        'queue' => 'cronjobs',
+        'index' => 1,
+        'block_uuid' => (string) Str::uuid(),
+    ]);
+
+    expect(dispatchPositionStepsForPosition($position))->toHaveCount(0)
+        ->and($this->account->apiSystem->is_active)->toBeTrue();
+
+    $this->account->apiSystem->update(['is_active' => false]);
+
+    $job = new DispatchPositionSlotsJob($this->account->id);
+    $job->step = $parentStep;
+    $result = $job->compute();
+
+    expect($result)->toBe([
+        'account_id' => $this->account->id,
+        'positions_dispatched' => 0,
+        'message' => 'Account or API system became inactive/non-tradeable mid-workflow — refusing to dispatch slots',
+    ])->and(dispatchPositionStepsForPosition($position))->toHaveCount(0)
+        ->and($position->refresh()->status)->toBe('new');
+});
+
 it('does not create a duplicate DispatchPositionJob step when one already exists for the position', function (): void {
     $positionA = Position::factory()->create([
         'account_id' => $this->account->id,

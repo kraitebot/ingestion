@@ -117,6 +117,16 @@ it('account isReadyToTrade returns false when account.is_active is false (gate 1
     expect($account->isReadyToTrade())->toBeFalse();
 });
 
+it('account isReadyToTrade returns false when its API system is inactive', function (): void {
+    [, $account] = freshUserAndAccount();
+
+    expect($account->isReadyToTrade())->toBeTrue();
+
+    $account->apiSystem->update(['is_active' => false]);
+
+    expect($account->fresh()->isReadyToTrade())->toBeFalse();
+});
+
 it('account isReadyToTrade returns false when user.can_trade is false (gate 2)', function (): void {
     [, $account] = freshUserAndAccount(userOverrides: ['can_trade' => false]);
 
@@ -156,7 +166,7 @@ it('account isReadyToTrade returns false when subscription is paused (gate 3)', 
 it('account isReadyToTrade allows a unified BitGet account after the v3 order surface ships', function (): void {
     $bitget = Kraite\Core\Models\ApiSystem::firstOrCreate(
         ['canonical' => 'bitget'],
-        ['name' => 'BitGet', 'is_exchange' => true, 'recvwindow_margin' => 1000]
+        ['name' => 'BitGet', 'is_active' => true, 'is_exchange' => true, 'recvwindow_margin' => 1000]
     );
 
     [, $account] = freshUserAndAccount(accountOverrides: [
@@ -170,7 +180,7 @@ it('account isReadyToTrade allows a unified BitGet account after the v3 order su
 it('account isReadyToTrade allows a classic BitGet account through the mode gate', function (): void {
     $bitget = Kraite\Core\Models\ApiSystem::firstOrCreate(
         ['canonical' => 'bitget'],
-        ['name' => 'BitGet', 'is_exchange' => true, 'recvwindow_margin' => 1000]
+        ['name' => 'BitGet', 'is_active' => true, 'is_exchange' => true, 'recvwindow_margin' => 1000]
     );
 
     [, $account] = freshUserAndAccount(accountOverrides: [

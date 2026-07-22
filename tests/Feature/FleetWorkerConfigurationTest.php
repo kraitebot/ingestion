@@ -2,13 +2,17 @@
 
 declare(strict_types=1);
 
-it('gives Athena indicator work processing margin without changing its safety lanes', function (): void {
-    $athenaWorkers = config('kraite.horizon.workers.athena');
-
-    expect($athenaWorkers)->toBe([
-        'user-data-stream' => ['processes' => 5],
-        'indicators' => ['processes' => 16],
-        'athena' => ['processes' => 1],
-    ])->and(config('kraite.horizon.workers.tyche.indicators.processes'))->toBe(8)
-        ->and(config('kraite.horizon.workers.tyche.cronjobs.processes'))->toBe(6);
+it('runs every production queue on the single resource-bounded Kraite host', function (): void {
+    expect(config('kraite.horizon.workers'))->toBe([
+        'kraite' => [
+            'positions' => ['processes' => 2],
+            'orders' => ['processes' => 3],
+            'priority' => ['processes' => 1],
+            'cronjobs' => ['processes' => 2],
+            'indicators' => ['processes' => 3],
+            'user-data-stream' => ['processes' => 1],
+            'web' => ['processes' => 1],
+            'kraite' => ['processes' => 1],
+        ],
+    ]);
 });

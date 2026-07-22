@@ -21,12 +21,12 @@ return [
         'timeout_seconds' => (int) env('KRAITE_CLONE_TIMEOUT_SECONDS', 1800),
         'local_dump_directory' => env('KRAITE_CLONE_LOCAL_DUMP_DIRECTORY', storage_path('app/private/kraite-clone')),
         'local_password' => env('KRAITE_CLONE_LOCAL_PASSWORD', env('ADMIN_USER_PASSWORD')),
-        'remote_dump_directory' => env('KRAITE_CLONE_REMOTE_DUMP_DIRECTORY', '/home/athena/ingestion.kraite.com/storage/app/private/kraite-clone'),
+        'remote_dump_directory' => env('KRAITE_CLONE_REMOTE_DUMP_DIRECTORY', '/home/kraite/ingestion.kraite.com/storage/app/private/kraite-clone'),
         'production' => [
-            'host' => env('KRAITE_CLONE_PRODUCTION_HOST', '37.27.243.164'),
-            'ssh_user' => env('KRAITE_CLONE_PRODUCTION_SSH_USER', 'root'),
-            'app_user' => env('KRAITE_CLONE_PRODUCTION_APP_USER', 'athena'),
-            'project_path' => env('KRAITE_CLONE_PRODUCTION_PROJECT_PATH', '/home/athena/ingestion.kraite.com'),
+            'host' => env('KRAITE_CLONE_PRODUCTION_HOST', '135.181.93.226'),
+            'ssh_user' => env('KRAITE_CLONE_PRODUCTION_SSH_USER', 'kraite'),
+            'app_user' => env('KRAITE_CLONE_PRODUCTION_APP_USER', 'kraite'),
+            'project_path' => env('KRAITE_CLONE_PRODUCTION_PROJECT_PATH', '/home/kraite/ingestion.kraite.com'),
             'identity_file' => env('KRAITE_CLONE_PRODUCTION_IDENTITY_FILE', mb_rtrim((string) env('HOME', ''), '/').'/.ssh/id_ed25519_kraite'),
         ],
     ],
@@ -521,7 +521,7 @@ return [
     | Dispatch-Time Queue Routing
     |--------------------------------------------------------------------------
     |
-    | Single source of truth for the worker fleet topology. Both the
+    | Single source of truth for queue topology. Both the
     | StepRouter (which picks the physical per-hostname queue at dispatch
     | time) AND `config/horizon.php` (which spawns the supervisors that
     | consume those queues) read from this config block. Keeping them in
@@ -534,9 +534,9 @@ return [
     | hostname's block lists the LOGICAL queue names it serves (positions,
     | orders, cronjobs, …) with per-queue overrides (currently just
     | `processes`). The horizon transformer composes the PHYSICAL queue
-    | name as `{hostname}-{logical}` (e.g. eos-positions) on dispatch
+    | name as `{hostname}-{logical}` (e.g. kraite-positions) on dispatch
     | and supervisor spawn. Special case: when the logical name already
-    | equals the hostname (the per-hostname queue like `eos`), no prefix
+    | equals the hostname (the direct `kraite` queue), no prefix
     | is added.
     |
     | horizon.defaults — supervisor options applied to every block before
@@ -583,99 +583,18 @@ return [
                     'local' => ['processes' => 1],
                 ],
             ] : []),
-            // Ingestion box (scheduler + dispatch-daemon + Binance WS
-            // daemons). Consumes user-data-stream (5 procs match the
-            // per-Binance-account WS daemon fan) plus its own per-hostname
-            // connectivity-probe queue. Also a SECOND indicators consumer:
-            // athena's public IP joins tyche's as a candidate for the
-            // kline/indicator lane, so StepRouter spreads the per-IP Bybit
-            // burst across two IPs (cuts retCode 10006) and can rotate the
-            // lane off a rate-limited tyche IP. Sized at 10 vs tyche's 20 to
-            // leave the scheduler + WS streams ample air on athena's 4
-            // cores. Web stack moved to pheme on 2026-06-01.
-            'athena' => [
-                'user-data-stream' => ['processes' => 5],
-                'indicators' => ['processes' => 16],
-                'athena' => ['processes' => 1],
-            ],
-            // Trading workers — interchangeable Horizon consumers on
-            // positions/orders/priority. Three distinct public IPs spread
-            // the per-IP Binance weight budget naturally. No per-account
-            // routing; the StepRouter picks among eos/iris/nyx based on
-            // ban state, not account identity.
-            'eos' => [
-                'positions' => ['processes' => 5],
-                'orders' => ['processes' => 8],
-                'priority' => ['processes' => 3],
-                'eos' => ['processes' => 1],
-            ],
-            'iris' => [
-                'positions' => ['processes' => 5],
-                'orders' => ['processes' => 8],
-                'priority' => ['processes' => 3],
-                'iris' => ['processes' => 1],
-            ],
-            'nyx' => [
-                'positions' => ['processes' => 5],
-                'orders' => ['processes' => 8],
-                'priority' => ['processes' => 3],
-                'nyx' => ['processes' => 1],
-            ],
-            'hemera' => [
-                'positions' => ['processes' => 5],
-                'orders' => ['processes' => 8],
-                'priority' => ['processes' => 3],
-                'hemera' => ['processes' => 1],
-            ],
-            // Trading workers — interchangeable consumers on
-            // positions/orders/priority, distinct public IPs for the
-            // Binance per-IP weight budget. Joined 2026-06-12.
-            'palaemon' => [
-                'positions' => ['processes' => 5],
-                'orders' => ['processes' => 8],
-                'priority' => ['processes' => 3],
-                'palaemon' => ['processes' => 1],
-            ],
-            'aristaeus' => [
-                'positions' => ['processes' => 5],
-                'orders' => ['processes' => 8],
-                'priority' => ['processes' => 3],
-                'aristaeus' => ['processes' => 1],
-            ],
-            // Dedicated web host. nginx + php8.5-fpm serves admin /
-            // console / kraite.com / syntax. Single logical `web` queue
-            // (physical: `pheme-web` after the {hostname}-{logical}
-            // prefix) for web-originated background jobs (notifications,
-            // mail, billing webhooks, etc.). NOT part of the StepRouter
-            // candidate pool — trading work is never dispatched here.
-            // Per-hostname connectivity-probe queue retained as 1 proc
-            // for symmetry with the rest of the fleet, even though
-            // pheme doesn't make exchange API calls.
-            'pheme' => [
-                'web' => ['processes' => 2],
-                'pheme' => ['processes' => 1],
-            ],
-            // Indicators + cronjobs worker. Isolated from eos/iris/nyx
-            // so TAAPI throttler waits never starve real-time trading. The
-            // `priority` lane is included so stale tyche-bound steps that
-            // get promoted by `steps:recover-stale --recover-dispatched`
-            // (which rewrites `queue='priority'`) can land back on tyche
-            // instead of leaking to a trading worker. Known imperfection:
-            // the resolver picks the priority candidate at random from a
-            // 5-worker pool so 4/5 promoted steps still leak to trading;
-            // a per-category split (`priority-trading` vs `priority-cron`)
-            // would close the leak fully and is tracked as follow-up.
-            // Right-sized for 2 vCPU / 4GB (2026-06-12). Indicator + cronjob
-            // throughput is gated by the shared TAAPI throttle (75 req / 15s,
-            // coordinated across workers), NOT by process count — so 20+20
-            // procs only oversubscribed the 2 cores and pinned CPU at 100%
-            // during burst auto-scale without moving more work. These counts
-            // keep tyche's share of the TAAPI pipe full with compute overlap.
-            'tyche' => [
-                'indicators' => ['processes' => 8],
-                'cronjobs' => ['processes' => 6],
-                'priority' => ['processes' => 3],
-                'tyche' => ['processes' => 2],
+            // Single-user production host. One Horizon instance consumes
+            // every queue while leaving capacity for MySQL, Redis, PHP-FPM,
+            // the scheduler, dispatcher, and Binance streams on 8 GB RAM.
+            'kraite' => [
+                'positions' => ['processes' => 2],
+                'orders' => ['processes' => 3],
+                'priority' => ['processes' => 1],
+                'cronjobs' => ['processes' => 2],
+                'indicators' => ['processes' => 3],
+                'user-data-stream' => ['processes' => 1],
+                'web' => ['processes' => 1],
+                'kraite' => ['processes' => 1],
             ],
         ],
     ],

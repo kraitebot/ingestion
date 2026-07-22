@@ -125,6 +125,25 @@ it('re-dispatches DispatchPositionJob for an orphan position in new status with 
     );
 });
 
+it('does not recover an orphan position after its exchange is deactivated', function (): void {
+    $orphan = Position::factory()->create([
+        'account_id' => $this->account->id,
+        'exchange_symbol_id' => $this->exchangeSymbol->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    expect(stepsForPosition($orphan))->toHaveCount(0)
+        ->and($this->account->apiSystem->is_active)->toBeTrue();
+
+    $this->account->apiSystem->update(['is_active' => false]);
+
+    $this->artisan('kraite:cron-create-positions')->assertSuccessful();
+
+    expect(stepsForPosition($orphan))->toHaveCount(0)
+        ->and($orphan->refresh()->status)->toBe('new');
+});
+
 it('detects an existing live step via the indexed relatable_type / relatable_id columns', function (): void {
     // Pin the new indexed code path: a live DispatchPositionJob step
     // with relatable_type+relatable_id set must be recognised as

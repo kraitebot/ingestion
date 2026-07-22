@@ -1,3 +1,30 @@
+# WhereAreWe — 2026-07-22 (registration position defaults)
+
+## Date
+
+2026-07-22
+
+## This release (2026-07-22)
+
+- **Production is one private server:** the `kraite` CPX32 now owns MySQL,
+  Redis, ingestion, queues, daemons, web applications, and static docs. The
+  deleted fleet is no longer a runtime target.
+- **Production starts with no trading identity:** the first seed creates only
+  the configured sysadmin. It creates no trader, exchange account, position,
+  or order.
+- **Binance is the only active exchange:** Bybit, KuCoin, and Bitget remain in
+  the catalogue and historical data, but current processing excludes them.
+- **Queue capacity is private-use sized:** one Horizon instance on `kraite`
+  consumes every lane with fourteen bounded workers.
+- **New traders start with deliberately small exposure:** new and retried
+  registrations begin with one LONG and one SHORT slot. Existing accounts keep
+  their saved caps.
+- **Registration trading defaults are centrally managed:** position caps,
+  leverage, margin, profit, stop-loss, quote, and position-mode defaults now
+  live together instead of being hidden inside the registration workflow.
+
+---
+
 # WhereAreWe — 2026-07-21 (unified trading boundaries)
 
 ## Date

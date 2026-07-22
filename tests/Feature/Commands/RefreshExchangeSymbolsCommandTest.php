@@ -146,6 +146,61 @@ test('full refresh preserves Binance-first workflow ordering', function (): void
             ->exists())->toBeFalse();
 });
 
+test('full refresh dispatches only active exchanges', function (): void {
+    $testToken = Str::lower(Str::random(8));
+    $binance = ApiSystem::factory()->exchange()->create([
+        'canonical' => "binance-active-{$testToken}",
+        'name' => "Binance active {$testToken}",
+        'is_active' => true,
+    ]);
+    $inactiveExchanges = collect(['bybit', 'kucoin', 'bitget'])
+        ->map(fn (string $canonical): ApiSystem => ApiSystem::factory()->exchange()->create([
+            'canonical' => "{$canonical}-inactive-{$testToken}",
+            'name' => "{$canonical} inactive {$testToken}",
+            'is_active' => false,
+        ]));
+
+    expect($binance->is_active)->toBeTrue();
+    foreach ($inactiveExchanges as $inactiveExchange) {
+        expect($inactiveExchange->is_active)->toBeFalse();
+    }
+
+    $this->artisan('kraite:cron-refresh-exchange-symbols')->assertSuccessful();
+
+    expect(Step::query()
+        ->where('class', UpsertExchangeSymbolsFromExchangeJob::class)
+        ->whereJsonContains('arguments->apiSystemId', $binance->id)
+        ->count())->toBe(1);
+
+    foreach ($inactiveExchanges as $inactiveExchange) {
+        expect(Step::query()
+            ->where('class', UpsertExchangeSymbolsFromExchangeJob::class)
+            ->whereJsonContains('arguments->apiSystemId', $inactiveExchange->id)
+            ->count())->toBe(0);
+    }
+});
+
+test('targeted refresh cannot bypass an inactive exchange switch', function (): void {
+    $testToken = Str::lower(Str::random(8));
+    $inactiveExchange = ApiSystem::factory()->exchange()->create([
+        'canonical' => "inactive-target-{$testToken}",
+        'name' => "Inactive target {$testToken}",
+        'is_active' => false,
+    ]);
+
+    expect(Step::query()
+        ->whereJsonContains('arguments->apiSystemId', $inactiveExchange->id)
+        ->count())->toBe(0);
+
+    $this->artisan('kraite:cron-refresh-exchange-symbols', [
+        '--exchange' => $inactiveExchange->canonical,
+    ])->assertFailed();
+
+    expect(Step::query()
+        ->whereJsonContains('arguments->apiSystemId', $inactiveExchange->id)
+        ->count())->toBe(0);
+});
+
 test('exchange catalogue schedules exactly one refresh each hour and a full bracket sweep every six hours', function (): void {
     config(['kraite.server_role' => 'ingestion']);
     Kraite::query()->firstOrFail()->update(['is_cooling_down' => false]);

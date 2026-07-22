@@ -15,8 +15,6 @@ final class BusinessSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->seedSysadmin();
-
         // Testing keeps the minimal fixture shape: Karine only.
         if (app()->environment('testing')) {
             $this->seedKarineTrader();
@@ -33,20 +31,6 @@ final class BusinessSeeder extends Seeder
         }
 
         $this->seedBrunoNidavellirTrader();
-    }
-
-    private function seedSysadmin(): void
-    {
-        User::updateOrCreate(
-            ['email' => config('kraite.admin_user_email', 'bruno@kraite.com')],
-            [
-                'name' => config('kraite.admin_user_name', 'Bruno Falcao'),
-                'password' => bcrypt(config()->string('kraite.admin_user_password', 'password')),
-                'status' => 'active',
-                'is_active' => true,
-                'is_admin' => true,
-            ]
-        );
     }
 
     private function seedKarineTrader(): void

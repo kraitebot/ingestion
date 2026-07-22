@@ -16,6 +16,7 @@ beforeEach(function (): void {
     $this->apiSystem = ApiSystem::firstOrCreate(
         ['canonical' => 'binance'],
         [
+            'is_active' => true,
             'is_exchange' => true,
             'name' => 'Binance',
             'recvwindow_margin' => 1000,
