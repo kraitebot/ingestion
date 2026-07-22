@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.73.3 - 2026-07-23
+
+Ships `kraitebot/core` 1.79.1.
+
+### Immediate trading stop
+
+- [FIXED] A queued opening workflow rechecks live account readiness before
+  market entry, closing the gap between disabling an account and exchange
+  placement.
+- [VERIFIED] Trading-readiness, dispatch, and market-entry regression tests
+  pass: 55 tests / 75 assertions.
+
 ## 1.73.0 - 2026-07-22
 
 Ships `kraitebot/core` 1.79.0 and `brunocfalcao/step-dispatcher` 1.19.0.
