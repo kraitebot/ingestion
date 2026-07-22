@@ -9,7 +9,7 @@ it('runs every production queue on the single resource-bounded Kraite host', fun
             'orders' => ['processes' => 3],
             'priority' => ['processes' => 1],
             'cronjobs' => ['processes' => 4],
-            'indicators' => ['processes' => 8],
+            'indicators' => ['processes' => 12],
             'user-data-stream' => ['processes' => 1],
             'web' => ['processes' => 1],
             'kraite' => ['processes' => 1],
