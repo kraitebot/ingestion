@@ -6,6 +6,8 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Once;
+use Kraite\Core\Models\AppLog;
+use Kraite\Core\Models\ModelLog;
 use Kraite\Core\Support\NotificationService;
 
 abstract class TestCase extends BaseTestCase
@@ -15,8 +17,11 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         // Parallel workers reuse their PHP process for multiple tests. Clear
-        // both process caches so database rollbacks cannot leave stale models.
+        // process state so database rollbacks cannot affect later tests.
         Once::flush();
         NotificationService::flushNotificationCache();
+        AppLog::enable();
+        ModelLog::enable();
+        ModelLog::setCurrentStep(null);
     }
 }

@@ -35,9 +35,9 @@ it('provides one typed exchange boundary for every API-aware aggregate', functio
 });
 
 it('keeps exchange proxy construction inside the exchange boundary', function (): void {
-    $sourceRoot = realpath(__DIR__.'/../../../packages/kraitebot/core/src');
-    $boundaryRoot = realpath(__DIR__.'/../../../packages/kraitebot/core/src/Trading/Exchange');
-    $proxyRoot = realpath(__DIR__.'/../../../packages/kraitebot/core/src/Support/Proxies');
+    $sourceRoot = realpath(base_path('vendor/kraitebot/core/src'));
+    $boundaryRoot = realpath(base_path('vendor/kraitebot/core/src/Trading/Exchange'));
+    $proxyRoot = realpath(base_path('vendor/kraitebot/core/src/Support/Proxies'));
 
     expect($sourceRoot)->not->toBeFalse()
         ->and($boundaryRoot)->not->toBeFalse()
@@ -81,7 +81,7 @@ it('keeps model API concerns as compatibility delegates without exchange orchest
     ];
 
     foreach ($concerns as $concern) {
-        $path = __DIR__.'/../../../packages/kraitebot/core/src/Concerns/'.$concern.'/InteractsWithApis.php';
+        $path = base_path("vendor/kraitebot/core/src/Concerns/{$concern}/InteractsWithApis.php");
         $source = file_get_contents($path);
 
         expect($source)->not->toBeFalse()
@@ -97,7 +97,7 @@ it('provides one account-scoped token-selection boundary', function (): void {
 });
 
 it('keeps the account token concern as a compatibility delegate', function (): void {
-    $path = __DIR__.'/../../../packages/kraitebot/core/src/Concerns/Account/HasTokenDiscovery.php';
+    $path = base_path('vendor/kraitebot/core/src/Concerns/Account/HasTokenDiscovery.php');
     $source = file_get_contents($path);
 
     expect($source)->not->toBeFalse()
@@ -167,7 +167,7 @@ it('can preserve fail-fast behavior for remediation workflows', function (): voi
 })->throws(RuntimeException::class, 'stop');
 
 it('keeps money-changing drift remediation outside the console command', function (): void {
-    $path = __DIR__.'/../../../packages/kraitebot/core/src/Commands/Cronjobs/CheckDriftsCommand.php';
+    $path = base_path('vendor/kraitebot/core/src/Commands/Cronjobs/CheckDriftsCommand.php');
     $source = file_get_contents($path);
 
     expect(app(WapRemediator::class))->toBeInstanceOf(WapRemediator::class)
@@ -179,7 +179,7 @@ it('keeps money-changing drift remediation outside the console command', functio
 });
 
 it('keeps orphan exchange mutations outside the system health command', function (): void {
-    $path = __DIR__.'/../../../packages/kraitebot/core/src/Commands/Cronjobs/CheckSystemHealthCommand.php';
+    $path = base_path('vendor/kraitebot/core/src/Commands/Cronjobs/CheckSystemHealthCommand.php');
     $source = file_get_contents($path);
 
     expect(app(OrphanExchangeRemediator::class))->toBeInstanceOf(OrphanExchangeRemediator::class)

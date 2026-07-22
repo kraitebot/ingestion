@@ -34,6 +34,17 @@ it('does not clear an existing resend key when no configured key is available', 
 
 it('creates only the configured sysadmin when the production database is seeded', function (): void {
     $previousEnvironment = app()->environment();
+    $previousAdminConfiguration = [
+        'kraite.admin_user_name' => config('kraite.admin_user_name'),
+        'kraite.admin_user_email' => config('kraite.admin_user_email'),
+        'kraite.admin_user_password' => config('kraite.admin_user_password'),
+    ];
+
+    config([
+        'kraite.admin_user_name' => 'Kraite Sysadmin',
+        'kraite.admin_user_email' => 'sysadmin@example.com',
+        'kraite.admin_user_password' => 'test-password',
+    ]);
 
     expect(User::query()->exists())->toBeFalse()
         ->and(Account::query()->exists())->toBeFalse();
@@ -60,5 +71,6 @@ it('creates only the configured sysadmin when the production database is seeded'
             ->and(ApiSystem::activeExchange()->pluck('canonical')->all())->toBe(['binance']);
     } finally {
         app()->instance('env', $previousEnvironment);
+        config($previousAdminConfiguration);
     }
 });

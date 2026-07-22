@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 it('keeps every external BSCS consumer behind the Bscs facade', function (): void {
-    $sourceRoot = realpath(__DIR__.'/../../../packages/kraitebot/core/src');
-    $domainRoot = realpath(__DIR__.'/../../../packages/kraitebot/core/src/Support/MarketRegime');
+    $sourceRoot = realpath(base_path('vendor/kraitebot/core/src'));
+    $domainRoot = realpath(base_path('vendor/kraitebot/core/src/Support/MarketRegime'));
 
     expect($sourceRoot)->not->toBeFalse()
         ->and($domainRoot)->not->toBeFalse();
