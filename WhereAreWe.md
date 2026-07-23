@@ -1,3 +1,23 @@
+# WhereAreWe — 2026-07-23 (five-year portfolio projections)
+
+## Date
+
+2026-07-23
+
+## This release (2026-07-23)
+
+- **Projections now has two horizons:** Monthly preserves the existing
+  per-account calendar and profit-funded milestone; Yearly adds global
+  portfolio planning.
+- **Five rolling year-ends show the compounding path:** the current year and
+  following four years report projected wallet, profit, growth, and portfolio
+  multiple.
+- **Three evidence-based scenarios remain available:** pessimistic, neutral,
+  and optimistic extend the current month's observed daily returns across the
+  trader's combined visible accounts.
+
+---
+
 # WhereAreWe — 2026-07-23 (profit-funded projection milestone)
 
 ## Date
