@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.74.6 - 2026-07-23
+
+Ships `kraitebot/core` 1.82.1.
+
+### Runtime capacity reliability
+
+- [FIXED] Binance WebSocket reconnects no longer restart an already-running
+  ReactPHP event loop.
+- [FIXED] Default and trading dispatcher saturation counters now flush
+  independently into durable history.
+- [IMPROVED] Horizon monitors wait time on every physical production queue.
+- [UNCHANGED] TAAPI throttling and provider pacing remain unchanged.
+- [VERIFIED] Focused regressions pass: 9 tests / 43 assertions.
+- [VERIFIED] The complete ingestion suite passes: 3,107 tests /
+  9,983 assertions. Static analysis and formatting pass.
+
 ## 1.74.5 - 2026-07-23
 
 Ships `kraitebot/core` 1.80.4.

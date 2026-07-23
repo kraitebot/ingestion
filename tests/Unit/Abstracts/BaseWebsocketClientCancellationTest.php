@@ -2,7 +2,71 @@
 
 declare(strict_types=1);
 
+use Kraite\Core\Abstracts\BaseWebsocketClient;
+use React\EventLoop\LoopInterface;
+use React\EventLoop\Timer\Timer;
+use React\EventLoop\TimerInterface;
 use Tests\Support\TestableWebsocketClient;
+
+final class ReconnectProbeLoop implements LoopInterface
+{
+    /**
+     * @var list<TimerInterface>
+     */
+    public array $timers = [];
+
+    public int $runCalls = 0;
+
+    public function addReadStream($stream, $listener): void {}
+
+    public function addWriteStream($stream, $listener): void {}
+
+    public function removeReadStream($stream): void {}
+
+    public function removeWriteStream($stream): void {}
+
+    public function addTimer($interval, $callback): TimerInterface
+    {
+        $timer = new Timer($interval, $callback);
+        $this->timers[] = $timer;
+
+        return $timer;
+    }
+
+    public function addPeriodicTimer($interval, $callback): TimerInterface
+    {
+        $timer = new Timer($interval, $callback, true);
+        $this->timers[] = $timer;
+
+        return $timer;
+    }
+
+    public function cancelTimer(TimerInterface $timer): void {}
+
+    public function futureTick($listener): void {}
+
+    public function addSignal($signal, $listener): void {}
+
+    public function removeSignal($signal, $listener): void {}
+
+    public function run(): void
+    {
+        $this->runCalls++;
+    }
+
+    public function stop(): void {}
+
+    public function fireFirstTimer(): void
+    {
+        $timer = array_shift($this->timers);
+
+        if (! $timer instanceof TimerInterface) {
+            throw new RuntimeException('No reconnect timer was scheduled.');
+        }
+
+        ($timer->getCallback())();
+    }
+}
 
 /**
  * Pin the reconnect-cancellation contract on BaseWebsocketClient.
@@ -56,4 +120,21 @@ it('close() is idempotent — calling twice keeps shouldReconnect false', functi
     // teardown-was-intentional state is sticky.
     $client->close();
     expect($client->publicGetShouldReconnect())->toBeFalse();
+});
+
+it('registers a reconnect without restarting the already running event loop', function (): void {
+    $client = new TestableWebsocketClient;
+    $loop = new ReconnectProbeLoop;
+
+    $reflection = new ReflectionClass(BaseWebsocketClient::class);
+
+    $loopProperty = $reflection->getProperty('loop');
+    $loopProperty->setValue($client, $loop);
+
+    $reconnect = $reflection->getMethod('reconnect');
+    $reconnect->invoke($client, 'invalid://reconnect.test', []);
+
+    $loop->fireFirstTimer();
+
+    expect($loop->runCalls)->toBe(0);
 });

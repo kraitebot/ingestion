@@ -16,3 +16,17 @@ it('runs every production queue on the single resource-bounded Kraite host', fun
         ],
     ]);
 });
+
+it('monitors wait time on every physical Horizon queue', function (): void {
+    expect(config('horizon.waits'))->toMatchArray([
+        'redis:default' => 60,
+        'redis:kraite-positions' => 60,
+        'redis:kraite-orders' => 60,
+        'redis:kraite-priority' => 60,
+        'redis:kraite-cronjobs' => 60,
+        'redis:kraite-indicators' => 60,
+        'redis:kraite-user-data-stream' => 60,
+        'redis:kraite-web' => 60,
+        'redis:kraite' => 60,
+    ]);
+});

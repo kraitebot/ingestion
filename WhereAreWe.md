@@ -1,3 +1,24 @@
+# WhereAreWe — 2026-07-23 (runtime capacity observability)
+
+## Date
+
+2026-07-23
+
+## This release (2026-07-23)
+
+- **WebSocket reconnects stay inside the active event loop:** a connection
+  close registers its replacement without starting the loop a second time,
+  preventing the mark-price daemon crash loop seen in production.
+- **Trading dispatcher pressure becomes durable evidence:** default and
+  `trading_*` saturation counters flush independently into history instead of
+  the trading counters expiring unseen in Redis.
+- **Every real queue has wait monitoring:** Horizon derives 60-second wait
+  thresholds for all physical production queues from the worker topology.
+- **TAAPI policy is unchanged:** this release changes runtime resilience and
+  observability only.
+
+---
+
 # WhereAreWe — 2026-07-23 (five-year portfolio projections)
 
 ## Date

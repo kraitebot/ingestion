@@ -75,6 +75,11 @@ Schedule::command('kraite:cron-flush-dispatcher-saturation')
     ->withoutOverlapping()
     ->onOneServer();
 
+Schedule::command('kraite:cron-flush-dispatcher-saturation --prefix=trading')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Reclaim stalled steps (Running zombies, Dispatched stalls) and release wedged
 // dispatcher locks. Not gated by cooldown — cleanup, not new work. The
 // --watchdog-progress flag (added 2026-04-25) generalises stall detection
