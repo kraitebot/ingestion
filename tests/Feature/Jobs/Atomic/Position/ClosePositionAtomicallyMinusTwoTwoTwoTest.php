@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\Position\ClosePositionAtomicallyJob;
 use Kraite\Core\Models\Account;
@@ -14,7 +16,7 @@ use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 
 /**
- * Pin the -2022 "already closed" handler on `ClosePositionAtomicallyJob`.
+ * Pin the -2022 reconciliation handler on `ClosePositionAtomicallyJob`.
  *
  * Production incident 2026-05-06 — Position 755 (TONUSDT, account 1) and
  * Position 803 (CAKEUSDT, account 4): TP filled naturally, exchange
@@ -25,9 +27,10 @@ use Kraite\Core\Models\Symbol;
  * landed in Failed, and the position was marked `failed` — despite
  * having been closed in profit.
  *
- * `-2022` from Binance IS the authoritative "nothing to reduce" signal.
- * It must map to the same `already_closed=true` success shape the old
- * snapshot pre-flight returned, not to a hard failure.
+ * Binance documents `-2022` as an open-order conflict, not authoritative
+ * proof that the position is flat. The close may be treated as idempotent
+ * only after two valid account-position reads confirm zero exposure outside
+ * the known REST lag window.
  */
 function buildTpClosedPosition(string $exchange = 'binance'): Position
 {
@@ -52,6 +55,7 @@ function buildTpClosedPosition(string $exchange = 'binance'): Position
     if ($exchange === 'binance') {
         $accountAttributes['binance_api_key'] = 'TESTKEY';
         $accountAttributes['binance_api_secret'] = 'TESTSECRET';
+        $accountAttributes['on_hedge_mode'] = true;
     } elseif ($exchange === 'bitget') {
         $accountAttributes['bitget_api_key'] = 'TESTKEY';
         $accountAttributes['bitget_api_secret'] = 'TESTSECRET';
@@ -89,6 +93,32 @@ function buildTpClosedPosition(string $exchange = 'binance'): Position
     ]));
 
     return $position;
+}
+
+function fakeBinanceCloseRejectionWithPositionSnapshots(array ...$snapshots): void
+{
+    $positionsSequence = Http::sequence();
+
+    foreach ($snapshots as $snapshot) {
+        $positionsSequence->push($snapshot);
+    }
+
+    Http::fake([
+        '*/fapi/v1/order*' => Http::response(
+            json_encode(['code' => -2022, 'msg' => 'ReduceOnly Order is rejected.']),
+            400,
+        ),
+        '*/fapi/v3/positionRisk*' => $positionsSequence,
+    ]);
+}
+
+function liveBinancePosition(string $symbol = 'TONUSDT'): array
+{
+    return [
+        'symbol' => $symbol,
+        'positionSide' => 'LONG',
+        'positionAmt' => '10.60000000',
+    ];
 }
 
 it('treats Bitget 22002 "no position to close" as already-closed success', function (): void {
@@ -135,15 +165,12 @@ it('treats Bitget UTA 25227 "no position available to close" as already-closed s
     ));
 });
 
-it('treats Binance -2022 reduceOnly rejection as already-closed success', function (): void {
-    Http::fake([
-        '*' => Http::response(
-            json_encode(['code' => -2022, 'msg' => 'ReduceOnly Order is rejected.']),
-            400,
-        ),
-    ]);
+it('treats Binance -2022 as already closed only after two valid flat snapshots', function (): void {
+    config()->set('kraite.position_safety.flat_confirmation_delay_seconds', 20);
+    fakeBinanceCloseRejectionWithPositionSnapshots([], []);
 
     $position = buildTpClosedPosition();
+    expect($position->status)->toBe('cancelling');
 
     $job = new ClosePositionAtomicallyJob($position->id);
     $job->assignExceptionHandler();
@@ -152,25 +179,85 @@ it('treats Binance -2022 reduceOnly rejection as already-closed success', functi
     expect($result)->toBeArray();
     expect($result['result'])->toBe(['already_closed' => true]);
     expect($result['symbol'])->toBe('TONUSDT');
-    expect($result['message'])->toContain('already closed');
+    expect($result['message'])->toContain('confirmed flat');
+    expect($position->refresh()->status)->toBe('cancelling');
+
+    Http::assertSentCount(3);
+    Sleep::assertSequence([
+        Sleep::for(20)->seconds(),
+    ]);
+});
+
+it('does not treat Binance -2022 as success while the exact position remains open', function (): void {
+    fakeBinanceCloseRejectionWithPositionSnapshots([
+        liveBinancePosition(),
+    ]);
+
+    $position = buildTpClosedPosition();
+    $job = new ClosePositionAtomicallyJob($position->id);
+    $job->assignExceptionHandler();
+
+    expect(fn () => $job->computeApiable())
+        ->toThrow(RequestException::class, '-2022')
+        ->and($position->refresh()->status)->toBe('cancelling');
+
+    Http::assertSentCount(2);
+    Sleep::assertNeverSlept();
+});
+
+it('does not treat Binance -2022 as success when the position reappears after the lag window', function (): void {
+    config()->set('kraite.position_safety.flat_confirmation_delay_seconds', 20);
+    fakeBinanceCloseRejectionWithPositionSnapshots(
+        [],
+        [liveBinancePosition()],
+    );
+
+    $position = buildTpClosedPosition();
+    $job = new ClosePositionAtomicallyJob($position->id);
+    $job->assignExceptionHandler();
+
+    expect(fn () => $job->computeApiable())
+        ->toThrow(RequestException::class, '-2022')
+        ->and($position->refresh()->status)->toBe('cancelling');
+
+    Http::assertSentCount(3);
+    Sleep::assertSequence([
+        Sleep::for(20)->seconds(),
+    ]);
+});
+
+it('does not treat Binance -2022 as success when position confirmation is malformed', function (): void {
+    fakeBinanceCloseRejectionWithPositionSnapshots([[
+        'symbol' => 'TONUSDT',
+        'positionSide' => 'UNKNOWN',
+        'positionAmt' => '10.60000000',
+    ]]);
+
+    $position = buildTpClosedPosition();
+    $job = new ClosePositionAtomicallyJob($position->id);
+    $job->assignExceptionHandler();
+
+    expect(fn () => $job->computeApiable())
+        ->toThrow(RequestException::class, '-2022')
+        ->and($position->refresh()->status)->toBe('cancelling');
+
+    Http::assertSentCount(2);
+    Sleep::assertNeverSlept();
 });
 
 it('does not leave an orphan MARKET-CANCEL Order row when apiPlace fails with -2022', function (): void {
     // Without the cleanup in apiClose(), every Binance TP-fill close
     // would leak a NEW MARKET-CANCEL row with no exchange_order_id —
     // observed in production 2026-05-06 (orphans 3272, 3280, 3295).
-    Http::fake([
-        '*' => Http::response(
-            json_encode(['code' => -2022, 'msg' => 'ReduceOnly Order is rejected.']),
-            400,
-        ),
+    fakeBinanceCloseRejectionWithPositionSnapshots([
+        liveBinancePosition(),
     ]);
 
     $position = buildTpClosedPosition();
 
     $job = new ClosePositionAtomicallyJob($position->id);
     $job->assignExceptionHandler();
-    $job->computeApiable();
+    expect(fn () => $job->computeApiable())->toThrow(RequestException::class, '-2022');
 
     $orphans = Order::query()
         ->where('position_id', $position->id)

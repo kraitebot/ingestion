@@ -1,3 +1,20 @@
+# WhereAreWe — 2026-07-23 (verified position closure)
+
+## Date
+
+2026-07-23
+
+## This release (2026-07-23)
+
+- **Binance close rejection cannot hide exposure:** `-2022` becomes
+  idempotent success only after two valid, direction-aware flat position
+  reads 20 seconds apart.
+- **Residual verification is a terminal-state gate:** live residual,
+  missing evidence, or malformed evidence stops local closure. Opposite
+  hedge-side exposure remains distinct.
+
+---
+
 # WhereAreWe — 2026-07-23 (selection diagnostics and stop-loss recency)
 
 ## Date

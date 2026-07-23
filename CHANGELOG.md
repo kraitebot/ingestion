@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.74.4 - 2026-07-23
+
+Ships `kraitebot/core` 1.80.3.
+
+### Verified position closure
+
+- [FIXED] Binance `-2022` close rejections cannot hide live exposure; two
+  valid, direction-aware flat reads are required before local closure.
+- [FIXED] Residual verification now blocks terminal closure on live residual,
+  missing evidence, or malformed evidence.
+- [VERIFIED] TDD regressions pass: 18 tests / 58 assertions. The complete
+  ingestion suite also passes: 3,096 tests / 9,906 assertions.
+
 ## 1.74.3 - 2026-07-23
 
 Ships `kraitebot/core` 1.80.2.

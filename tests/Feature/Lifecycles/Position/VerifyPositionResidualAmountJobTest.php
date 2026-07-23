@@ -15,7 +15,8 @@ use Kraite\Core\Models\Symbol;
  * this job inspects the latest account-positions snapshot to detect a
  * non-zero remaining quantity on the same trading pair — which means
  * the close call did not flatten the position fully and operator
- * intervention is needed.
+ * intervention is needed. A residual or untrusted snapshot must fail the
+ * lifecycle before its terminal local status step can run.
  *
  * False negatives here ship as silent partial closes (the bot believes
  * the position is gone but the exchange still carries inventory). False
@@ -23,7 +24,8 @@ use Kraite\Core\Models\Symbol;
  *
  * Cases pinned:
  *
- *   - Snapshot empty / missing → no residual.
+ *   - Snapshot missing or malformed → lifecycle fails closed.
+ *   - Valid empty snapshot → no residual.
  *   - Snapshot keyed by symbol with positionAmt = 0 → no residual.
  *   - Snapshot has positive positionAmt for our pair → residual flagged.
  *   - Snapshot has negative positionAmt (SHORT) → absolute value flagged.
@@ -64,14 +66,12 @@ function seedAccountPositionsForResidual(Position $position, array $payload): vo
     );
 }
 
-it('returns no-residual when the account-positions snapshot is missing entirely', function (): void {
+it('fails closed when the account-positions snapshot is missing entirely', function (): void {
     $position = buildPositionForResidual();
 
-    $result = (new VerifyPositionResidualAmountJob($position->id))->compute();
-
-    expect($result['has_residual'])->toBeFalse()
-        ->and($result['residual_amount'])->toBe('0')
-        ->and($result['message'])->toBe('Position fully closed - no residual');
+    expect(fn () => (new VerifyPositionResidualAmountJob($position->id))->compute())
+        ->toThrow(UnexpectedValueException::class, 'Trusted account-positions snapshot is missing')
+        ->and($position->refresh()->status)->toBe('closing');
 });
 
 it('returns no-residual when the snapshot exists but the matching pair carries quantity zero', function (): void {
@@ -93,12 +93,9 @@ it('flags residual when the matching pair still carries a positive quantity', fu
         'BTCUSDT:LONG' => ['symbol' => 'BTCUSDT', 'positionAmt' => '0.025'],
     ]);
 
-    $result = (new VerifyPositionResidualAmountJob($position->id))->compute();
-
-    expect($result['has_residual'])->toBeTrue()
-        ->and($result['residual_amount'])->toBe('0.025')
-        ->and($result['symbol'])->toBe('BTCUSDT')
-        ->and($result['message'])->toContain('Warning');
+    expect(fn () => (new VerifyPositionResidualAmountJob($position->id))->compute())
+        ->toThrow(UnexpectedValueException::class, 'Residual amount 0.025 found for BTCUSDT')
+        ->and($position->refresh()->status)->toBe('closing');
 });
 
 it('flags residual using the absolute value when the snapshot reports a negative SHORT amount', function (): void {
@@ -106,16 +103,53 @@ it('flags residual using the absolute value when the snapshot reports a negative
     // as a NEGATIVE positionAmt. The job must report the magnitude
     // (absolute value), not the raw signed value, so downstream
     // alerts read the inventory honestly.
-    $position = buildPositionForResidual(token: 'BTC');
+    $position = buildPositionForResidual(direction: 'SHORT', token: 'BTC');
 
     seedAccountPositionsForResidual($position, [
-        'BTCUSDT:LONG' => ['symbol' => 'BTCUSDT', 'positionAmt' => '-0.7'],
+        'BTCUSDT:SHORT' => [
+            'symbol' => 'BTCUSDT',
+            'positionSide' => 'SHORT',
+            'positionAmt' => '-0.7',
+        ],
+    ]);
+
+    expect(fn () => (new VerifyPositionResidualAmountJob($position->id))->compute())
+        ->toThrow(UnexpectedValueException::class, 'Residual amount 0.7 found for BTCUSDT')
+        ->and($position->refresh()->status)->toBe('closing');
+});
+
+it('ignores an open hedge position on the opposite direction', function (): void {
+    $position = buildPositionForResidual(direction: 'LONG', token: 'BTC');
+
+    seedAccountPositionsForResidual($position, [
+        'BTCUSDT:SHORT' => [
+            'symbol' => 'BTCUSDT',
+            'positionSide' => 'SHORT',
+            'positionAmt' => '-0.7',
+        ],
     ]);
 
     $result = (new VerifyPositionResidualAmountJob($position->id))->compute();
 
-    expect($result['has_residual'])->toBeTrue()
-        ->and((float) $result['residual_amount'])->toBe(0.7);
+    expect($result['has_residual'])->toBeFalse()
+        ->and($result['residual_amount'])->toBe('0')
+        ->and($position->refresh()->status)->toBe('closing');
+});
+
+it('fails closed when the account-positions snapshot is malformed', function (): void {
+    $position = buildPositionForResidual(token: 'BTC');
+
+    seedAccountPositionsForResidual($position, [
+        'BTCUSDT:LONG' => [
+            'symbol' => 'BTCUSDT',
+            'positionSide' => 'UNKNOWN',
+            'positionAmt' => '0.7',
+        ],
+    ]);
+
+    expect(fn () => (new VerifyPositionResidualAmountJob($position->id))->compute())
+        ->toThrow(UnexpectedValueException::class, 'Trusted account-positions snapshot is malformed')
+        ->and($position->refresh()->status)->toBe('closing');
 });
 
 it('returns no-residual when the snapshot only covers other symbols', function (): void {
@@ -138,9 +172,8 @@ it('reads the residual amount from the `size` field (Bitget shape)', function ()
         'BTCUSDT:LONG' => ['symbol' => 'BTCUSDT', 'size' => '0.4'],
     ]);
 
-    $result = (new VerifyPositionResidualAmountJob($position->id))->compute();
-
-    expect($result['residual_amount'])->toBe('0.4');
+    expect(fn () => (new VerifyPositionResidualAmountJob($position->id))->compute())
+        ->toThrow(UnexpectedValueException::class, 'Residual amount 0.4 found for BTCUSDT');
 });
 
 it('reads the residual amount from the `qty` field (Bybit shape)', function (): void {
@@ -150,9 +183,8 @@ it('reads the residual amount from the `qty` field (Bybit shape)', function (): 
         'BTCUSDT:LONG' => ['symbol' => 'BTCUSDT', 'qty' => '1.5'],
     ]);
 
-    $result = (new VerifyPositionResidualAmountJob($position->id))->compute();
-
-    expect($result['residual_amount'])->toBe('1.5');
+    expect(fn () => (new VerifyPositionResidualAmountJob($position->id))->compute())
+        ->toThrow(UnexpectedValueException::class, 'Residual amount 1.5 found for BTCUSDT');
 });
 
 it('reads the residual amount from the `available` field (KuCoin shape)', function (): void {
@@ -162,9 +194,8 @@ it('reads the residual amount from the `available` field (KuCoin shape)', functi
         'BTCUSDT:LONG' => ['symbol' => 'BTCUSDT', 'available' => '0.05'],
     ]);
 
-    $result = (new VerifyPositionResidualAmountJob($position->id))->compute();
-
-    expect($result['residual_amount'])->toBe('0.05');
+    expect(fn () => (new VerifyPositionResidualAmountJob($position->id))->compute())
+        ->toThrow(UnexpectedValueException::class, 'Residual amount 0.05 found for BTCUSDT');
 });
 
 it('handles indexed array shape where the symbol field is on each row', function (): void {
@@ -175,8 +206,6 @@ it('handles indexed array shape where the symbol field is on each row', function
         ['symbol' => 'BTCUSDT', 'positionAmt' => '0.7'],
     ]);
 
-    $result = (new VerifyPositionResidualAmountJob($position->id))->compute();
-
-    expect($result['has_residual'])->toBeTrue()
-        ->and($result['residual_amount'])->toBe('0.7');
+    expect(fn () => (new VerifyPositionResidualAmountJob($position->id))->compute())
+        ->toThrow(UnexpectedValueException::class, 'Residual amount 0.7 found for BTCUSDT');
 });
