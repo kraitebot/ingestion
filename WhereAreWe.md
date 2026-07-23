@@ -19,8 +19,9 @@
 - **Operator decisions are clearer:** account settings explain which runtime
   risk controls can reduce saved values, backtesting rows show the concluded
   direction, and the retired Revenue system link is no longer displayed.
-- **No schema migration:** this release changes application structure,
-  verification coverage, documentation, and operator presentation only.
+- **Passkey storage follows the deployment boundary:** the existing mobile
+  passkey table now migrates through ingestion, the sole shared-schema owner,
+  instead of remaining pending in the admin application.
 
 ---
 

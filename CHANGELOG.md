@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.74.1 - 2026-07-23
+
+### Shared-schema migration ownership
+
+- [FIXED] The existing mobile passkey table migration now ships through
+  ingestion, the sole production schema owner, instead of remaining pending in
+  the admin application.
+- [SAFETY] Passkeys remain restricted by user ownership and cannot cascade on
+  user deletion.
+
 ## 1.74.0 - 2026-07-23
 
 Ships `kraitebot/core` 1.80.0 and `brunocfalcao/step-dispatcher` 1.19.0.
