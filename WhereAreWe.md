@@ -22,6 +22,9 @@
 - **Passkey storage follows the deployment boundary:** the existing mobile
   passkey table now migrates through ingestion, the sole shared-schema owner,
   instead of remaining pending in the admin application.
+- **Backtest coverage is honest about depth:** a handful of fresh candles no
+  longer reads as complete. The worker attempts the full requested window and
+  keeps an advisory warning when the archive remains thin.
 
 ---
 

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.74.2 - 2026-07-23
+
+Ships `kraitebot/core` 1.80.1.
+
+### Backtest coverage integrity
+
+- [FIXED] Backtest coverage verifies the requested history depth as well as
+  freshness and continuity, preserving a warning when history remains thin.
+- [VERIFIED] Focused admin regressions pass: 15 tests / 58 assertions; changed
+  core files pass static analysis and formatting.
+
 ## 1.74.1 - 2026-07-23
 
 ### Shared-schema migration ownership
