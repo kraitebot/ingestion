@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.74.5 - 2026-07-23
+
+Ships `kraitebot/core` 1.80.4.
+
+### Partial-fill correction race
+
+- [FIXED] Partial fills preserve working order intent across Binance push
+  events and Binance/Bitget polling.
+- [FIXED] Corrections that become stale before worker pickup land as
+  `Skipped` without child work or exchange mutation.
+- [VERIFIED] Regression and dependent workflow coverage passes: 142 tests /
+  376 assertions.
+- [SKIPPED] The complete suite was intentionally omitted by the light-release
+  policy after targeted coverage passed.
+
 ## 1.74.4 - 2026-07-23
 
 Ships `kraitebot/core` 1.80.3.

@@ -67,6 +67,22 @@ test('query response of a filled order keeps using avgPrice and executedQty', fu
         ->and($resolved['status'])->toBe('FILLED');
 });
 
+test('query response of a partially filled limit keeps stated price and original quantity', function (): void {
+    $mapper = new BinanceApiDataMapper;
+
+    $resolved = $mapper->resolveOrderQueryResponse(buildQueryResponse([
+        'status' => 'PARTIALLY_FILLED',
+        'price' => '4.105',
+        'avgPrice' => '4.10499999',
+        'origQty' => '20.99',
+        'executedQty' => '9.45',
+    ]));
+
+    expect($resolved['price'])->toBe('4.105')
+        ->and($resolved['quantity'])->toBe('20.99')
+        ->and($resolved['status'])->toBe('PARTIALLY_FILLED');
+});
+
 test('query response for STOP_MARKET without avgPrice keeps using stopPrice', function (): void {
     // The STOP_MARKET branch never touched avgPrice — assert the guard
     // did not disturb it.

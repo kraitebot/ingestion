@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\UserDataStream\ProcessUserDataEventJob;
+use Kraite\Core\Jobs\Lifecycles\Order\PrepareOrderCorrectionJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use StepDispatcher\Models\Step;
+use StepDispatcher\Support\Steps;
 
 /**
  * Pin the fix for the 2026-05-04 ONDO #271 incident.
@@ -101,6 +104,59 @@ function buildOrderForUserDataEvent(string $exchangeOrderId, string $originalQua
     ]));
 }
 
+function buildActiveProfitOrderForPartialFill(string $exchangeOrderId): Order
+{
+    $token = 'PFP'.mb_strtoupper(Str::random(5));
+    $apiSystem = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance',
+    ]);
+    $symbol = Symbol::factory()->create(['token' => $token]);
+    $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'token' => $token,
+        'quote' => 'USDT',
+        'api_system_id' => $apiSystem->id,
+        'symbol_id' => $symbol->id,
+    ]);
+    $account = Account::factory()->create([
+        'api_system_id' => $apiSystem->id,
+        'binance_api_key' => 'partial-fill-test-key',
+        'binance_api_secret' => 'partial-fill-test-secret',
+    ]);
+    $position = Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'parsed_trading_pair' => $token.'USDT',
+        'direction' => 'SHORT',
+        'status' => 'active',
+    ]);
+
+    return Order::withoutEvents(fn () => Order::create([
+        'position_id' => $position->id,
+        'uuid' => Str::uuid()->toString(),
+        'client_order_id' => Str::uuid()->toString(),
+        'exchange_order_id' => $exchangeOrderId,
+        'type' => 'PROFIT-LIMIT',
+        'side' => 'BUY',
+        'position_side' => 'SHORT',
+        'status' => 'NEW',
+        'reference_status' => 'NEW',
+        'price' => '4.10500000',
+        'quantity' => '20.99000000',
+        'reference_price' => '4.10500000',
+        'reference_quantity' => '20.99000000',
+        'is_algo' => false,
+    ]));
+}
+
+function correctionCountForPartialFill(Order $order): int
+{
+    return Steps::usingPrefix('trading', fn (): int => Step::query()
+        ->where('class', PrepareOrderCorrectionJob::class)
+        ->whereRaw("JSON_EXTRACT(arguments, '$.orderId') = ?", [$order->id])
+        ->count());
+}
+
 function buildBinanceOrderUpdatePayload(array $orderOverrides): array
 {
     return [
@@ -122,6 +178,77 @@ function buildBinanceOrderUpdatePayload(array $orderOverrides): array
         ], $orderOverrides),
     ];
 }
+
+it('keeps the stated limit price during a partial fill instead of dispatching a false correction', function (): void {
+    $order = buildActiveProfitOrderForPartialFill('partial-fill-price-'.Str::random(8));
+    $payload = buildBinanceOrderUpdatePayload([
+        's' => $order->position->parsed_trading_pair,
+        'c' => $order->client_order_id,
+        'i' => $order->exchange_order_id,
+        'X' => 'PARTIALLY_FILLED',
+        'x' => 'TRADE',
+        'q' => '20.99',
+        'z' => '9.45',
+        'l' => '9.45',
+        'p' => '4.105',
+        'ap' => '4.10499999',
+        'L' => '4.105',
+    ]);
+
+    expect($order->getRawOriginal('price'))->toBe('4.10500000')
+        ->and($order->getRawOriginal('reference_price'))->toBe('4.10500000')
+        ->and($order->status)->toBe('NEW')
+        ->and(correctionCountForPartialFill($order))->toBe(0);
+
+    (new ProcessUserDataEventJob(
+        accountId: $order->position->account_id,
+        apiSystemId: $order->position->account->api_system_id,
+        apiSystemCanonical: 'binance',
+        payload: $payload,
+    ))->compute();
+
+    $fresh = $order->fresh();
+
+    expect($fresh->status)->toBe('PARTIALLY_FILLED')
+        ->and($fresh->getRawOriginal('price'))->toBe('4.10500000')
+        ->and($fresh->getRawOriginal('reference_price'))->toBe('4.10500000')
+        ->and($fresh->getRawOriginal('quantity'))->toBe('20.99000000')
+        ->and(correctionCountForPartialFill($fresh))->toBe(0);
+});
+
+it('still dispatches correction when an amendment changes the stated limit price', function (): void {
+    $order = buildActiveProfitOrderForPartialFill('amended-price-'.Str::random(8));
+    $payload = buildBinanceOrderUpdatePayload([
+        's' => $order->position->parsed_trading_pair,
+        'c' => $order->client_order_id,
+        'i' => $order->exchange_order_id,
+        'X' => 'NEW',
+        'x' => 'AMENDMENT',
+        'q' => '20.99',
+        'z' => '0',
+        'l' => '0',
+        'p' => '4.100',
+        'ap' => '0',
+        'L' => '0',
+    ]);
+
+    expect($order->getRawOriginal('price'))->toBe('4.10500000')
+        ->and(correctionCountForPartialFill($order))->toBe(0);
+
+    (new ProcessUserDataEventJob(
+        accountId: $order->position->account_id,
+        apiSystemId: $order->position->account->api_system_id,
+        apiSystemCanonical: 'binance',
+        payload: $payload,
+    ))->compute();
+
+    $fresh = $order->fresh();
+
+    expect($fresh->status)->toBe('NEW')
+        ->and($fresh->getRawOriginal('price'))->toBe('4.10000000')
+        ->and($fresh->getRawOriginal('reference_price'))->toBe('4.10500000')
+        ->and(correctionCountForPartialFill($fresh))->toBe(1);
+});
 
 it('preserves quantity at the originally placed value across PARTIALLY_FILLED frames', function (): void {
     $order = buildOrderForUserDataEvent(exchangeOrderId: '9999000111', originalQuantity: '81.9');

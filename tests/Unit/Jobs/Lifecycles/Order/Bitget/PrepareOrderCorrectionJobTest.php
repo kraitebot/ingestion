@@ -163,7 +163,7 @@ it('dispatches correct + sync (same as base) for Bitget LIMIT orders', function 
     expect($steps[0]->class)->not->toBe(ModifyAlgoOrderJob::class);
 });
 
-it('startOrFail aborts when the order is not actually drifted', function (): void {
+it('skips when the order is no longer drifted', function (): void {
     $fixture = buildBitgetCorrectionFixture('PROFIT-LIMIT', isAlgo: true);
 
     Order::find($fixture['orderId'])->updateSaving([
@@ -173,19 +173,21 @@ it('startOrFail aborts when the order is not actually drifted', function (): voi
 
     $job = new PrepareOrderCorrectionJob($fixture['positionId'], $fixture['orderId']);
 
-    expect($job->startOrFail())->toBeFalse(
-        'No drift means the orchestrator must not enqueue any correction steps.'
-    );
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse(
+            'No drift means the orchestrator must not enqueue any correction steps.'
+        );
 });
 
-it('startOrFail aborts when the position is no longer active', function (): void {
+it('skips when the position is no longer active', function (): void {
     $fixture = buildBitgetCorrectionFixture('PROFIT-LIMIT', isAlgo: true);
 
     Position::find($fixture['positionId'])->updateSaving(['status' => 'closed']);
 
     $job = new PrepareOrderCorrectionJob($fixture['positionId'], $fixture['orderId']);
 
-    expect($job->startOrFail())->toBeFalse();
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 });
 
 it('does not duplicate the correction chain when two stale parent instances compute', function (): void {

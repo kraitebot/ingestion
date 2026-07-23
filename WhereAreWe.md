@@ -1,3 +1,24 @@
+# WhereAreWe — 2026-07-23 (partial-fill correction race)
+
+## Date
+
+2026-07-23
+
+## This release (2026-07-23)
+
+- **Partial fills keep order intent intact:** working orders retain their
+  stated price and original quantity. Average execution values remain audit
+  evidence until terminal status, so a normal fill cannot masquerade as a
+  manual amendment.
+- **Stale correction work is benign:** if the order fills, the position leaves
+  active state, or drift disappears before correction pickup, the root records
+  `Skipped` without child work or exchange mutation. Broken ownership or
+  missing reference intent still fails loudly.
+- **Push and polling agree:** Binance stream events and Binance/Bitget REST
+  reconciliation use the same working-value boundary.
+
+---
+
 # WhereAreWe — 2026-07-23 (verified position closure)
 
 ## Date

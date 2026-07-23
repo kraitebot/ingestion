@@ -221,6 +221,34 @@ test('resolveOrderQueryResponse parses new order correctly', function (): void {
     expect($result['_price'])->toBe('1800');
 });
 
+test('resolveOrderQueryResponse keeps stated values while a limit order is partially filled', function (): void {
+    $mapper = new BitgetApiDataMapper;
+
+    $response = createBitgetMockResponse([
+        'code' => '00000',
+        'data' => [
+            'symbol' => 'BTCUSDT',
+            'size' => '20.99',
+            'orderId' => 'partial-fill-'.Str::random(8),
+            'clientOid' => 'partial-fill-client-'.Str::random(8),
+            'filledQty' => '9.45',
+            'priceAvg' => '4.10499999',
+            'price' => '4.105',
+            'state' => 'partially_filled',
+            'side' => 'buy',
+            'orderType' => 'limit',
+            'posSide' => 'short',
+        ],
+    ]);
+
+    $result = $mapper->resolveOrderQueryResponse($response);
+
+    expect($result['status'])->toBe('PARTIALLY_FILLED')
+        ->and($result['price'])->toBe('4.105')
+        ->and($result['quantity'])->toBe('20.99')
+        ->and($result['_price'])->toBe('4.105');
+});
+
 test('resolveOrderQueryResponse normalizes various states correctly', function (): void {
     $mapper = new BitgetApiDataMapper;
 
