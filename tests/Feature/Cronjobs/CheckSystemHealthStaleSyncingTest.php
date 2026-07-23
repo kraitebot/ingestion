@@ -138,14 +138,13 @@ it('fires stale_syncing_position when a position is wedged > 15min with no live 
     );
 });
 
-it('registers the stale-syncing check in the command\'s checks runner array', function (): void {
-    // Source-level pin so a future refactor can't silently drop the
-    // wedge watchdog from the runner list.
+it('registers the stale-syncing check in the standard health checks', function (): void {
     $source = file_get_contents(
         (new ReflectionClass(\Kraite\Core\Commands\Cronjobs\CheckSystemHealthCommand::class))->getFileName()
     );
 
-    expect($source)->toContain("'checkStaleSyncingPositions'");
+    expect(\Kraite\Core\Support\Health\SystemHealthCheckType::standardCases())
+        ->toContain(\Kraite\Core\Support\Health\SystemHealthCheckType::StaleSyncingPositions);
     expect($source)->toContain('STALE_SYNCING_POSITION_MINUTES');
     expect($source)->toContain('stale_syncing_position_');
 });

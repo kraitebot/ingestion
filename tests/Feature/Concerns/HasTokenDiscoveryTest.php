@@ -1102,6 +1102,91 @@ test('price alignment gates agree between the model and tradeable scope', functi
         ->and(ExchangeSymbol::tradeable()->whereKey($exchangeSymbol->id)->exists())->toBeFalse();
 });
 
+dataset('exchange symbol scalar tradability blockers', [
+    'TAAPI data unavailable' => [['api_statuses' => ['has_taapi_data' => false]]],
+    'indicator data unavailable' => [['has_no_indicator_data' => true]],
+    'marked for delisting' => [['is_marked_for_delisting' => true]],
+    'system disabled' => [['system_disabled_at' => '2026-01-01 00:00:00']],
+    'price unit misaligned' => [['is_price_aligned' => false]],
+    'price trend misaligned' => [['has_price_trend_misalignment' => true]],
+    'direction changed early' => [['has_early_direction_change' => true]],
+    'indicator direction invalid' => [['has_invalid_indicator_direction' => true]],
+    'canonical symbol identity missing' => [['symbol_id' => null]],
+    'leverage brackets missing' => [['leverage_brackets' => null]],
+    'manually disabled' => [['is_manually_enabled' => false]],
+    'backtesting approval missing' => [['was_backtesting_approved' => false]],
+    'direction missing' => [['direction' => null]],
+    'cooldown active' => [['tradeable_at' => '2030-01-01 00:00:00']],
+    'indicator timeframe missing' => [['indicators_timeframe' => null]],
+    'timeframe correlation missing' => [['btc_correlation_pearson' => []]],
+]);
+
+test('model and query tradability reject the same scalar blockers', function (array $attributes): void {
+    $account = createAccountForTokenDiscoveryTest();
+    $exchangeSymbol = createExchangeSymbolWithData(
+        'PARITY'.fake()->unique()->numerify('####'),
+        'LONG',
+        ['1h' => 0.8],
+        ['1h' => 1.2],
+        ['1h' => -1.2],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    $exchangeSymbol->updateQuietly($attributes);
+    $exchangeSymbol = $exchangeSymbol->fresh();
+
+    expect($exchangeSymbol->isTradeable())->toBeFalse()
+        ->and(ExchangeSymbol::tradeable()->whereKey($exchangeSymbol->id)->exists())->toBeFalse();
+})->with('exchange symbol scalar tradability blockers');
+
+test('model and query tradability reject symbols on inactive API systems', function (): void {
+    $account = createAccountForTokenDiscoveryTest();
+    $exchangeSymbol = createExchangeSymbolWithData(
+        'INACTIVEAPI',
+        'LONG',
+        ['1h' => 0.8],
+        ['1h' => 1.2],
+        ['1h' => -1.2],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    $exchangeSymbol->apiSystem->updateQuietly(['is_active' => false]);
+    $exchangeSymbol = $exchangeSymbol->fresh();
+
+    expect($exchangeSymbol->isTradeable())->toBeFalse()
+        ->and(ExchangeSymbol::tradeable()->whereKey($exchangeSymbol->id)->exists())->toBeFalse();
+});
+
+test('model and query tradability require a currently tradeable Binance counterpart', function (): void {
+    $account = createAccountForTokenDiscoveryTest();
+    $binanceSymbol = createExchangeSymbolWithData(
+        'COUNTERPART',
+        'LONG',
+        ['1h' => 0.8],
+        ['1h' => 1.2],
+        ['1h' => -1.2],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    $bybit = ApiSystem::firstOrCreate(
+        ['canonical' => 'bybit'],
+        ['name' => 'Bybit', 'is_exchange' => true, 'is_active' => true],
+    );
+
+    $bybitSymbol = $binanceSymbol->replicate();
+    $bybitSymbol->api_system_id = $bybit->id;
+    $bybitSymbol->overlaps_with_binance = true;
+    $bybitSymbol->saveQuietly();
+
+    $binanceSymbol->updateQuietly(['direction' => null]);
+    $bybitSymbol = $bybitSymbol->fresh();
+
+    expect($bybitSymbol->isTradeable())->toBeFalse()
+        ->and(ExchangeSymbol::tradeable()->whereKey($bybitSymbol->id)->exists())->toBeFalse();
+});
+
 test('handles symbols with incomplete data (missing own timeframe correlation)', function (): void {
     $account = createAccountForTokenDiscoveryTest();
 

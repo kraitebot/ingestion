@@ -13,7 +13,7 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
-use Kraite\Core\Observers\OrderObserver;
+use Kraite\Core\Trading\OrderLifecycle\OrderLifecycleDispatcher;
 use StepDispatcher\Models\Step;
 use StepDispatcher\Support\Steps;
 
@@ -71,14 +71,6 @@ function buildObserverLockTestPosition(string $token): Position
     ]);
 }
 
-function invokePrivate(object $instance, string $method, array $args): void
-{
-    $ref = new ReflectionClass($instance);
-    $m = $ref->getMethod($method);
-    $m->setAccessible(true);
-    $m->invoke($instance, ...$args);
-}
-
 it('dispatchClosePosition skips when locked position has moved to a non-active state', function (): void {
     $position = buildObserverLockTestPosition('CLOSELOCK');
     $model = Order::withoutEvents(fn () => Order::create([
@@ -97,7 +89,7 @@ it('dispatchClosePosition skips when locked position has moved to a non-active s
     // Use a raw query so the in-memory $position model stays stale.
     DB::table('positions')->where('id', $position->id)->update(['status' => 'cancelling']);
 
-    invokePrivate(new OrderObserver, 'dispatchClosePosition', [$model, $position]);
+    app(OrderLifecycleDispatcher::class)->dispatchClosePosition($model, $position);
 
     expect(countTradingSteps(ClosePositionJob::class, $position->id))->toBe(0);
 });
@@ -118,7 +110,7 @@ it('dispatchPositionReplacement skips when locked position has moved to a non-ac
 
     DB::table('positions')->where('id', $position->id)->update(['status' => 'closed']);
 
-    invokePrivate(new OrderObserver, 'dispatchPositionReplacement', [$model, $position]);
+    app(OrderLifecycleDispatcher::class)->dispatchPositionReplacement($model, $position);
 
     expect(countTradingSteps(PreparePositionReplacementJob::class, $position->id))->toBe(0);
 });
@@ -139,7 +131,7 @@ it('dispatchApplyWap skips when locked position has moved to a non-active state'
 
     DB::table('positions')->where('id', $position->id)->update(['status' => 'closing']);
 
-    invokePrivate(new OrderObserver, 'dispatchApplyWap', [$model, $position]);
+    app(OrderLifecycleDispatcher::class)->dispatchApplyWap($model, $position);
 
     expect(countTradingSteps(ApplyWapJob::class, $position->id))->toBe(0);
 });
@@ -158,7 +150,7 @@ it('dispatchClosePosition still creates a step on the steady-state active path',
         'quantity' => '100',
     ]));
 
-    invokePrivate(new OrderObserver, 'dispatchClosePosition', [$model, $position]);
+    app(OrderLifecycleDispatcher::class)->dispatchClosePosition($model, $position);
 
     expect(countTradingSteps(ClosePositionJob::class, $position->id))->toBe(1);
 });

@@ -57,15 +57,13 @@ it('does not fire disk_pressure_low when the root filesystem has > 15% free', fu
     );
 });
 
-it('registers the disk-pressure check in the command\'s checks runner array', function (): void {
-    // Source-level pin: the check method must be wired into the
-    // runner array so a future refactor can't silently drop the
-    // 12th watchdog. Cheaper than running the full command.
+it('registers the disk-pressure check in the standard health checks', function (): void {
     $source = file_get_contents(
         (new ReflectionClass(\Kraite\Core\Commands\Cronjobs\CheckSystemHealthCommand::class))->getFileName()
     );
 
-    expect($source)->toContain("'checkDiskPressure'");
+    expect(\Kraite\Core\Support\Health\SystemHealthCheckType::standardCases())
+        ->toContain(\Kraite\Core\Support\Health\SystemHealthCheckType::DiskPressure);
     expect($source)->toContain('disk_pressure_low');
     expect($source)->toContain('DISK_FREE_PERCENT_MIN');
 });

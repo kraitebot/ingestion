@@ -45,6 +45,33 @@ it('reports score, band, and synced_at from the kraite singleton', function (): 
         ->and($index->syncedAt())->not->toBeNull();
 });
 
+it('uses configured BSCS defaults only when the kraite singleton is absent', function (): void {
+    config()->set('kraite.market_regime.block_threshold', 73);
+    config()->set('kraite.market_regime.freshness_max_seconds', 4_321);
+
+    Kraite::query()->whereKey(1)->delete();
+
+    $index = Bscs::current();
+
+    expect($index->blockThreshold())->toBe(73)
+        ->and($index->freshnessMaxSeconds())->toBe(4_321);
+});
+
+it('keeps persisted BSCS settings authoritative over configured defaults', function (): void {
+    config()->set('kraite.market_regime.block_threshold', 73);
+    config()->set('kraite.market_regime.freshness_max_seconds', 4_321);
+
+    setKraiteBscs([
+        'bscs_block_threshold' => 81,
+        'bscs_freshness_max_seconds' => 7_200,
+    ]);
+
+    $index = Bscs::current();
+
+    expect($index->blockThreshold())->toBe(81)
+        ->and($index->freshnessMaxSeconds())->toBe(7_200);
+});
+
 it('shouldBlockOpens returns true while cooldown is in the future', function (): void {
     setKraiteBscs([
         'bscs_score' => 80,

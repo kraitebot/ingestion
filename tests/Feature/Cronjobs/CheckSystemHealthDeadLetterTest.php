@@ -93,12 +93,13 @@ it('fires user_data_deadletter_active when the file has at least one entry', fun
     );
 });
 
-it('registers the deadletter check in the command\'s checks runner array', function (): void {
+it('registers the deadletter check in the standard health checks', function (): void {
     $source = file_get_contents(
         (new ReflectionClass(\Kraite\Core\Commands\Cronjobs\CheckSystemHealthCommand::class))->getFileName()
     );
 
-    expect($source)->toContain("'checkUserDataDeadLetters'");
+    expect(\Kraite\Core\Support\Health\SystemHealthCheckType::standardCases())
+        ->toContain(\Kraite\Core\Support\Health\SystemHealthCheckType::UserDataDeadLetters);
     expect($source)->toContain('user_data_deadletter_active');
     expect($source)->toContain('user-data-deadletter-');
 });

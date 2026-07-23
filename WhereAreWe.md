@@ -1,3 +1,63 @@
+# WhereAreWe — 2026-07-23 (unified trading rules and operator clarity)
+
+## Date
+
+2026-07-23
+
+## This release (2026-07-23)
+
+- **Trading rules now have clear owners:** tradability, token candidate
+  selection, order lifecycle dispatch, system-health checks, order states,
+  and backtest timeframes are unified behind dedicated domain objects instead
+  of being repeated across jobs, observers, and commands.
+- **Exchange and indicator queries use shared scopes:** repeated filtering now
+  expresses one business meaning everywhere, reducing drift without changing
+  which records qualify.
+- **Dormant behavior was removed:** obsolete indicator-history cleanup and
+  opened/closed notification helpers are gone. Indicator history remains
+  available, and the active high-profit and safety notifications are unchanged.
+- **Operator decisions are clearer:** account settings explain which runtime
+  risk controls can reduce saved values, backtesting rows show the concluded
+  direction, and the retired Revenue system link is no longer displayed.
+- **No schema migration:** this release changes application structure,
+  verification coverage, documentation, and operator presentation only.
+
+---
+
+# WhereAreWe — 2026-07-22 (private-beta registration gate)
+
+## Date
+
+2026-07-22
+
+## This release (2026-07-22)
+
+- **Public self-registration is paused:** Kraite now presents a private-beta
+  invitation and email action instead of the registration wizard. Every
+  registration processing endpoint fails before draft creation or exchange
+  inspection, while existing traders remain unaffected.
+- **The gate is reversible:** `REGISTRATION_ENABLED=true` restores the complete
+  wizard and its processing endpoints without changing existing accounts.
+- **Newly activated traders get current balance data immediately:** successful
+  activation queues the first balance snapshot instead of waiting for the next
+  scheduled balance cycle.
+
+---
+
+# WhereAreWe — 2026-07-22 (admin processing filter)
+
+## Date
+
+2026-07-22
+
+## This release (2026-07-22)
+
+- **The Engine processing filter matches the table:** activating
+  **Only processing** keeps every class with a non-zero Running count,
+  including active parent block classes.
+
+---
+
 # WhereAreWe — 2026-07-22 (registration position defaults)
 
 ## Date

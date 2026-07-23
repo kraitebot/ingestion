@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Kraite\Core\Jobs\Atomic\ExchangeSymbol\ConfirmPriceAlignmentWithDirectionJob;
-use Kraite\Core\Jobs\Models\ExchangeSymbol\ConcludeSymbolDirectionAtTimeframeJob;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Indicator;
@@ -94,22 +93,9 @@ function createCandleIndicatorHistory(
 /**
  * Helper to create step for price alignment job
  */
-function createStepForPriceAlignmentJob(ExchangeSymbol $exchangeSymbol, ?array $previousStepResponse = null): Step
+function createStepForPriceAlignmentJob(ExchangeSymbol $exchangeSymbol): Step
 {
     $blockUuid = Str::uuid()->toString();
-
-    // Create the conclude step first (to simulate previous step in workflow)
-    if ($previousStepResponse) {
-        Step::create([
-            'class' => ConcludeSymbolDirectionAtTimeframeJob::class,
-            'block_uuid' => $blockUuid,
-            'group' => 'alpha',
-            'index' => 1,
-            'status' => 'completed',
-            'arguments' => ['exchangeSymbolId' => $exchangeSymbol->id],
-            'response' => $previousStepResponse,
-        ]);
-    }
 
     return Step::create([
         'class' => ConfirmPriceAlignmentWithDirectionJob::class,

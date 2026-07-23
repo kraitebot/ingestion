@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Kraite\Core\Jobs\Atomic\ExchangeSymbol\ConfirmPriceAlignmentWithDirectionJob;
 use Kraite\Core\Jobs\Atomic\ExchangeSymbol\CopyDirectionToOtherExchangesJob;
-use Kraite\Core\Jobs\Models\ExchangeSymbol\CleanupIndicatorHistoriesJob;
 use Kraite\Core\Jobs\Models\ExchangeSymbol\ConcludeSymbolDirectionAtTimeframeJob;
 use Kraite\Core\Jobs\Models\Indicator\QuerySymbolIndicatorsJob;
 use Kraite\Core\Models\ApiSystem;
@@ -295,7 +294,7 @@ function createFailedValidationIndicatorHistories(ExchangeSymbol $exchangeSymbol
 /**
  * Helper to create step with job instance
  */
-function createStepForConcludeJob(ExchangeSymbol $exchangeSymbol, string $timeframe, array $previousConclusions = [], bool $shouldCleanup = true): Step
+function createStepForConcludeJob(ExchangeSymbol $exchangeSymbol, string $timeframe, array $previousConclusions = []): Step
 {
     return Step::create([
         'class' => ConcludeSymbolDirectionAtTimeframeJob::class,
@@ -306,7 +305,6 @@ function createStepForConcludeJob(ExchangeSymbol $exchangeSymbol, string $timefr
             'exchangeSymbolId' => $exchangeSymbol->id,
             'timeframe' => $timeframe,
             'previousConclusions' => $previousConclusions,
-            'shouldCleanup' => $shouldCleanup,
         ],
     ]);
 }
@@ -351,8 +349,7 @@ test('concludes LONG direction when all indicators agree on LONG', function (): 
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -378,8 +375,7 @@ test('concludes SHORT direction when all indicators agree on SHORT', function ()
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -403,8 +399,7 @@ test('stores indicators_values when concluding direction', function (): void {
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $job->step = $step;
     $job->compute();
@@ -439,8 +434,7 @@ test('spawns next timeframe workflow when current timeframe is inconclusive', fu
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1m',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -484,8 +478,7 @@ test('invalidates symbol when all timeframes are exhausted', function (): void {
             '5m' => 'INCONCLUSIVE',
             '15m' => 'INCONCLUSIVE',
             '1h' => 'INCONCLUSIVE',
-        ],
-        true
+        ]
     );
     $job->step = $step;
 
@@ -510,8 +503,7 @@ test('handles inconclusive when validation indicator fails', function (): void {
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1m',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -550,8 +542,7 @@ test('allows direction change at minimum timeframe index', function (): void {
             '1m' => 'SHORT',
             '5m' => 'SHORT',
             '15m' => 'SHORT',
-        ],
-        true
+        ]
     );
     $job->step = $step;
 
@@ -588,8 +579,7 @@ test('rejects direction change with path inconsistency', function (): void {
             '1m' => 'SHORT',
             '5m' => 'LONG', // Inconsistent!
             '15m' => 'SHORT',
-        ],
-        true
+        ]
     );
     $job->step = $step;
 
@@ -619,8 +609,7 @@ test('disallows direction change before minimum timeframe index', function (): v
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1m',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -649,8 +638,7 @@ test('allows same direction confirmation at any timeframe', function (): void {
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1m',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -687,8 +675,7 @@ test('creates finalization steps after successful conclusion at first timeframe'
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $job->step = $step;
     $result = $job->compute();
@@ -705,47 +692,33 @@ test('creates finalization steps after successful conclusion at first timeframe'
     expect($newCopyStepCount)->toBe($initialCopyStepCount + 1);
 });
 
-test('does not create Cleanup step after successful conclusion at first timeframe', function (): void {
+test('retains indicator histories after a successful conclusion', function (): void {
     seedIndicatorsForConcludeTest();
     $exchangeSymbol = createExchangeSymbolForConcludeTest('CONCLEAN');
-    $step = createStepForConcludeJob($exchangeSymbol, '1h', [], true);
+    $step = createStepForConcludeJob($exchangeSymbol, '1h');
 
     createLongIndicatorHistories($exchangeSymbol, '1h');
 
-    $initialCleanupCount = Step::where('class', CleanupIndicatorHistoriesJob::class)->count();
+    $historyIdsBefore = IndicatorHistory::query()
+        ->where('exchange_symbol_id', $exchangeSymbol->id)
+        ->orderBy('id')
+        ->pluck('id')
+        ->all();
 
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
         [],
-        true
     );
     $job->step = $step;
     $job->compute();
 
-    // Cleanup steps are NOT created by the job itself when concluding at first timeframe
-    expect(Step::where('class', CleanupIndicatorHistoriesJob::class)->count())->toBe($initialCleanupCount);
-});
-
-test('does not create Cleanup step when shouldCleanup is false', function (): void {
-    seedIndicatorsForConcludeTest();
-    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONNOCLEAN');
-    $step = createStepForConcludeJob($exchangeSymbol, '1h', [], false);
-
-    createLongIndicatorHistories($exchangeSymbol, '1h');
-
-    $initialCleanupCount = Step::where('class', CleanupIndicatorHistoriesJob::class)->count();
-
-    $job = new ConcludeSymbolDirectionAtTimeframeJob(
-        $exchangeSymbol->id,
-        '1h',
-        [],
-        false
-    );
-    $job->step = $step;
-    $job->compute();
-
-    expect(Step::where('class', CleanupIndicatorHistoriesJob::class)->count())->toBe($initialCleanupCount);
+    expect($historyIdsBefore)->not->toBeEmpty()
+        ->and(IndicatorHistory::query()
+            ->where('exchange_symbol_id', $exchangeSymbol->id)
+            ->orderBy('id')
+            ->pluck('id')
+            ->all())->toBe($historyIdsBefore);
 });
 
 /*
@@ -764,8 +737,7 @@ test('returns error when no indicator data exists', function (): void {
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -786,8 +758,7 @@ test('handles invalid timeframe gracefully', function (): void {
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         'invalid_timeframe',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -820,8 +791,7 @@ test('builds correct path string in response', function (): void {
         [
             '1m' => 'LONG',
             '5m' => 'INCONCLUSIVE',
-        ],
-        true
+        ]
     );
     $job->step = $step;
 
@@ -846,7 +816,7 @@ test('correctly progresses through multiple timeframes until conclusion', functi
     $step1 = createStepForConcludeJob($exchangeSymbol, '1m', []);
     createInconclusiveIndicatorHistories($exchangeSymbol, '1m');
 
-    $job1 = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1m', [], true);
+    $job1 = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1m', []);
     $job1->step = $step1;
     $result1 = $job1->compute();
 
@@ -863,8 +833,7 @@ test('correctly progresses through multiple timeframes until conclusion', functi
     $job2 = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '5m',
-        ['1m' => 'INCONCLUSIVE'],
-        true
+        ['1m' => 'INCONCLUSIVE']
     );
     $job2->step = $step2;
     $result2 = $job2->compute();
@@ -888,8 +857,7 @@ test('correctly progresses through multiple timeframes until conclusion', functi
         [
             '1m' => 'INCONCLUSIVE',
             '5m' => 'INCONCLUSIVE',
-        ],
-        true
+        ]
     );
     $job3->step = $step3;
     $result3 = $job3->compute();
@@ -920,8 +888,7 @@ test('handles symbol with null direction when concluding same direction', functi
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -942,8 +909,7 @@ test('stamps indicators_synced_at on skip when indicator data is unchanged', fun
     $firstJob = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $firstJob->step = $firstStep;
     $firstJob->compute();
@@ -960,8 +926,7 @@ test('stamps indicators_synced_at on skip when indicator data is unchanged', fun
     $secondJob = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $secondJob->step = $secondStep;
 
@@ -1012,8 +977,7 @@ test('handles missing indicator data for some but not all indicators', function 
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '1h',
-        [],
-        true
+        []
     );
     $job->step = $step;
 
@@ -1035,8 +999,7 @@ test('preserves previous conclusions when spawning child workflows', function ()
     $job = new ConcludeSymbolDirectionAtTimeframeJob(
         $exchangeSymbol->id,
         '5m',
-        ['1m' => 'LONG'],
-        true
+        ['1m' => 'LONG']
     );
     $job->step = $step;
     $job->compute();
@@ -1078,7 +1041,7 @@ test('does NOT conclude when indicators come from different runs (mixed-hour dat
         ->where('timeframe', '1h')
         ->update(['timestamp' => (string) (now()->timestamp - 3600)]);
 
-    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h', [], true);
+    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h', []);
     $job->step = $step;
 
     $result = $job->compute();
@@ -1105,7 +1068,7 @@ test('still concludes when a same-run set has minor sub-tolerance timestamp spre
         ->where('timeframe', '1h')
         ->update(['timestamp' => (string) (now()->timestamp - 30)]);
 
-    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h', [], true);
+    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h', []);
     $job->step = $step;
 
     $result = $job->compute();

@@ -141,3 +141,31 @@ it('does not duplicate a per-symbol chain when two stale job instances compute',
     'Bybit' => [BybitSyncLeverageBracketsJob::class, 'bybit'],
     'KuCoin' => [KucoinSyncLeverageBracketsJob::class, 'kucoin'],
 ]);
+
+it('uses the configured sequential batch size for every per-symbol exchange', function (string $jobClass, string $canonical): void {
+    config()->set('kraite.leverage_brackets.per_symbol_batch_size', 2);
+
+    $apiSystem = ApiSystem::factory()->exchange()->create([
+        'canonical' => $canonical,
+        'name' => mb_ucfirst($canonical),
+    ]);
+
+    foreach (['BTC', 'ETH', 'SOL', 'XRP', 'DOGE'] as $token) {
+        createExchangeSymbolForLifecycle($apiSystem, $token, delisted: false);
+    }
+
+    $childBlockUuid = runSyncLeverageBracketsLifecycle($jobClass, $apiSystem);
+
+    $childSteps = Step::query()
+        ->where('block_uuid', $childBlockUuid)
+        ->orderBy('id')
+        ->get();
+
+    expect($childSteps->pluck('index')->all())->toBe([1, 1, 2, 2, 3])
+        ->and($childSteps->pluck('queue')->unique()->values()->all())->toBe(['indicators'])
+        ->and($childSteps->pluck('arguments.exchangeSymbolId')->unique()->count())->toBe(5);
+})->with([
+    'Bitget configured batching' => [BitgetSyncLeverageBracketsJob::class, 'bitget'],
+    'Bybit configured batching' => [BybitSyncLeverageBracketsJob::class, 'bybit'],
+    'KuCoin configured batching' => [KucoinSyncLeverageBracketsJob::class, 'kucoin'],
+]);

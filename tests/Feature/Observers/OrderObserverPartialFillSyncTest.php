@@ -12,6 +12,7 @@ use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Observers\OrderObserver;
+use Kraite\Core\Trading\OrderLifecycle\OrderLifecycleDispatcher;
 use StepDispatcher\Models\Step;
 use StepDispatcher\States\Dispatched;
 use StepDispatcher\States\Pending;
@@ -110,7 +111,7 @@ function buildPartialFillScenario(string $exchange = 'bitget'): array
 it('dispatches SyncPositionQuantityFromExchangeJob when a LIMIT transitions to PARTIALLY_FILLED', function (): void {
     ['position' => $position, 'limit' => $limit] = buildPartialFillScenario('bitget');
 
-    $observer = new OrderObserver;
+    $observer = app(OrderObserver::class);
     $observer->updated($limit);
 
     // OrderObserver dispatches the partial-fill sync job inside a
@@ -127,7 +128,7 @@ it('dispatches SyncPositionQuantityFromExchangeJob when a LIMIT transitions to P
 it('deduplicates: a second PARTIALLY_FILLED observer fire does NOT add a duplicate step while the first is still pending', function (): void {
     ['position' => $position, 'limit' => $limit] = buildPartialFillScenario('bitget');
 
-    $observer = new OrderObserver;
+    $observer = app(OrderObserver::class);
     $observer->updated($limit);
     $observer->updated($limit);
 
@@ -145,7 +146,7 @@ it('routes LIMIT FILLED to ApplyWapJob, NOT SyncPositionQuantityFromExchangeJob'
 
     Order::withoutEvents(fn () => $limit->forceFill(['status' => 'FILLED', 'reference_status' => 'NEW'])->save());
 
-    $observer = new OrderObserver;
+    $observer = app(OrderObserver::class);
     $observer->updated($limit->fresh());
 
     [$wapCount, $syncCount] = Steps::usingPrefix('trading', fn (): array => [
@@ -183,7 +184,7 @@ it('does not dispatch when a non-LIMIT order is PARTIALLY_FILLED', function (): 
         'is_algo' => false,
     ]));
 
-    $observer = new OrderObserver;
+    $observer = app(OrderObserver::class);
     $observer->updated($tp);
 
     $count = Steps::usingPrefix('trading', fn (): int => Step::query()
@@ -199,7 +200,7 @@ it('does not dispatch when the position is not in an active state', function ():
 
     $position->forceFill(['status' => 'closing'])->save();
 
-    $observer = new OrderObserver;
+    $observer = app(OrderObserver::class);
     $observer->updated($limit);
 
     $count = Steps::usingPrefix('trading', fn (): int => Step::query()
@@ -212,14 +213,14 @@ it('does not dispatch when the position is not in an active state', function ():
 
 it('partial-fill dispatch site is wrapped in DB::transaction with lockForUpdate on the position row', function (): void {
     $source = file_get_contents(
-        (new ReflectionClass(OrderObserver::class))->getFileName()
+        (new ReflectionClass(OrderLifecycleDispatcher::class))->getFileName()
     );
 
-    expect($source)->toContain('private function dispatchSyncPositionQuantity(');
+    expect($source)->toContain('public function dispatchSyncPositionQuantity(');
 
     $methodBody = (function () use ($source): string {
-        $start = mb_strpos($source, 'private function dispatchSyncPositionQuantity(');
-        $end = mb_strpos($source, 'private function ', $start + 1);
+        $start = mb_strpos($source, 'public function dispatchSyncPositionQuantity(');
+        $end = mb_strpos($source, 'public function ', $start + 1);
         if ($end === false) {
             $end = mb_strlen($source);
         }
@@ -227,6 +228,5 @@ it('partial-fill dispatch site is wrapped in DB::transaction with lockForUpdate 
         return mb_substr($source, $start, $end - $start);
     })();
 
-    expect($methodBody)->toContain('DB::transaction');
-    expect($methodBody)->toContain('lockForUpdate');
+    expect($methodBody)->toContain('forLockedActivePosition');
 });

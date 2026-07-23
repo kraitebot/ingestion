@@ -187,3 +187,14 @@ it('keeps orphan exchange mutations outside the system health command', function
         ->and($source)->not->toContain('new ApiProperties')
         ->and($source)->not->toContain('->withApi()');
 });
+
+it('builds system-health checks as typed objects instead of dynamic callbacks', function (): void {
+    $path = base_path('vendor/kraitebot/core/src/Commands/Cronjobs/CheckSystemHealthCommand.php');
+    $source = file_get_contents($path);
+
+    expect($source)->not->toBeFalse()
+        ->and($source)->toContain('SystemHealthCheckType::standardCases()')
+        ->and($source)->toContain('new SystemHealthCheck(')
+        ->and($source)->not->toContain('CallbackHealthCheck')
+        ->and($source)->not->toContain('$this->{$check}()');
+});

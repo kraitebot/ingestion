@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.74.0 - 2026-07-23
+
+Ships `kraitebot/core` 1.80.0 and `brunocfalcao/step-dispatcher` 1.19.0.
+
+### Unified trading rules
+
+- [IMPROVED] Trading eligibility, token candidates, order lifecycle decisions,
+  health checks, order states, and backtest timeframes use dedicated domain
+  boundaries instead of repeated rules.
+- [CHANGED] Obsolete indicator-history cleanup and dormant notification sender
+  paths are removed; indicator histories and active safety notifications remain.
+
+### Verification
+
+- [VERIFIED] Changed ingestion coverage passes: 205 tests / 531 assertions;
+  static analysis reports zero errors.
+
 ## 1.73.3 - 2026-07-23
 
 Ships `kraitebot/core` 1.79.1.

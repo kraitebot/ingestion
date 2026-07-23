@@ -11,6 +11,7 @@ use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Observers\OrderObserver;
+use Kraite\Core\Trading\OrderLifecycle\OrderLifecycleDispatcher;
 use StepDispatcher\Models\Step;
 use StepDispatcher\Support\Steps;
 
@@ -96,10 +97,11 @@ function buildPositionWithLimits(string $token = 'RACE'): Position
 
 it('dispatchPositionReplacement is wrapped in DB::transaction with lockForUpdate on the position row', function (): void {
     $source = file_get_contents(
-        (new ReflectionClass(OrderObserver::class))->getFileName()
+        (new ReflectionClass(OrderLifecycleDispatcher::class))->getFileName()
     );
 
-    expect($source)->toContain('private function dispatchPositionReplacement(');
+    expect($source)->toContain('public function dispatchPositionReplacement(')
+        ->and($source)->toContain('private function forLockedActivePosition(');
 
     // The fix wraps the SELECT-then-INSERT inside a DB transaction
     // with a Position row lock. Either order of these tokens is
@@ -111,37 +113,36 @@ it('dispatchPositionReplacement is wrapped in DB::transaction with lockForUpdate
 
 it('dispatchClosePosition is wrapped in DB::transaction with lockForUpdate on the position row', function (): void {
     $source = file_get_contents(
-        (new ReflectionClass(OrderObserver::class))->getFileName()
+        (new ReflectionClass(OrderLifecycleDispatcher::class))->getFileName()
     );
 
-    expect($source)->toContain('private function dispatchClosePosition(');
+    expect($source)->toContain('public function dispatchClosePosition(');
 
     // The same shape applies to the close-trigger path: when both
     // TP and SL flip FILLED in the same sync cycle, the observer
     // fires twice in parallel — same race class.
     $methodBody = (function () use ($source): string {
-        $start = mb_strpos($source, 'private function dispatchClosePosition(');
-        $end = mb_strpos($source, 'private function dispatchPositionReplacement(', $start);
+        $start = mb_strpos($source, 'public function dispatchClosePosition(');
+        $end = mb_strpos($source, 'public function dispatchPositionReplacement(', $start);
 
         return mb_substr($source, $start, $end - $start);
     })();
 
-    expect($methodBody)->toContain('DB::transaction');
-    expect($methodBody)->toContain('lockForUpdate');
+    expect($methodBody)->toContain('forLockedActivePosition');
 });
 
 it('dispatchApplyWap is wrapped in DB::transaction with lockForUpdate on the position row', function (): void {
     $source = file_get_contents(
-        (new ReflectionClass(OrderObserver::class))->getFileName()
+        (new ReflectionClass(OrderLifecycleDispatcher::class))->getFileName()
     );
 
-    expect($source)->toContain('private function dispatchApplyWap(');
+    expect($source)->toContain('public function dispatchApplyWap(');
 
     $methodBody = (function () use ($source): string {
-        $start = mb_strpos($source, 'private function dispatchApplyWap(');
-        // Find the next `private function` after the opening to
-        // bound the body, or end of file if last private method.
-        $end = mb_strpos($source, 'private function ', $start + 1);
+        $start = mb_strpos($source, 'public function dispatchApplyWap(');
+        // Find the next `public function` after the opening to
+        // bound the body, or end of file if this is the last one.
+        $end = mb_strpos($source, 'public function ', $start + 1);
         if ($end === false) {
             $end = mb_strlen($source);
         }
@@ -149,8 +150,7 @@ it('dispatchApplyWap is wrapped in DB::transaction with lockForUpdate on the pos
         return mb_substr($source, $start, $end - $start);
     })();
 
-    expect($methodBody)->toContain('DB::transaction');
-    expect($methodBody)->toContain('lockForUpdate');
+    expect($methodBody)->toContain('forLockedActivePosition');
 });
 
 it('ProcessUserDataEventJob::maybeDetectManualPositionClose is wrapped in DB::transaction with lockForUpdate on the position row', function (): void {
@@ -198,7 +198,7 @@ it('inserts exactly one PreparePositionReplacementJob when dispatchPositionRepla
         ])));
     }
 
-    $observer = new OrderObserver;
+    $observer = app(OrderObserver::class);
 
     foreach ($orders as $order) {
         $observer->updated($order);
