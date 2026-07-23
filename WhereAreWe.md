@@ -1,3 +1,22 @@
+# WhereAreWe — 2026-07-23 (profit-funded projection milestone)
+
+## Date
+
+2026-07-23
+
+## This release (2026-07-23)
+
+- **The withdrawal milestone is automatic:** Projections assesses the net
+  personal investment still funding each account from wallet history and
+  exchange-reported PnL.
+- **New capital moves the goal:** a temporary additional-investment simulation
+  raises both the wallet and the amount profit must replace.
+- **Three compound-growth scenarios show timing:** pessimistic, neutral, and
+  optimistic estimates report when the trader can withdraw the remaining
+  personal capital and keep the same amount trading entirely from profit.
+
+---
+
 # WhereAreWe — 2026-07-23 (partial-fill correction race)
 
 ## Date
