@@ -645,6 +645,8 @@ test('deletes position slots that could not be assigned a token', function (): v
     // 2 slots created, 1 assigned
     expect($result['total_created'])->toBe(2);
     expect($result['assigned_count'])->toBe(1);
+    expect($result['deleted_count'])->toBe(1);
+    expect($result['stop_reason'])->toBeNull();
 
     // The unassigned slot is deleted by assignBestTokenToNewPositions() internally
     // Verify only 1 position remains (the assigned one)
@@ -679,23 +681,61 @@ test('stops workflow when no slots created', function (): void {
     expect($job->totalCreated)->toBe(0);
 });
 
-test('stops workflow when no tokens assigned', function (): void {
-    $account = createAccountForSlotTest('no-tokens', maxLongs: 1, maxShorts: 0);
+test('reports deleted slots and policy reason when correlation sign rejects every token', function (): void {
+    Config::set('kraite.token_discovery.require_matching_correlation_sign', true);
 
+    $account = createAccountForSlotTest('wrong-sign', maxLongs: 0, maxShorts: 1);
     createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
 
-    // No tokens available for assignment
-    // (BTC exists but won't be assigned to itself)
+    createExchangeSymbolForSlotTest(
+        'WRONGSIGN',
+        'SHORT',
+        $account->api_system_id,
+        $account->trading_quote,
+    );
 
     storeExchangePositions($account, []);
     storeOpenOrders($account, []);
 
-    $job = new AssignBestTokensToPositionSlotsJob($account->id);
-    $job->compute();
+    expect($account->positions()->count())->toBe(0);
 
-    // Slot created but no token assigned
-    expect($job->totalCreated)->toBe(1);
-    expect($job->assignedCount)->toBe(0);
+    $job = new AssignBestTokensToPositionSlotsJob($account->id);
+    $result = $job->compute();
+
+    expect($result['total_created'])->toBe(1);
+    expect($result['assigned_count'])->toBe(0);
+    expect($result['deleted_count'])->toBe(1);
+    expect($result['stop_reason'])
+        ->toBe('No eligible tokens matched the correlation/elasticity requirements for the position directions.');
+    expect($account->positions()->count())->toBe(0);
+    expect(Position::query()->whereKey($result['created_positions'][0]['id'])->exists())->toBeFalse();
+});
+
+test('reports deleted slots and strict BTC reason when BTC has no direction', function (): void {
+    $account = createAccountForSlotTest('no-btc-direction', maxLongs: 1, maxShorts: 0);
+
+    createExchangeSymbolForSlotTest(
+        'STRICTBLOCK',
+        'LONG',
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    storeExchangePositions($account, []);
+    storeOpenOrders($account, []);
+
+    expect($account->positions()->count())->toBe(0);
+
+    $job = new AssignBestTokensToPositionSlotsJob($account->id);
+    $result = $job->compute();
+
+    expect($result['total_created'])->toBe(1);
+    expect($result['assigned_count'])->toBe(0);
+    expect($result['deleted_count'])->toBe(1);
+    expect($result['stop_reason'])
+        ->toBe('BTC has no direction and btc_biased_restriction=true (STRICT mode). Set BTC direction or disable strict mode.');
+    expect($account->positions()->count())->toBe(0);
+    expect(Position::query()->whereKey($result['created_positions'][0]['id'])->exists())->toBeFalse();
 });
 
 /*

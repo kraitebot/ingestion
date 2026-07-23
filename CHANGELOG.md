@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.74.3 - 2026-07-23
+
+Ships `kraitebot/core` 1.80.2.
+
+### Position-slot diagnostics
+
+- [FIXED] Position-opening workflows now report the real number of rejected
+  temporary slots and the policy reason that prevented token assignment.
+- [UNCHANGED] Token selection still removes unassigned temporary slots; no
+  trading eligibility or position-opening rule changed.
+- [VERIFIED] The full ingestion suite passes: 3,091 tests / 9,874 assertions;
+  static analysis and formatting pass.
+
 ## 1.74.2 - 2026-07-23
 
 Ships `kraitebot/core` 1.80.1.

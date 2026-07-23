@@ -1,3 +1,20 @@
+# WhereAreWe — 2026-07-23 (selection diagnostics and stop-loss recency)
+
+## Date
+
+2026-07-23
+
+## This release (2026-07-23)
+
+- **Rejected position slots remain observable:** token selection still removes
+  temporary slots that cannot receive a valid token, while the workflow now
+  reports the real deletion count and policy reason.
+- **Backtest stop-loss history gains time context:** each LONG and SHORT
+  coverage panel shows how long ago its newest simulated stop occurred.
+  Recency informs review without changing approval bands.
+
+---
+
 # WhereAreWe — 2026-07-23 (unified trading rules and operator clarity)
 
 ## Date
