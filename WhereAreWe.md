@@ -1,3 +1,26 @@
+# WhereAreWe — 2026-07-24 (automatic approvals and max pain)
+
+## Date
+
+2026-07-24
+
+## This release (2026-07-24)
+
+- **Pending-token backtests can run as one controlled operation:** every
+  Binance token follows daily-candle fetch, coverage verification, and the
+  default-configuration simulation. TAAPI requests remain serialized even
+  when other batch work overlaps.
+- **Automation only approves strong evidence:** a token needs complete
+  coverage, at least 180 eligible starts, no skipped simulations, and fewer
+  than five stops. Every failed gate leaves the token pending; no token is
+  automatically rejected.
+- **Each new position freezes its worst-case stop loss:** activation records
+  the actual market fill plus every accepted ladder rung against the opening
+  stop. Later order cancellation or replacement cannot rewrite that risk
+  history.
+
+---
+
 # WhereAreWe — 2026-07-24 (backtest daily amplitude)
 
 ## Date

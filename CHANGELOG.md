@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.75.0 - 2026-07-24
+
+Ships `kraitebot/core` 1.83.0.
+
+### Automatic approvals and position risk
+
+- [ADDED] A bounded one-time operation fetches and verifies daily candles,
+  then automatically approves only pending tokens with fewer than five stop
+  outcomes and complete simulation evidence.
+- [ADDED] New positions freeze their worst-case gross loss at the opening stop
+  when activation completes.
+- [UNCHANGED] Failed backtest gates leave tokens pending; automatic rejection
+  is not possible.
+- [UNCHANGED] TAAPI requests retain the existing shared throttling scope and
+  are serialized at the real HTTP boundary.
+- [VERIFIED] Focused backtest, throttling, candle, max-pain, and activation
+  coverage passes: 50 tests / 209 assertions. Static analysis and formatting
+  pass.
+- [SKIPPED] The complete suite was intentionally omitted by the light-release
+  policy after targeted coverage passed.
+
 ## 1.74.6 - 2026-07-23
 
 Ships `kraitebot/core` 1.82.1.
