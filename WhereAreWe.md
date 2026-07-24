@@ -1,3 +1,19 @@
+# WhereAreWe — 2026-07-24 (backtest daily amplitude)
+
+## Date
+
+2026-07-24
+
+## This release (2026-07-24)
+
+- **Backtests expose the strongest intraday move:** the summary reports the
+  largest UTC-day amplitude across the selected history, measured from that
+  day's lowest candle low to its highest candle high.
+- **The metric is market context, not a new trading rule:** it replaces the
+  visible Max MAE card while MAE remains internal to the existing risk grade.
+
+---
+
 # WhereAreWe — 2026-07-23 (runtime capacity observability)
 
 ## Date
