@@ -22,6 +22,8 @@ use Kraite\Core\Support\Backtest\BinanceRestCandleFetcher;
 use Kraite\Core\Support\Backtest\OneTime\AutomaticBacktestEvaluator;
 use Kraite\Core\Support\Throttlers\TaapiThrottler;
 use StepDispatcher\Models\Step;
+use StepDispatcher\States\Running;
+use StepDispatcher\Support\StepDispatcher;
 use Tests\Support\StepTester;
 
 /**
@@ -511,6 +513,65 @@ it('orders coverage acquisition before evaluation inside each batch token lifecy
         RunAutomaticBacktestStep::class,
     ])->and($children->pluck('index')->all())->toBe([1, 2])
         ->and($children->last()->arguments['apply'])->toBeTrue();
+});
+
+it('keeps nested coverage dispatchable behind a capped pending batch', function (): void {
+    $fixture = makeAutomaticBacktestFixture('VISIBLE');
+    $batchBlockUuid = (string) Str::uuid();
+    $batch = Step::create([
+        'class' => DispatchAutomaticBacktestsStep::class,
+        'queue' => 'indicators',
+        'state' => Running::class,
+        'group' => 'delta',
+        'block_uuid' => (string) Str::uuid(),
+        'child_block_uuid' => $batchBlockUuid,
+        'index' => 1,
+    ]);
+    $lifecycle = Step::create([
+        'class' => AutomaticBacktestLifecycleStep::class,
+        'queue' => 'indicators',
+        'state' => Running::class,
+        'group' => 'delta',
+        'block_uuid' => $batchBlockUuid,
+        'index' => 1,
+    ]);
+
+    foreach (range(2, 101) as $index) {
+        Step::create([
+            'class' => AutomaticBacktestLifecycleStep::class,
+            'queue' => 'indicators',
+            'group' => 'delta',
+            'block_uuid' => $batchBlockUuid,
+            'index' => $index,
+        ]);
+    }
+
+    $job = new AutomaticBacktestLifecycleStep(
+        exchangeSymbolId: $fixture['symbol']->id,
+        accountId: $fixture['account']->id,
+        apply: true,
+    );
+    $job->step = $lifecycle;
+    $job->compute();
+    $lifecycleBlockUuid = $lifecycle->fresh()->child_block_uuid;
+
+    $prioritySteps = Step::pending()
+        ->forGroup('delta')
+        ->where('priority', 'high')
+        ->orderBy('id')
+        ->get();
+    $dispatchable = StepDispatcher::computeDispatchableSteps(
+        $prioritySteps,
+        StepDispatcher::buildStepsCache($prioritySteps, 'delta'),
+    );
+    $coverage = Step::query()
+        ->where('block_uuid', $lifecycleBlockUuid)
+        ->where('class', EnsureBacktestCandleCoverageStep::class)
+        ->sole();
+
+    expect($batch->state)->toBeInstanceOf(Running::class)
+        ->and($prioritySteps)->toHaveCount(2)
+        ->and($dispatchable->modelKeys())->toBe([$coverage->id]);
 });
 
 it('rejects an empty command without creating a batch', function (): void {

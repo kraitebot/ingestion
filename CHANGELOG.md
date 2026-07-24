@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.76.1 - 2026-07-25
+
+Ships `kraitebot/core` 1.83.1.
+
+### Automatic backtest batch progress
+
+- [FIXED] Nested candle coverage and evaluation work can advance even while
+  hundreds of later token waves remain pending.
+- [UNCHANGED] Existing approvals and rejections remain excluded; only pending
+  tokens with fewer than five stops can be approved.
+- [VERIFIED] Automatic backtest workflow coverage passes: 19 tests /
+  133 assertions. Changed-file static analysis and formatting pass.
+- [SKIPPED] The complete suite was intentionally omitted by the light-release
+  policy after targeted coverage passed.
+
 ## 1.76.0 - 2026-07-24
 
 Ships `kraitebot/core` 1.83.0.
