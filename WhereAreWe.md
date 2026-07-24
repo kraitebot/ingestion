@@ -18,6 +18,10 @@
   the actual market fill plus every accepted ladder rung against the opening
   stop. Later order cancellation or replacement cannot rewrite that risk
   history.
+- **Existing position risk is exact-only:** legacy active and closed positions
+  are backfilled from their accepted opening references only when the complete
+  activation graph is unambiguous. Existing values and failed positions remain
+  untouched.
 
 ---
 

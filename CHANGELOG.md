@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.76.0 - 2026-07-24
+
+Ships `kraitebot/core` 1.83.0.
+
+### Historical position risk backfill
+
+- [ADDED] An exact-only, idempotent command backfills maximum pain for legacy
+  active and closed positions from their accepted opening references.
+- [SAFETY] Incomplete, unaccepted, replacement-order, failed, cancelled, and
+  already-populated positions remain untouched.
+- [VERIFIED] Focused command and max-pain coverage passes: 8 tests /
+  39 assertions. Changed-file static analysis and formatting pass.
+- [SKIPPED] The complete suite was intentionally omitted by the light-release
+  policy after targeted coverage passed.
+
 ## 1.75.0 - 2026-07-24
 
 Ships `kraitebot/core` 1.83.0.
