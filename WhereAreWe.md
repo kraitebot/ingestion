@@ -7,8 +7,8 @@
 ## This release (2026-07-24)
 
 - **Backtests expose the strongest intraday move:** the summary reports the
-  largest UTC-day amplitude across the selected history, measured from that
-  day's lowest candle low to its highest candle high.
+  largest UTC-day amplitude across the selected history. The day's high-low
+  spread is normalized by the previous daily close to match Binance's range.
 - **The metric is market context, not a new trading rule:** it replaces the
   visible Max MAE card while MAE remains internal to the existing risk grade.
 
