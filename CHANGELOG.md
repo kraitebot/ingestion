@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## 1.77.0 - 2026-07-25
 
-Ships `kraitebot/core` 1.84.0 and
+Ships `kraitebot/core` 1.84.1 and
 `brunocfalcao/step-dispatcher` 1.20.0.
 
 ### Trading safety and runtime resilience
@@ -16,6 +16,8 @@ Ships `kraitebot/core` 1.84.0 and
 - [IMPROVED] Production health distinguishes dead dispatcher/private-stream
   paths from healthy idle work and reads exchange failures from structured
   request evidence.
+- [FIXED] Deployment cooldown observes the real `kraite-*` Horizon queues
+  before declaring the bot drained.
 - [UNCHANGED] TAAPI throttling scope and backpressure policy remain unchanged.
 - [VERIFIED] Step Dispatcher passes 214 tests / 538 assertions. The complete
   ingestion suite passes 3,221 tests / 10,414 assertions.

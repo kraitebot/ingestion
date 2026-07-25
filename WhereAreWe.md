@@ -22,6 +22,8 @@
 - **Rate limits fail safe under concurrency:** Binance request reservations are
   atomic and back off on coordination failure without changing TAAPI's
   throttling scope.
+- **Deploy cooldown uses real queue truth:** it totals every configured
+  physical Horizon lane before declaring the bot drained.
 
 ---
 
