@@ -138,3 +138,14 @@ it('registers a reconnect without restarting the already running event loop', fu
 
     expect($loop->runCalls)->toBe(0);
 });
+
+it('clears reconnect-storm state only when transport activity proves the connection healthy', function (): void {
+    $client = new TestableWebsocketClient;
+    $client->publicSetReconnectAttempt(10);
+    $client->publicSetReconnectStormAlertRaised(true);
+
+    $client->publicMarkConnectionHealthy();
+
+    expect($client->publicGetReconnectAttempt())->toBe(0)
+        ->and($client->publicGetReconnectStormAlertRaised())->toBeFalse();
+});

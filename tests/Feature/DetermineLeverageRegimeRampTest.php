@@ -83,3 +83,44 @@ it('never floors leverage below 1x', function (): void {
 
     expect((int) $position->fresh()->leverage)->toBe(1);
 });
+
+it('accepts a position notional exactly on the leverage bracket cap', function (): void {
+    $position = makeLeveragePosition(20);
+    $result = (new DetermineLeverageJob($position->id))->getMaxLeverageForMargin(
+        margin: '100',
+        brackets: [['bracket' => 1, 'initialLeverage' => 20, 'notionalCap' => 2000]],
+        accountMaxLeverage: 20,
+    );
+
+    expect($result['leverage'])->toBe(20)
+        ->and($result['notional'])->toBe('2000.0000000000000000')
+        ->and($result['bracket'])->toBe(1);
+});
+
+it('treats an explicit null notional cap as an unlimited max-leverage bracket', function (): void {
+    $position = makeLeveragePosition(20);
+    $result = (new DetermineLeverageJob($position->id))->getMaxLeverageForMargin(
+        margin: '100',
+        brackets: [['bracket' => 1, 'initialLeverage' => 20, 'notionalCap' => null]],
+        accountMaxLeverage: 20,
+    );
+
+    expect($result['leverage'])->toBe(20)
+        ->and($result['notional'])->toBe('2000.0000000000000000');
+});
+
+it('rejects malformed leverage brackets instead of silently opening at 1x', function (array $bracket): void {
+    $position = makeLeveragePosition(20);
+
+    expect(fn () => (new DetermineLeverageJob($position->id))->getMaxLeverageForMargin(
+        margin: '100',
+        brackets: [$bracket],
+        accountMaxLeverage: 20,
+    ))->toThrow(RuntimeException::class, 'Invalid leverage bracket at index 0');
+})->with([
+    'missing bracket number' => [['initialLeverage' => 20, 'notionalCap' => 100000]],
+    'missing initial leverage' => [['bracket' => 1, 'notionalCap' => 100000]],
+    'zero initial leverage' => [['bracket' => 1, 'initialLeverage' => 0, 'notionalCap' => 100000]],
+    'missing notional cap' => [['bracket' => 1, 'initialLeverage' => 20]],
+    'non-numeric notional cap' => [['bracket' => 1, 'initialLeverage' => 20, 'notionalCap' => 'invalid']],
+]);

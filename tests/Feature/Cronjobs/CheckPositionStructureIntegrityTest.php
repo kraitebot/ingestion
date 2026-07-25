@@ -7,7 +7,10 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Kraite\Core\Jobs\Atomic\Order\RecreateCancelledOrderJob;
+use Kraite\Core\Jobs\Lifecycles\Position\PreparePositionReplacementJob;
 use Kraite\Core\Models\Account;
+use Kraite\Core\Models\ApiRequestLog;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite;
@@ -18,6 +21,10 @@ use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\Drift\AccountDriftReport;
 use Kraite\Core\Support\Drift\DriftChecker;
 use Mockery as M;
+use StepDispatcher\Models\Step;
+use StepDispatcher\States\Completed;
+use StepDispatcher\States\Failed;
+use StepDispatcher\Support\Steps;
 
 uses(RefreshDatabase::class)->group('feature', 'drift', 'cron', 'structure');
 
@@ -238,6 +245,50 @@ it('flags incomplete limit-order count when fewer live limits exist than total_l
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
 
+it('does not halt opens while a live order-replacement workflow is repairing the missing structure', function (string $replacementClass): void {
+    $f = makeStructureFixture(totalLimitOrders: 4, token: 'REPAIR');
+    seedHealthyStructure($f['position']->id, 3);
+
+    Step::prefix('trading')->create([
+        'class' => $replacementClass,
+        'queue' => 'priority',
+        'relatable_type' => $f['position']->getMorphClass(),
+        'relatable_id' => $f['position']->id,
+        'arguments' => ['positionId' => $f['position']->id],
+        'block_uuid' => (string) Str::uuid(),
+        'index' => 1,
+    ]);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    Notification::assertNothingSent();
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue();
+})->with([
+    'replacement orchestrator' => [PreparePositionReplacementJob::class],
+    'replacement atomic step' => [RecreateCancelledOrderJob::class],
+]);
+
+it('still halts opens when the replacement workflow is terminal and the structure remains broken', function (): void {
+    $f = makeStructureFixture(totalLimitOrders: 4, token: 'REPAIRFAILED');
+    seedHealthyStructure($f['position']->id, 3);
+
+    Step::prefix('trading')->create([
+        'class' => PreparePositionReplacementJob::class,
+        'state' => Completed::class,
+        'queue' => 'priority',
+        'relatable_type' => $f['position']->getMorphClass(),
+        'relatable_id' => $f['position']->id,
+        'arguments' => ['positionId' => $f['position']->id],
+        'block_uuid' => (string) Str::uuid(),
+        'index' => 1,
+    ]);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    Notification::assertSentTimes(AlertNotification::class, 1);
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
+});
+
 it('skips positions that are not in active status', function (): void {
     $f = makeStructureFixture(totalLimitOrders: 4);
     $f['position']->update(['status' => 'opening']);
@@ -423,17 +474,99 @@ it('cools when the failed trading-step storm crosses threshold', function (): vo
     cleanMonitoringDir();
     config(['kraite.guard.failed_steps_threshold' => 3, 'kraite.guard.failed_positions_threshold' => 99]);
 
-    Illuminate\Support\Facades\DB::table('trading_steps')->insert(collect(range(1, 3))->map(fn () => [
-        'class' => 'X', 'type' => 'default', 'queue' => 'trading',
-        'state' => 'StepDispatcher\\States\\Failed',
-        'block_uuid' => (string) Str::uuid(),
-        'index' => 1, 'created_at' => now(), 'updated_at' => now(),
-    ])->all());
+    Steps::usingPrefix('trading', fn () => Step::query()->insert(
+        collect(range(1, 3))->map(fn () => [
+            'class' => 'X', 'type' => 'default', 'queue' => 'trading',
+            'state' => Failed::class,
+            'block_uuid' => (string) Str::uuid(),
+            'index' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ])->all(),
+    ));
 
     $this->artisan('kraite:cron-check-drifts')->run();
 
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
     expect(glob(base_path('monitoring/*.md')))->toHaveCount(1);
+
+    $source = file_get_contents(
+        (new ReflectionClass(\Kraite\Core\Commands\Cronjobs\CheckDriftsCommand::class))->getFileName(),
+    );
+    expect($source)
+        ->not->toContain("DB::table('trading_steps')")
+        ->toContain('Failed::class');
+
+    cleanMonitoringDir();
+});
+
+it('cools when recent exchange API failures cross the engine-health threshold', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config([
+        'kraite.guard.exchange_error_log_threshold' => 3,
+        'kraite.guard.failed_positions_threshold' => 99,
+        'kraite.guard.failed_steps_threshold' => 99,
+    ]);
+
+    $exchange = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance exchange storm',
+    ]);
+
+    ApiRequestLog::withoutEvents(fn () => ApiRequestLog::factory()
+        ->count(3)
+        ->serverError()
+        ->create([
+            'api_system_id' => $exchange->id,
+            'created_at' => now(),
+        ]));
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
+    $incident = collect(glob(base_path('monitoring/*.md')) ?: [])->sole();
+    expect(File::get($incident))->toContain('exchange_error_storm');
+    cleanMonitoringDir();
+});
+
+it('ignores successful, stale, and non-exchange API requests in the exchange-error storm signal', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config([
+        'kraite.guard.window_minutes' => 20,
+        'kraite.guard.exchange_error_log_threshold' => 2,
+        'kraite.guard.failed_positions_threshold' => 99,
+        'kraite.guard.failed_steps_threshold' => 99,
+    ]);
+
+    $exchange = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance exchange signal noise',
+    ]);
+    $provider = ApiSystem::factory()->create([
+        'canonical' => 'taapi',
+        'name' => 'Taapi signal noise',
+        'is_exchange' => false,
+    ]);
+
+    ApiRequestLog::withoutEvents(function () use ($exchange, $provider): void {
+        ApiRequestLog::factory()->successful()->create([
+            'api_system_id' => $exchange->id,
+            'created_at' => now(),
+        ]);
+        ApiRequestLog::factory()->serverError()->create([
+            'api_system_id' => $exchange->id,
+            'created_at' => now()->subMinutes(21),
+        ]);
+        ApiRequestLog::factory()->serverError()->create([
+            'api_system_id' => $provider->id,
+            'created_at' => now(),
+        ]);
+    });
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue()
+        ->and(File::exists(base_path('monitoring/OPEN-INCIDENT')))->toBeFalse();
     cleanMonitoringDir();
 });
 

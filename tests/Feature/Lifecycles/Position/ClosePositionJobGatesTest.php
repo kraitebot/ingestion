@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Kraite\Core\Jobs\Atomic\Position\CancelPositionOpenOrdersJob;
 use Kraite\Core\Jobs\Atomic\Position\ClosePositionAtomicallyJob;
 use Kraite\Core\Jobs\Lifecycles\Position\ClosePositionJob;
 use Kraite\Core\Models\Position;
@@ -79,6 +80,9 @@ it('skips the redundant exchange close after the position was confirmed flat twi
 it('keeps the exchange close step for ordinary close workflows', function (): void {
     $position = Position::factory()->long()->create(['status' => 'closing']);
 
-    expect(closePositionChildClassesFor($position, positionConfirmedFlat: false))
-        ->toContain(ClosePositionAtomicallyJob::class);
+    $classes = closePositionChildClassesFor($position, positionConfirmedFlat: false);
+
+    expect($classes)->toContain(ClosePositionAtomicallyJob::class)
+        ->and(array_search(ClosePositionAtomicallyJob::class, $classes, true))
+        ->toBeLessThan(array_search(CancelPositionOpenOrdersJob::class, $classes, true));
 });

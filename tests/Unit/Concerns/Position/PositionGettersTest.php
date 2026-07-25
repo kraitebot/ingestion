@@ -122,10 +122,26 @@ it('allLimitOrdersFilled returns true on a 0-limit position even when nothing ha
     expect($position->allLimitOrdersFilled())->toBeTrue();
 });
 
+it('allLimitOrdersFilled returns false before the configured ladder count is known', function (): void {
+    $position = Position::factory()->long()->create(['total_limit_orders' => null]);
+
+    expect($position->allLimitOrdersFilled())->toBeFalse();
+});
+
 it('allLimitOrdersFilled returns false when partial', function (): void {
     $position = Position::factory()->long()->create(['total_limit_orders' => 4]);
     makePositionGetterOrder($position, ['type' => 'LIMIT', 'status' => 'FILLED']);
     expect($position->allLimitOrdersFilled())->toBeFalse();
+});
+
+it('allLimitOrdersFilled remains true when historical replacements make the filled count exceed the configured ladder', function (): void {
+    $position = Position::factory()->long()->create(['total_limit_orders' => 3]);
+    makePositionGetterOrder($position, ['type' => 'LIMIT', 'status' => 'FILLED']);
+    makePositionGetterOrder($position, ['type' => 'LIMIT', 'status' => 'FILLED']);
+    makePositionGetterOrder($position, ['type' => 'LIMIT', 'status' => 'FILLED']);
+    $position->updateSaving(['total_limit_orders' => 2]);
+
+    expect($position->allLimitOrdersFilled())->toBeTrue();
 });
 
 // ───────────────────────── marketOrder / stopMarketOrder / profitOrder ─────────────────────────

@@ -102,6 +102,7 @@ it('startOrFail resumes a prior replacement order via recreated_from_order_id', 
     $job = new RecreateCancelledOrderJob($position->id, $cancelled->id);
 
     expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue()
         ->and($job->newOrder)->not->toBeNull()
         ->and($job->newOrder->id)->toBe($existingReplacement->id);
 });
@@ -113,6 +114,7 @@ it('startOrFail still passes on first attempt when no replacement exists', funct
     $job = new RecreateCancelledOrderJob($position->id, $cancelled->id);
 
     expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue()
         ->and($job->newOrder)->toBeNull();
 });
 

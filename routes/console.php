@@ -119,12 +119,12 @@ Schedule::command('kraite:cron-refresh-binance-listen-keys')
 
 // Listen-key staleness watchdog. Detects two failure modes the
 // keepalive cron alone cannot surface: (1) an active Binance account
-// with NO listenKey row (daemon never initialised it), and (2) a row
-// whose last_keep_alive_at is older than 30 minutes (keepalive cron
-// not firing for this account). Threshold is well below Binance's
-// 60-minute hard expiry so the operator has time to respond before
-// the WS dies. Per-account dedupe so a sustained failure alerts on
-// every check window without spamming.
+// with NO listenKey row (daemon never initialised it), (2) a row whose
+// last_keep_alive_at is older than 30 minutes (keepalive cron not firing),
+// and (3) per-account socket activity older than 15 minutes despite a
+// fresh keepalive. Protocol pings advance last_frame_at, so quiet accounts
+// stay healthy while a half-open socket becomes visible. Per-account
+// dedupe bounds sustained-failure notifications.
 Schedule::command('kraite:cron-check-binance-listen-keys-stale')
     ->everyFiveMinutes()
     ->withoutOverlapping();

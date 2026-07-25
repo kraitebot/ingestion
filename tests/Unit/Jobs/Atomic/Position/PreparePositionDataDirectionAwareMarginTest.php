@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Kraite\Core\Jobs\Atomic\Position\PreparePositionDataJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSnapshot;
+use Kraite\Core\Models\Subscription;
+use Kraite\Core\Models\User;
 
 /**
  * Regression cover for the 2026-04-24 split of `max_position_percentage`
@@ -40,6 +42,34 @@ function buildAccountWithSplitPercentages(string $longPct, string $shortPct, str
     $account->margin_percentage_short = $shortPct;
     // No user / subscription — the cap path is skipped when
     // $account->user->subscription resolves to null.
+
+    return $account;
+}
+
+function buildAccountForSubscriptionPortfolioCapTest(?string $maxBalance, string $balance): Account
+{
+    $subscription = Subscription::create([
+        'name' => 'Portfolio Cap Test',
+        'canonical' => 'portfolio-cap-'.fake()->uuid(),
+        'monthly_rate_usdt' => 75,
+        'trial_days' => 7,
+        'max_accounts' => 1,
+        'max_exchanges' => 1,
+        'max_balance' => $maxBalance,
+        'is_active' => true,
+    ]);
+    $user = User::factory()->create(['subscription_id' => $subscription->id]);
+    $account = Account::factory()->for($user)->create([
+        'balance_for_trading_basis' => 'total',
+        'margin' => $balance,
+        'margin_percentage_long' => '5.00',
+        'margin_percentage_short' => '8.00',
+    ]);
+
+    ApiSnapshot::storeFor($account, 'account-balance', [
+        'total-wallet-balance' => $balance,
+        'available-balance' => $balance,
+    ]);
 
     return $account;
 }
@@ -106,6 +136,23 @@ it('sizes positions from the account selected trading balance basis', function (
     $account->forceFill(['balance_for_trading_basis' => 'available']);
 
     expect((float) $job->calculateMarginWithSubscriptionCap($account, 'LONG'))->toBe(60.0);
+});
+
+it('applies the subscription cap to the portfolio balance before sizing a position', function (): void {
+    $account = buildAccountForSubscriptionPortfolioCapTest('10000', '150000');
+    $job = newJobForCalc();
+
+    expect((float) $job->calculateMarginWithSubscriptionCap($account, 'LONG'))->toBe(500.0)
+        ->and((float) $job->calculateMarginWithSubscriptionCap($account, 'SHORT'))->toBe(800.0);
+});
+
+it('keeps balances below the subscription cap and unlimited plans unchanged', function (): void {
+    $cappedAccount = buildAccountForSubscriptionPortfolioCapTest('10000', '8000');
+    $unlimitedAccount = buildAccountForSubscriptionPortfolioCapTest(null, '150000');
+    $job = newJobForCalc();
+
+    expect((float) $job->calculateMarginWithSubscriptionCap($cappedAccount, 'LONG'))->toBe(400.0)
+        ->and((float) $job->calculateMarginWithSubscriptionCap($unlimitedAccount, 'LONG'))->toBe(7500.0);
 });
 
 it('reads the method signature source to pin direction param presence', function (): void {

@@ -64,7 +64,10 @@ function buildRecreateScenario(array $orderAttrs = [], string $positionStatus = 
 it('passes when an active position has a CANCELLED LIMIT with remaining quantity', function (): void {
     ['position' => $position, 'order' => $order] = buildRecreateScenario();
 
-    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new RecreateCancelledOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 it('passes when the cancelled order is EXPIRED (TP expired during a close window)', function (): void {
@@ -73,7 +76,10 @@ it('passes when the cancelled order is EXPIRED (TP expired during a close window
         'status' => 'EXPIRED',
     ]);
 
-    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new RecreateCancelledOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 it('passes when the order is REJECTED and the position still needs protection', function (): void {
@@ -82,7 +88,10 @@ it('passes when the order is REJECTED and the position still needs protection', 
         'status' => 'REJECTED',
     ]);
 
-    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new RecreateCancelledOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 // ───────────────────────── status guards ─────────────────────────
@@ -90,7 +99,10 @@ it('passes when the order is REJECTED and the position still needs protection', 
 it('refuses when the position has already terminated (closed/cancelled/failed)', function (string $terminalStatus): void {
     ['position' => $position, 'order' => $order] = buildRecreateScenario(positionStatus: $terminalStatus);
 
-    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new RecreateCancelledOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 })->with([
     'closed' => ['closed'],
     'cancelled' => ['cancelled'],
@@ -100,7 +112,10 @@ it('refuses when the position has already terminated (closed/cancelled/failed)',
 it('refuses when the order is still active (NEW or PARTIALLY_FILLED)', function (string $liveStatus): void {
     ['position' => $position, 'order' => $order] = buildRecreateScenario(['status' => $liveStatus]);
 
-    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new RecreateCancelledOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 })->with([
     'NEW' => ['NEW'],
     'PARTIALLY_FILLED' => ['PARTIALLY_FILLED'],
@@ -120,7 +135,9 @@ it('refuses when the cancelled order has no price (corrupt row)', function (): v
     ['position' => $position, 'order' => $order] = buildRecreateScenario();
     $order->update(['price' => null]);
 
-    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new RecreateCancelledOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeFalse();
 });
 
 // ───────────────────────── quantity gate ─────────────────────────
@@ -136,7 +153,10 @@ it('refuses a LIMIT recreation when reference quantity itself is zero', function
         'quantity' => '0',
     ]);
 
-    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new RecreateCancelledOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 });
 
 it('passes a closePosition-style algo (STOP-MARKET, qty=0, is_algo=true) — quantity gate is bypassed', function (): void {
@@ -152,7 +172,10 @@ it('passes a closePosition-style algo (STOP-MARKET, qty=0, is_algo=true) — qua
         'filled_quantity' => '0',
     ]);
 
-    expect((new RecreateCancelledOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new RecreateCancelledOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 // ───────────────────────── calculateRemainingQuantity ─────────────────────────

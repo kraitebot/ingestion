@@ -1510,7 +1510,7 @@ it('replaces a terminal UTA protection strategy as one combined TP and SL step',
     });
 
     $job = new SmartReplaceOrdersJob($position->id);
-    expect($job->startOrFail())->toBeTrue();
+    expect($job->startOrSkip())->toBeTrue();
 
     $job->step = Step::create([
         'class' => SmartReplaceOrdersJob::class,
@@ -1687,12 +1687,13 @@ it('repairs only the drifted UTA protection strategy without requiring its sibli
     Http::assertSentCount(1);
 });
 
-it('applies WAP by resizing only the UTA take-profit strategy', function (): void {
+it('caps WAP to Kraite-owned fills when the shared exchange position includes manual exposure', function (): void {
     Notification::fake();
     ['account' => $account, 'position' => $position] = bitgetUnifiedTradingFixture(
         hedgeMode: true,
         direction: 'LONG',
     );
+    $account->update(['allow_other_positions' => true]);
     $position->updateSaving([
         'status' => 'waping',
         'profit_percentage' => '5',
@@ -1743,10 +1744,10 @@ it('applies WAP by resizing only the UTA take-profit strategy', function (): voi
             'symbol' => 'BTCUSDT',
             'posSide' => 'long',
             'positionSide' => 'LONG',
-            'total' => '0.1',
-            'size' => 0.1,
-            'positionAmt' => 0.1,
-            'breakEvenPrice' => '60000',
+            'total' => '0.5',
+            'size' => 0.5,
+            'positionAmt' => 0.5,
+            'breakEvenPrice' => '50000',
         ],
     ]);
     Http::fake(['*' => Http::response(['code' => '00000', 'data' => null])]);
@@ -1756,18 +1757,21 @@ it('applies WAP by resizing only the UTA take-profit strategy', function (): voi
     expect($job->startOrFail())->toBeTrue();
     $result = $job->computeApiable();
 
-    expect($result['new_quantity'])->toBe('0.1')
+    expect($result['break_even_price'])->toBe('60000.00000000')
+        ->and($result['new_price'])->toBe('62999.9')
+        ->and($result['new_quantity'])->toBe('0.1')
         ->and((string) $profitOrder->fresh()->quantity)->toContain('0.1')
         ->and((string) $stopOrder->fresh()->price)->toContain('57000');
 
-    Http::assertSent(function (Request $request): bool {
-        $body = bitgetUnifiedBody($request);
+    $strategyRequests = Http::recorded(fn (Request $request): bool => str_contains(
+        $request->url(),
+        '/api/v3/trade/modify-strategy-order',
+    ))->values();
+    $strategyBody = bitgetUnifiedBody($strategyRequests->sole()[0]);
 
-        return str_contains($request->url(), '/api/v3/trade/modify-strategy-order')
-            && $body['orderId'] === 'UTA-WAP-PROTECTION-1'
-            && $body['qty'] === '0.1'
-            && array_key_exists('takeProfit', $body)
-            && ! array_key_exists('stopLoss', $body);
-    });
+    expect($strategyBody['orderId'])->toBe('UTA-WAP-PROTECTION-1')
+        ->and($strategyBody['qty'])->toBe('0.1')
+        ->and($strategyBody['takeProfit'])->toBe('62999.8')
+        ->and($strategyBody)->not->toHaveKey('stopLoss');
     Http::assertSentCount(1);
 });

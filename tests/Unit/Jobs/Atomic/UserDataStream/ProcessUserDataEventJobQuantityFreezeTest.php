@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\UserDataStream\ProcessUserDataEventJob;
 use Kraite\Core\Jobs\Lifecycles\Order\PrepareOrderCorrectionJob;
+use Kraite\Core\Jobs\Lifecycles\Position\PreparePositionReplacementJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
@@ -51,7 +52,7 @@ use StepDispatcher\Support\Steps;
  */
 beforeEach(function (): void {
     config()->set('kraite.user_data_stream.binance.dispatched_executions', [
-        'TRADE', 'AMENDMENT', 'CANCELED', 'EXPIRED',
+        'TRADE', 'AMENDMENT', 'CANCELED', 'EXPIRED', 'REJECTED',
         'ALGO_NEW', 'ALGO_CANCELED', 'ALGO_EXPIRED', 'ALGO_FILLED',
     ]);
 });
@@ -330,6 +331,8 @@ it('does not regress quantity from a late PARTIALLY_FILLED frame after FILLED ha
 
     expect((float) $fresh->quantity)
         ->toBe(81.9, 'A late PARTIALLY_FILLED frame must not corrupt the stable post-FILLED quantity.');
+    expect($fresh->status)
+        ->toBe('FILLED', 'A late PARTIALLY_FILLED frame must not regress terminal exchange truth.');
 });
 
 it('still updates status and average price on a normal NEW→PARTIALLY_FILLED→FILLED progression', function (): void {
@@ -357,4 +360,37 @@ it('still updates status and average price on a normal NEW→PARTIALLY_FILLED→
     expect($fresh->status)->toBe('FILLED');
     expect((float) $fresh->price)->toBe(0.29760);
     expect((float) $fresh->quantity)->toBe(81.9);
+});
+
+it('routes a rejected exchange order immediately into replacement', function (): void {
+    $order = buildActiveProfitOrderForPartialFill('rejected-'.Str::random(8));
+    $payload = buildBinanceOrderUpdatePayload([
+        's' => $order->position->parsed_trading_pair,
+        'c' => $order->client_order_id,
+        'i' => $order->exchange_order_id,
+        'X' => 'REJECTED',
+        'x' => 'REJECTED',
+        'q' => '20.99',
+        'z' => '0',
+        'l' => '0',
+        'p' => '4.105',
+        'ap' => '0',
+        'L' => '0',
+    ]);
+
+    (new ProcessUserDataEventJob(
+        accountId: $order->position->account_id,
+        apiSystemId: $order->position->account->api_system_id,
+        apiSystemCanonical: 'binance',
+        payload: $payload,
+    ))->compute();
+
+    $replacement = Steps::usingPrefix('trading', fn () => Step::query()
+        ->forRelatable($order->position)
+        ->forClasses(PreparePositionReplacementJob::class)
+        ->first());
+
+    expect($order->fresh()->status)->toBe('REJECTED')
+        ->and($replacement)->not->toBeNull()
+        ->and($replacement->arguments['triggerStatus'])->toBe('REJECTED');
 });

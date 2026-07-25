@@ -138,6 +138,22 @@ it('the priceRow relationship is wired on ExchangeSymbol', function (): void {
     expect($exchangeSymbol->priceRow->mark_price)->toBe('1.23000000');
 });
 
+it('stores explicit mark-price snapshots in the sidecar and refreshes the accessor cache', function (): void {
+    $exchangeSymbol = makeSidecarSymbol(
+        token: 'SDC6',
+        sidecarPrice: '1.00000000',
+        legacyPrice: '99.00000000',
+    );
+
+    expect($exchangeSymbol->mark_price)->toBe('1.00000000');
+
+    $exchangeSymbol->storeMarkPriceSnapshot('12.34000000');
+
+    expect($exchangeSymbol->mark_price)->toBe('12.34000000')
+        ->and($exchangeSymbol->priceRow?->mark_price)->toBe('12.34000000')
+        ->and($exchangeSymbol->getRawOriginal('mark_price'))->toBe('99.000000000000000000');
+});
+
 it('the freshness check (CheckSystemHealthCommand #0) reads from the sidecar', function (): void {
     // Source-level pin: the freshness watchdog filters on
     // mark_price_synced_at at the SQL level. Post-cutover it

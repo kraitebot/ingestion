@@ -61,7 +61,8 @@ it('allows recreation of a cancelled closePosition-style algo order (is_algo + r
 
     $job = new RecreateCancelledOrderJob($order->position_id, $order->id);
 
-    expect($job->startOrFail())->toBeTrue();
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 it('rejects a non-algo order that has reference_quantity = 0 (nothing legitimate to recreate)', function (): void {
@@ -74,7 +75,8 @@ it('rejects a non-algo order that has reference_quantity = 0 (nothing legitimate
 
     $job = new RecreateCancelledOrderJob($order->position_id, $order->id);
 
-    expect($job->startOrFail())->toBeFalse();
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 });
 
 it('allows recreation of a regular LIMIT with reference_quantity > 0', function (): void {
@@ -87,5 +89,6 @@ it('allows recreation of a regular LIMIT with reference_quantity > 0', function 
 
     $job = new RecreateCancelledOrderJob($order->position_id, $order->id);
 
-    expect($job->startOrFail())->toBeTrue();
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });

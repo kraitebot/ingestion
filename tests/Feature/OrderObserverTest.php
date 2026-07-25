@@ -545,6 +545,33 @@ it('dispatches ApplyWapJob when a LIMIT order is filled', function (): void {
     expect($order->fresh()->reference_status)->toBe('FILLED');
 });
 
+it('does not start or acknowledge WAP while the position is still opening', function (): void {
+    $position = createTestPosition();
+    $position->update([
+        'status' => 'opening',
+        'profit_percentage' => '0.350',
+    ]);
+
+    createOrderOnPosition($position, [
+        'type' => 'PROFIT-LIMIT',
+        'status' => 'NEW',
+        'price' => '41000.00',
+    ]);
+
+    $order = createOrderOnPosition($position, [
+        'type' => 'LIMIT',
+        'status' => 'NEW',
+        'reference_status' => 'NEW',
+    ]);
+    $order->update(['status' => 'FILLED']);
+
+    expect(Steps::usingPrefix(
+        'trading',
+        fn (): bool => Step::where('class', Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob::class)->exists(),
+    ))->toBeFalse()
+        ->and($order->fresh()->reference_status)->toBe('NEW');
+});
+
 it('does not dispatch ApplyWapJob when position is not active', function (): void {
     $position = createTestPosition();
     $position->update([

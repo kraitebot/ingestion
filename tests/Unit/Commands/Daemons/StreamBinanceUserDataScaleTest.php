@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Kraite\Core\Commands\Daemons\StreamBinanceUserDataCommand;
+use Kraite\Core\Models\Account;
 use Kraite\Core\Support\NotificationMessageBuilder;
 
 /**
@@ -72,4 +73,25 @@ it('renders a single fleet boot-summary notification instead of one per account'
     expect($payload['title'])->toContain('100');
     expect($payload['title'])->toContain('daemon online');
     expect($payload['emailMessage'])->toBeString()->not->toBeEmpty();
+});
+
+it('keeps the account slot when the transport closes unexpectedly', function (): void {
+    $command = new StreamBinanceUserDataCommand;
+    $account = (new Account)->forceFill(['id' => 42]);
+
+    $command->injectSlotForTest(42, [
+        'client' => null,
+        'listen_key' => 'still-valid',
+        'last_frame_persisted_at' => 0.0,
+    ]);
+
+    $callbacks = (new ReflectionClass($command))
+        ->getMethod('connectionCallbacks')
+        ->invoke($command, $account);
+
+    $callbacks['close']();
+
+    expect($command->hasSlotForTest(42))->toBeTrue(
+        'The base client owns transient reconnects; removing the slot disables its backoff loop.',
+    );
 });

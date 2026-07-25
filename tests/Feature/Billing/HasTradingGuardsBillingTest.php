@@ -6,6 +6,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\Kraite as KraiteModel;
+use Kraite\Core\Models\Order;
+use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Subscription;
 use Kraite\Core\Models\User;
 use Kraite\Core\Trading\Kraite as KraiteEngine;
@@ -247,4 +249,41 @@ it('blocks new opens when the user is paused', function (): void {
     $engine = KraiteEngine::withAccount($f['account']->refresh());
 
     expect($engine->canOpenNewPositions())->toBeFalse();
+});
+
+it('blocks new opens when more than half of the long book is past its ladder midpoint', function (): void {
+    $fixture = billableUserWithAccount(
+        starterTier(),
+        balance: 100,
+        trialStart: now()->subDays(30),
+        renewsAt: now()->addDays(15),
+    );
+    $longPosition = Position::factory()->create([
+        'account_id' => $fixture['account']->id,
+        'status' => 'active',
+        'direction' => 'LONG',
+        'total_limit_orders' => 4,
+    ]);
+    $shortPosition = Position::factory()->create([
+        'account_id' => $fixture['account']->id,
+        'status' => 'active',
+        'direction' => 'SHORT',
+        'total_limit_orders' => 4,
+    ]);
+
+    foreach (range(1, 3) as $index) {
+        Order::create([
+            'position_id' => $longPosition->id,
+            'side' => 'BUY',
+            'position_side' => 'LONG',
+            'type' => 'LIMIT',
+            'price' => (string) $index,
+            'quantity' => (string) $index,
+            'status' => 'FILLED',
+        ]);
+    }
+
+    expect($longPosition->totalLimitOrdersFilled())->toBe(3)
+        ->and($shortPosition->totalLimitOrdersFilled())->toBe(0)
+        ->and(KraiteEngine::withAccount($fixture['account'])->canOpenNewPositions())->toBeFalse();
 });

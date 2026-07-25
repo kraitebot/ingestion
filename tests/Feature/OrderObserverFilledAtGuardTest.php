@@ -88,3 +88,21 @@ it('does not set filled_at on non-FILLED saves', function (): void {
 
     expect($order->filled_at)->toBeNull();
 });
+
+it('refuses to downgrade FILLED when an older partial-fill frame arrives late', function (): void {
+    $order = buildActivePositionWithProfitOrder();
+    Order::withoutEvents(fn () => $order->forceFill(['status' => 'FILLED'])->save());
+
+    $order->updateSaving(['status' => 'PARTIALLY_FILLED']);
+
+    expect($order->fresh()->status)->toBe('FILLED');
+});
+
+it('refuses to regress a terminal non-fill status to an older working status', function (string $terminalStatus): void {
+    $order = buildActivePositionWithProfitOrder();
+    Order::withoutEvents(fn () => $order->forceFill(['status' => $terminalStatus])->save());
+
+    $order->updateSaving(['status' => 'PARTIALLY_FILLED']);
+
+    expect($order->fresh()->status)->toBe($terminalStatus);
+})->with(['CANCELLED', 'EXPIRED', 'REJECTED']);

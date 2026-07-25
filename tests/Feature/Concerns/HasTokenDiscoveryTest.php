@@ -761,6 +761,28 @@ test('fallback algorithm ignores correlation sign', function (): void {
     expect($position->exchange_symbol_id)->toBe($negativeCorrelation->id);
 });
 
+test('fallback leaves the slot unassigned when every candidate has zero score', function (): void {
+    Config::set('kraite.token_discovery.btc_biased_restriction', false);
+
+    $account = createAccountForTokenDiscoveryTest();
+
+    createBtcExchangeSymbol(null, null, $account->api_system_id, $account->trading_quote);
+    createExchangeSymbolWithData(
+        'ZEROSCORE',
+        'LONG',
+        ['1h' => 0.0],
+        ['1h' => 0.0],
+        ['1h' => 0.0],
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    createPositionSlot($account, 'LONG');
+
+    $account->assignBestTokenToNewPositions();
+
+    expect(Position::where('account_id', $account->id)->count())->toBe(0);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Fast-Tracked Symbol Tests

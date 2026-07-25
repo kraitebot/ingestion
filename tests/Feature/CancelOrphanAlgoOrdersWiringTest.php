@@ -87,7 +87,7 @@ it('SmartReplaceOrdersJob dispatches CancelOrphanAlgoOrdersJob as step 1 before 
     $job = new SmartReplaceOrdersJob($position->id);
 
     // Load ordersToRecreate via the real gate.
-    expect($job->startOrFail())->toBeTrue();
+    expect($job->startOrSkip())->toBeTrue();
 
     $job->step = Step::create([
         'class' => SmartReplaceOrdersJob::class,

@@ -50,6 +50,31 @@ final class TestableWebsocketClient extends BaseWebsocketClient
         $this->setProtected('lastDataFrameAt', $timestamp);
     }
 
+    public function publicSetReconnectAttempt(int $attempt): void
+    {
+        $this->setProtected('reconnectAttempt', $attempt);
+    }
+
+    public function publicGetReconnectAttempt(): int
+    {
+        return $this->getProtected('reconnectAttempt');
+    }
+
+    public function publicSetReconnectStormAlertRaised(bool $raised): void
+    {
+        $this->setProtected('reconnectStormAlertRaised', $raised);
+    }
+
+    public function publicGetReconnectStormAlertRaised(): bool
+    {
+        return $this->getProtected('reconnectStormAlertRaised');
+    }
+
+    public function publicMarkConnectionHealthy(): void
+    {
+        $this->markConnectionHealthy();
+    }
+
     private function setProtected(string $property, mixed $value): void
     {
         $reflection = new ReflectionClass(BaseWebsocketClient::class);

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Kraite\Core\Support\MarketRegime\MarketShockCircuitBreaker;
+use Kraite\Core\Support\NotificationMessageBuilder;
 
 /**
  * Fast cascade-in-progress detector. Reads recent 15m klines for BTC +
@@ -16,7 +17,7 @@ use Kraite\Core\Support\MarketRegime\MarketShockCircuitBreaker;
  *   1. btc_15m_move_pct        <= -3.0
  *   2. btc_1h_move_pct         <= -5.0
  *   3. alt_basket_1h_move_pct  <= -7.0
- *   4. corr_1h >= 0.85 AND abs(btc_1h_move_pct) >= 3.0
+ *   4. corr_1h >= 0.85 AND btc_1h_move_pct <= -3.0
  *
  * Window contracts:
  *   - 15m move      = (last close − bar 1-back close) / bar 1-back close
@@ -170,6 +171,27 @@ it('does NOT fire rule #4 when correlation is high but magnitude is below 3%', f
         ->and($result['fired'])->toBeFalse();
 });
 
+it('does NOT fire the crash brake on a highly correlated rally', function (): void {
+    $btc = flatBars(16, 50000.0);
+    foreach (fakeBars(4, 50000.0, 52000.0) as $bar) {
+        $btc[] = $bar;
+    }
+
+    $alts = [];
+    foreach (['ETH' => 3000.0, 'SOL' => 100.0, 'BNB' => 600.0, 'XRP' => 0.5] as $token => $price) {
+        $bars = flatBars(16, $price);
+        foreach (fakeBars(4, $price, $price * 1.04) as $bar) {
+            $bars[] = $bar;
+        }
+        $alts[$token] = $bars;
+    }
+
+    $result = MarketShockCircuitBreaker::evaluate($btc, $alts);
+
+    expect($result['rules_triggered'])->not->toContain('corr_magnitude')
+        ->and($result['fired'])->toBeFalse();
+});
+
 it('returns ALL triggered rules when multiple fire simultaneously', function (): void {
     // Aggressive: BTC drops 4% in the last bar AND 7% across the hour.
     // Both rule #1 (15m) and rule #2 (1h) fire; alts in lockstep also
@@ -210,7 +232,56 @@ it('returns no-fire when input arrays are too short for the analysis windows', f
 
     $result = MarketShockCircuitBreaker::evaluate($btc, $alts);
 
-    expect($result['fired'])->toBeFalse();
+    expect($result['fired'])->toBeFalse()
+        ->and($result['btc_15m_pct'])->toBe(0.0)
+        ->and($result['btc_1h_pct'])->toBeNull()
+        ->and($result['alt_basket_1h_pct'])->toBeNull()
+        ->and($result['corr_1h'])->toBeNull();
+});
+
+it('excludes zero-variance pairs from aggregate correlation', function (): void {
+    $btc = fakeBars(20, 50000.0, 48000.0);
+    $alts = [
+        'ETH' => fakeBars(20, 3000.0, 2880.0),
+        'SOL' => fakeBars(20, 100.0, 96.0),
+        'BNB' => flatBars(20, 600.0),
+    ];
+
+    $result = MarketShockCircuitBreaker::evaluate($btc, $alts);
+
+    expect($result['corr_1h'])->toBeGreaterThan(0.99);
+});
+
+it('rejects invalid market shock thresholds', function (array $override, string $message): void {
+    $thresholds = array_replace(MarketShockCircuitBreaker::defaultThresholds(), $override);
+
+    expect(fn () => MarketShockCircuitBreaker::evaluate(
+        fakeBars(20, 50000.0, 49000.0),
+        [],
+        $thresholds,
+    ))->toThrow(InvalidArgumentException::class, $message);
+})->with([
+    'positive downside threshold' => [['btc_15m_pct' => 3.0], 'btc_15m_pct'],
+    'impossible correlation' => [['corr_1h' => 1.1], 'corr_1h'],
+    'non-positive magnitude' => [['magnitude_pct' => 0.0], 'magnitude_pct'],
+]);
+
+it('keeps unavailable shock metrics explicit in operator notifications', function (): void {
+    $message = NotificationMessageBuilder::build('market_shock_circuit_breaker', [
+        'rules' => 'btc_15m',
+        'btc_15m_pct' => -3.2,
+        'btc_1h_pct' => null,
+        'alt_basket_1h_pct' => 'unavailable',
+        'corr_1h' => null,
+        'cooldown_hours' => 1,
+        'hostname' => 'test-host',
+    ]);
+
+    expect($message['emailMessage'])
+        ->toContain('BTC 15m: -3.2%')
+        ->toContain('BTC 1h: unavailable')
+        ->toContain('Alt basket 1h: unavailable')
+        ->toContain('Corr 1h: unavailable');
 });
 
 it('exposes the raw computed values alongside the fired flags for forensic logging', function (): void {

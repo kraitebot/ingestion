@@ -11,9 +11,15 @@ use Kraite\Core\Jobs\Atomic\Position\ClosePositionAtomicallyJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Indicator;
+use Kraite\Core\Models\IndicatorHistory;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use StepDispatcher\Models\Step;
+use StepDispatcher\States\Pending;
+use StepDispatcher\States\Running;
+use StepDispatcher\Support\Steps;
 
 /**
  * Pin the -2022 reconciliation handler on `ClosePositionAtomicallyJob`.
@@ -121,6 +127,34 @@ function liveBinancePosition(string $symbol = 'TONUSDT'): array
     ];
 }
 
+function configurePumpCooldownFixture(Position $position): void
+{
+    $exchangeSymbol = $position->exchangeSymbol;
+    $exchangeSymbol->update([
+        'disable_on_price_spike_percentage' => '5',
+        'price_spike_cooldown_hours' => 4,
+        'tradeable_at' => null,
+    ]);
+    $exchangeSymbol->storeMarkPriceSnapshot('110');
+
+    $indicator = Indicator::query()->firstOrCreate(
+        ['canonical' => 'candle'],
+        [
+            'type' => 'dashboard',
+            'is_active' => true,
+            'class' => Kraite\Core\Indicators\History\CandleIndicator::class,
+        ],
+    );
+
+    IndicatorHistory::create([
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'indicator_id' => $indicator->id,
+        'timeframe' => '1d',
+        'timestamp' => (string) now()->timestamp,
+        'data' => ['close' => ['99', '100']],
+    ]);
+}
+
 it('treats Bitget 22002 "no position to close" as already-closed success', function (): void {
     Http::fake([
         '*' => Http::response(
@@ -188,6 +222,61 @@ it('treats Binance -2022 as already closed only after two valid flat snapshots',
     ]);
 });
 
+it('reschedules the second Binance flat check without sleeping a queue worker', function (): void {
+    config()->set('kraite.position_safety.flat_confirmation_delay_seconds', 20);
+    fakeBinanceCloseRejectionWithPositionSnapshots([]);
+
+    $position = buildTpClosedPosition();
+
+    Steps::usingPrefix('trading', function () use ($position): void {
+        $step = Step::create([
+            'class' => ClosePositionAtomicallyJob::class,
+            'queue' => 'positions',
+            'state' => Running::class,
+        ]);
+        $job = new ClosePositionAtomicallyJob($position->id);
+        $job->step = $step;
+        $job->assignExceptionHandler();
+
+        $result = $job->computeApiable();
+        $fresh = $step->fresh();
+
+        expect($result['confirmation_pending'])->toBeTrue()
+            ->and($fresh->state)->toBeInstanceOf(Pending::class)
+            ->and((int) now()->diffInSeconds($fresh->dispatch_after))->toBeGreaterThanOrEqual(19)
+            ->and($fresh->response)->toHaveKey('binance_flat_confirmation_started_at');
+    });
+
+    Sleep::assertNeverSlept();
+    Http::assertSentCount(2);
+});
+
+it('completes a rescheduled Binance flat confirmation on the second valid snapshot', function (): void {
+    fakeBinanceCloseRejectionWithPositionSnapshots([]);
+
+    $position = buildTpClosedPosition();
+
+    Steps::usingPrefix('trading', function () use ($position): void {
+        $step = Step::create([
+            'class' => ClosePositionAtomicallyJob::class,
+            'queue' => 'positions',
+            'state' => Running::class,
+            'response' => ['binance_flat_confirmation_started_at' => now()->subSeconds(20)->toIso8601String()],
+        ]);
+        $job = new ClosePositionAtomicallyJob($position->id);
+        $job->step = $step;
+        $job->assignExceptionHandler();
+
+        $result = $job->computeApiable();
+
+        expect($result['result'])->toBe(['already_closed' => true])
+            ->and($step->fresh()->response)->toBeNull();
+    });
+
+    Sleep::assertNeverSlept();
+    Http::assertSentCount(2);
+});
+
 it('does not treat Binance -2022 as success while the exact position remains open', function (): void {
     fakeBinanceCloseRejectionWithPositionSnapshots([
         liveBinancePosition(),
@@ -203,6 +292,38 @@ it('does not treat Binance -2022 as success while the exact position remains ope
 
     Http::assertSentCount(2);
     Sleep::assertNeverSlept();
+});
+
+it('does not stamp pump cooldown when the exchange close fails', function (): void {
+    fakeBinanceCloseRejectionWithPositionSnapshots([liveBinancePosition()]);
+
+    $position = buildTpClosedPosition();
+    configurePumpCooldownFixture($position);
+    $job = new ClosePositionAtomicallyJob($position->id);
+    $job->assignExceptionHandler();
+
+    expect(fn () => $job->computeApiable())->toThrow(RequestException::class, '-2022')
+        ->and($position->exchangeSymbol->fresh()->tradeable_at)->toBeNull();
+});
+
+it('uses the latest daily candle and stamps pump cooldown after a successful idempotent close', function (): void {
+    Http::fake([
+        '*' => Http::response(
+            json_encode(['code' => '22002', 'msg' => 'No position to close']),
+            400,
+        ),
+    ]);
+
+    $position = buildTpClosedPosition('bitget');
+    configurePumpCooldownFixture($position);
+    $job = new ClosePositionAtomicallyJob($position->id);
+    $job->assignExceptionHandler();
+
+    $result = $job->computeApiable();
+
+    expect($result['pump_cooldown_triggered'])->toBeTrue()
+        ->and($result['cooldown_details']['change_percent'])->toBe('10.0000000000000000')
+        ->and($position->exchangeSymbol->fresh()->tradeable_at)->not->toBeNull();
 });
 
 it('does not treat Binance -2022 as success when the position reappears after the lag window', function (): void {

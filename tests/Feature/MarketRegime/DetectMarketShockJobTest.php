@@ -192,3 +192,25 @@ it('no-op when reference klines are missing entirely (graceful — no exceptions
 
     expect($result['action'])->toBe('noop_insufficient_data');
 });
+
+it('treats a stale kline fallback as unavailable instead of calm', function (): void {
+    config([
+        'kraite.market_regime.shock.live_window.enabled' => false,
+        'kraite.market_regime.shock.kline_max_age_seconds' => 1800,
+    ]);
+
+    seedReferenceCandlesFor(
+        $this->binance->id,
+        ['BTC', 'ETH', 'SOL', 'BNB', 'XRP'],
+        static fn (string $token, int $i): float => 100.0,
+    );
+
+    Candle::query()->update([
+        'timestamp' => Illuminate\Support\Facades\DB::raw('timestamp - 10800'),
+        'candle_time_utc' => now()->subHours(3),
+    ]);
+
+    $result = (new DetectMarketShockJob)->compute();
+
+    expect($result['action'])->toBe('noop_insufficient_data');
+});

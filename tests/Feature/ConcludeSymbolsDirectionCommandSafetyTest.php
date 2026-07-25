@@ -65,6 +65,40 @@ it('refuses the destructive clean option outside local and testing', function ()
         ->assertFailed();
 });
 
+it('refuses the destructive reset option outside local and testing', function (): void {
+    $symbol = ExchangeSymbol::factory()->create([
+        'direction' => 'LONG',
+        'indicators_timeframe' => '4h',
+    ]);
+    $this->app['env'] = 'production';
+
+    $this->artisan('kraite:cron-conclude-symbols-direction', ['--reset' => true])
+        ->expectsOutputToContain('--reset refused')
+        ->assertFailed();
+
+    expect($symbol->fresh()->direction)->toBe('LONG')
+        ->and($symbol->fresh()->indicators_timeframe)->toBe('4h');
+});
+
+it('keeps exchange ban records out of indicator cleanup', function (): void {
+    $source = file_get_contents(
+        base_path('vendor/kraitebot/core/src/Commands/Cronjobs/ConcludeSymbolsDirectionCommand.php'),
+    );
+
+    expect($source)->not->toContain("DB::table('forbidden_hostnames')->truncate()");
+});
+
+it('commits one symbol workflow at a time instead of wrapping the full pass', function (): void {
+    $source = file_get_contents(
+        base_path('vendor/kraitebot/core/src/Commands/Cronjobs/ConcludeSymbolsDirectionCommand.php'),
+    );
+
+    expect($source)
+        ->toContain('private function createWorkflowForSymbol')
+        ->toContain('return DB::transaction(function () use ($symbolId, $startingTimeframe): string')
+        ->not->toContain('DB::transaction(function () use ($symbolsToProcess');
+});
+
 it('does not create a second workflow while another conclude command owns the lock', function (): void {
     Kraite::firstOrFail()->update(['timeframes' => ['4h']]);
     Illuminate\Support\Once::flush();

@@ -184,3 +184,23 @@ it('throws InvalidArgumentException for a zero or negative reference price', fun
         exchangeSymbol: $symbol,
     );
 })->throws(InvalidArgumentException::class);
+
+it('rejects a non-positive LONG rung price before formatting or notional checks', function (string $gap): void {
+    $symbol = buildLadderSymbol();
+    $symbol->forceFill([
+        'percentage_gap_long' => $gap,
+        'min_price' => null,
+        'min_notional' => null,
+    ])->save();
+
+    expect(fn () => Kraite::calculateLimitOrdersData(
+        totalLimitOrders: 4,
+        direction: 'LONG',
+        referencePrice: '100',
+        marketOrderQty: '10',
+        exchangeSymbol: $symbol,
+    ))->toThrow(RuntimeException::class, 'Computed limit price <= 0');
+})->with([
+    'zero fourth rung' => ['25'],
+    'negative fourth rung' => ['30'],
+]);

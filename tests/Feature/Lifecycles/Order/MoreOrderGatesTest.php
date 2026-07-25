@@ -34,7 +34,10 @@ it('CorrectModifiedOrder: passes when active LIMIT has price drift from referenc
         'status' => 'NEW',
     ]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 it('CorrectModifiedOrder: passes when active LIMIT has quantity drift from reference_quantity', function (): void {
@@ -51,7 +54,10 @@ it('CorrectModifiedOrder: passes when active LIMIT has quantity drift from refer
         'status' => 'NEW',
     ]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 it('CorrectModifiedOrder: refuses when no drift exists (price + quantity match reference)', function (): void {
@@ -68,7 +74,10 @@ it('CorrectModifiedOrder: refuses when no drift exists (price + quantity match r
         'status' => 'NEW',
     ]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 });
 
 it('CorrectModifiedOrder: refuses on algo orders (require cancel+recreate, not modify)', function (): void {

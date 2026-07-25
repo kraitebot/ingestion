@@ -22,11 +22,11 @@ use Illuminate\Support\Str;
 | matches the StepRouter's `buildPhysicalQueue()` logic so the dispatcher
 | and Horizon agree on the queue namespace.
 |
-| Drift between `kraite.horizon.workers` (source of truth for both files)
-| and `kraite.queue_subscriptions` (StepRouter's candidate-set lookup) is
-| caught by the `kraite:verify-horizon-topology` artisan command — wedged
-| steps (pushed to a queue with no consumer) would silently sit in Redis
-| otherwise, so the command runs in CI and on each box's boot.
+| Both this supervisor transformer and StepRouter's candidate-set lookup
+| read `kraite.horizon.workers` directly. The
+| `kraite:verify-fleet-topology` command asserts configured worker hostnames
+| match the servers table, preventing jobs from being routed toward a worker
+| that is absent from the deployed fleet.
 */
 
 return [

@@ -1,3 +1,69 @@
+# WhereAreWe — 2026-07-25 (trading safety and runtime resilience)
+
+## Date
+
+2026-07-25
+
+## This release (2026-07-25)
+
+- **Protection wins lifecycle races:** position closing removes exchange
+  exposure before cancelling protection; correction, replacement, WAP, and
+  manual-close reactions revalidate current ownership before acting.
+- **Exchange ambiguity cannot become fake success:** Binance `-2022`, stale or
+  malformed position snapshots, partial Bitget envelopes, and market-shock
+  inputs require explicit trustworthy evidence before terminal decisions.
+- **The dispatcher prioritises money-critical work:** active groups tick
+  independently, high-priority work runs before cleanup, and stale jobs recover
+  on their original worker lane.
+- **Runtime monitoring now sees real failure modes:** dispatcher tick health,
+  per-account private-stream heartbeats, record-only stream configuration,
+  structured exchange error bursts, and replacement-owned protection gaps are
+  all distinguished from healthy idle or in-flight work.
+- **Rate limits fail safe under concurrency:** Binance request reservations are
+  atomic and back off on coordination failure without changing TAAPI's
+  throttling scope.
+
+---
+
+# WhereAreWe — 2026-07-25 (portfolio disaster exposure)
+
+## Date
+
+2026-07-25
+
+## This release (2026-07-25)
+
+- **Portfolio risk is visible by direction:** the dashboard groups frozen
+  maximum pain into SHORT and LONG totals and compares each side with the
+  current portfolio value.
+- **Incomplete risk never looks safer:** if an open position lacks a
+  trustworthy snapshot, its direction remains unknown instead of presenting
+  a partial subtotal. Ungroupable exposure keeps both sides unknown.
+- **Open-position performance stays separate from realised profit:** the
+  Today tile now shows the live signed PnL across active positions beneath the
+  realised daily result.
+
+---
+
+# WhereAreWe — 2026-07-25 (fleet service diagnostics)
+
+## Date
+
+2026-07-25
+
+## This release (2026-07-25)
+
+- **Server issues explain themselves:** every non-running service appears
+  below its server with the reported state; missing and stale heartbeats
+  receive the same explicit treatment.
+- **Service tooltips remain readable:** fleet cards allow the overlay to
+  escape their boundary and stack above adjacent dashboard panels.
+- **Heartbeat observations stay honest:** a release-time `STARTING` sample
+  can remain visible until the next five-minute heartbeat even after the
+  service has reached `RUNNING`.
+
+---
+
 # WhereAreWe — 2026-07-24 (automatic approvals and max pain)
 
 ## Date

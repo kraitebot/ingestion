@@ -2,8 +2,14 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Http;
 use Kraite\Core\Jobs\Atomic\Position\VerifyOrderNotionalForMarketOrderJob;
+use Kraite\Core\Models\Account;
+use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\ExchangeSymbolPrice;
+use Kraite\Core\Models\Position;
+use Kraite\Core\Models\Symbol;
 use Kraite\Core\Trading\Kraite;
 
 /**
@@ -58,4 +64,52 @@ it('VerifyOrderNotionalForMarketOrderJob calls the ladder calculator inside comp
     expect($source)->toContain('Kraite::calculateLimitOrdersData(');
     expect($source)->toContain('referencePrice: $markPrice');
     expect($source)->toContain('marketOrderQty: $marketOrderQuantity');
+});
+
+it('sizes and validates the market order from the fresh REST snapshot instead of a stale sidecar price', function (): void {
+    $apiSystem = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'binance',
+        'name' => 'Binance notional snapshot',
+    ]);
+    $symbol = Symbol::factory()->create(['token' => 'SNAP']);
+    $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'api_system_id' => $apiSystem->id,
+        'symbol_id' => $symbol->id,
+        'token' => 'SNAP',
+        'quote' => 'USDT',
+        'mark_price' => '99',
+        'price_precision' => 2,
+        'quantity_precision' => 3,
+        'tick_size' => '0.01',
+        'min_price' => '0.01',
+        'max_price' => '1000',
+        'min_notional' => '5',
+        'limit_quantity_multipliers' => [2, 2, 2, 2],
+    ]);
+    ExchangeSymbolPrice::updateOrCreate(
+        ['exchange_symbol_id' => $exchangeSymbol->id],
+        ['mark_price' => '1', 'mark_price_synced_at' => now()->subMinute()],
+    );
+    $account = Account::factory()->create(['api_system_id' => $apiSystem->id]);
+    $position = Position::factory()->long()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'status' => 'opening',
+        'margin' => '50',
+        'leverage' => 20,
+        'total_limit_orders' => 4,
+    ]);
+
+    Http::fake([
+        '*' => Http::response(['markPrice' => '10'], 200),
+    ]);
+
+    $result = (new VerifyOrderNotionalForMarketOrderJob($position->id))->computeApiable();
+    $exchangeSymbol->unsetRelation('priceRow');
+
+    expect($result['mark_price'])->toBe('10')
+        ->and($result['market_order_quantity'])->toBe('3.125')
+        ->and($exchangeSymbol->mark_price)->toBe('10.00000000')
+        ->and($exchangeSymbol->priceRow?->mark_price)->toBe('10.00000000')
+        ->and($exchangeSymbol->getRawOriginal('mark_price'))->toBe('99');
 });

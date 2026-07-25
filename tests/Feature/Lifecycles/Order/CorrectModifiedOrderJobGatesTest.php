@@ -50,13 +50,19 @@ function buildModifiedOrderScenario(array $orderAttrs = [], array $positionAttrs
 it('passes when status=active, order is non-algo NEW, and price has drifted', function (): void {
     ['position' => $position, 'order' => $order] = buildModifiedOrderScenario();
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 it('refuses when position status is not in the active set', function (string $nonActive): void {
     ['position' => $position, 'order' => $order] = buildModifiedOrderScenario(positionAttrs: ['status' => $nonActive]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 })->with([
     'closing' => ['closing'],
     'cancelling' => ['cancelling'],
@@ -75,7 +81,10 @@ it('refuses when order does not belong to this position (cross-position id misma
 it('refuses when order status is not NEW or PARTIALLY_FILLED', function (string $finishedStatus): void {
     ['position' => $position, 'order' => $order] = buildModifiedOrderScenario(['status' => $finishedStatus]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 })->with([
     'FILLED' => ['FILLED'],
     'CANCELLED' => ['CANCELLED'],
@@ -88,7 +97,9 @@ it('refuses an algo order (algos require cancel+recreate)', function (): void {
         'is_algo' => true,
     ]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeFalse();
 });
 
 it('refuses when both reference_price AND reference_quantity are null (nothing to restore)', function (): void {
@@ -97,7 +108,9 @@ it('refuses when both reference_price AND reference_quantity are null (nothing t
         'reference_quantity' => null,
     ]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeFalse();
 });
 
 it('refuses when there is no actual drift between price/quantity and their references (Math::equal mirrors observer)', function (): void {
@@ -108,7 +121,10 @@ it('refuses when there is no actual drift between price/quantity and their refer
         'reference_quantity' => '100',
     ]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 });
 
 it('refuses when price/quantity are numerically equal but stored at different decimal scales (the accessor-strip case)', function (): void {
@@ -122,7 +138,10 @@ it('refuses when price/quantity are numerically equal but stored at different de
         'reference_quantity' => '100.00000000',
     ]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeFalse();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeFalse();
 });
 
 it('passes for quantity drift even when price matches', function (): void {
@@ -133,11 +152,17 @@ it('passes for quantity drift even when price matches', function (): void {
         'reference_quantity' => '100',
     ]);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });
 
 it('passes when order is PARTIALLY_FILLED (still mid-life on exchange)', function (): void {
     ['position' => $position, 'order' => $order] = buildModifiedOrderScenario(['status' => 'PARTIALLY_FILLED']);
 
-    expect((new CorrectModifiedOrderJob($position->id, $order->id))->startOrFail())->toBeTrue();
+    $job = new CorrectModifiedOrderJob($position->id, $order->id);
+
+    expect($job->startOrFail())->toBeTrue()
+        ->and($job->startOrSkip())->toBeTrue();
 });

@@ -711,6 +711,92 @@ test('reports deleted slots and policy reason when correlation sign rejects ever
     expect(Position::query()->whereKey($result['created_positions'][0]['id'])->exists())->toBeFalse();
 });
 
+test('does not count an older assigned position as token selection work from the current run', function (): void {
+    Config::set('kraite.token_discovery.require_matching_correlation_sign', true);
+
+    $account = createAccountForSlotTest('older-assigned', maxLongs: 3, maxShorts: 0);
+    createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
+
+    $olderSymbol = createExchangeSymbolForSlotTest(
+        'OLDERASSIGNED',
+        'LONG',
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    $olderPosition = Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $olderSymbol->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    $rejectedSymbol = createExchangeSymbolForSlotTest(
+        'CURRENTREJECTED',
+        'LONG',
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    $rejectedSymbol->update([
+        'btc_correlation_pearson' => ['1h' => -0.5],
+    ]);
+
+    storeExchangePositions($account, []);
+    storeOpenOrders($account, []);
+
+    expect($olderPosition->fresh())
+        ->exchange_symbol_id->toBe($olderSymbol->id)
+        ->status->toBe('new');
+
+    $result = (new AssignBestTokensToPositionSlotsJob($account->id))->compute();
+    $createdPositionIds = collect($result['created_positions'])->pluck('id');
+
+    expect($result['total_created'])->toBe(2)
+        ->and($result['assigned_count'])->toBe(0)
+        ->and($result['deleted_count'])->toBe(2)
+        ->and($result['stop_reason'])
+        ->toBe('No eligible tokens matched the correlation/elasticity requirements for the position directions.')
+        ->and(Position::query()->whereKey($createdPositionIds)->exists())->toBeFalse()
+        ->and($olderPosition->fresh())
+        ->exchange_symbol_id->toBe($olderSymbol->id)
+        ->status->toBe('new');
+});
+
+test('counts an older unassigned position when token selection assigns it during the current run', function (): void {
+    $account = createAccountForSlotTest('older-unassigned', maxLongs: 3, maxShorts: 0);
+    createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
+
+    $olderPosition = Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => null,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+    $availableSymbol = createExchangeSymbolForSlotTest(
+        'OLDERRECOVERED',
+        'LONG',
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+
+    storeExchangePositions($account, []);
+    storeOpenOrders($account, []);
+
+    expect($olderPosition->fresh()->exchange_symbol_id)->toBeNull();
+
+    $result = (new AssignBestTokensToPositionSlotsJob($account->id))->compute();
+    $createdPositionIds = collect($result['created_positions'])->pluck('id');
+
+    expect($result['total_created'])->toBe(2)
+        ->and($result['assigned_count'])->toBe(1)
+        ->and($result['deleted_count'])->toBe(2)
+        ->and($result['assigned_tokens'])->toContain('OLDERRECOVERED')
+        ->and($result['stop_reason'])->toBeNull()
+        ->and(Position::query()->whereKey($createdPositionIds)->exists())->toBeFalse()
+        ->and($olderPosition->fresh())
+        ->exchange_symbol_id->toBe($availableSymbol->id)
+        ->status->toBe('new');
+});
+
 test('reports deleted slots and strict BTC reason when BTC has no direction', function (): void {
     $account = createAccountForSlotTest('no-btc-direction', maxLongs: 1, maxShorts: 0);
 

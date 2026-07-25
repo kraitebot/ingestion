@@ -135,6 +135,11 @@ return [
     | Rule: (BTC direction == position direction) → want POSITIVE correlation
     */
     'token_discovery' => [
+        /*
+         * Width of the support/resistance proximity penalty band as a
+         * fraction of the R1-S1 range.
+         */
+        'sr_safe_zone' => (float) env('TOKEN_DISCOVERY_SR_SAFE_ZONE', 0.20),
 
         /*
          * Correlation type used for scoring tokens.
@@ -175,6 +180,12 @@ return [
          *          Use this when you want to always fill position slots.
          */
         'require_matching_correlation_sign' => env('TOKEN_DISCOVERY_REQUIRE_MATCHING_CORRELATION_SIGN', true),
+
+        /*
+         * Maximum age of a candidate's mark price before token selection
+         * drops it from the assignment pool. Set to 0 to disable.
+         */
+        'mark_price_max_age_seconds' => (int) env('TOKEN_DISCOVERY_MARK_PRICE_MAX_AGE_SECONDS', 30),
     ],
 
     /*
@@ -280,11 +291,18 @@ return [
         ],
 
         'binance' => [
-            // Safety threshold: stop making requests when reaching this percentage of limit (0.0-1.0)
-            // 0.85 = stop at 85% to leave 15% buffer before hitting the limit
-            // Higher values = more aggressive (use more of available capacity)
-            // Lower values = more conservative (larger safety buffer)
-            'safety_threshold' => (float) env('BINANCE_THROTTLER_SAFETY_THRESHOLD', 0.85),
+            // The rate-limit rows below already contain the 15% headroom.
+            // 1.0 applies that reduced profile once; 0.85 would compound the
+            // margin and stop at about 72% of Binance's actual ceiling.
+            'safety_threshold' => (float) env('BINANCE_THROTTLER_SAFETY_THRESHOLD', 1.0),
+
+            // Atomic per-IP fallback request reservation. Header-derived
+            // weights remain authoritative; this closes the concurrent
+            // check-then-record gap when header state is temporarily absent.
+            'requests_per_window' => (int) env('BINANCE_THROTTLER_REQUESTS_PER_WINDOW', 2040),
+            'window_seconds' => (int) env('BINANCE_THROTTLER_WINDOW_SECONDS', 60),
+            'cache_failure_backoff_ms' => (int) env('BINANCE_THROTTLER_CACHE_FAILURE_BACKOFF_MS', 30000),
+            'reservation_contention_backoff_ms' => (int) env('BINANCE_THROTTLER_RESERVATION_CONTENTION_BACKOFF_MS', 50),
 
             // Rate limit definitions for pre-flight safety checks
             // These are checked against response header values stored in Cache
@@ -547,12 +565,11 @@ return [
     | the per-queue override is merged. Tunable per-environment if needed
     | by env-suffixing the keys (e.g. for a slower local box).
     |
-    | queue_subscriptions — derived view used by StepRouter. For each
-    | logical queue, the list of hostnames that can serve it. Kept as an
-    | explicit map (rather than computed from horizon.workers at runtime)
-    | so the StepRouter doesn't need to walk the full worker block on
-    | every dispatch. The `kraite:verify-horizon-topology` command
-    | asserts the two views stay aligned.
+    | StepRouter derives and memoises its logical-queue candidate map
+    | directly from horizon.workers. CoreServiceProvider derives Horizon's
+    | physical supervisors from the same block. The
+    | `kraite:verify-fleet-topology` command asserts configured worker
+    | hostnames match the production servers table.
     */
     'horizon' => [
         'defaults' => [
