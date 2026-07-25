@@ -1,3 +1,26 @@
+# WhereAreWe — 2026-07-25 (database-backed runtime settings)
+
+## Date
+
+2026-07-25
+
+## This release (2026-07-25)
+
+- **Runtime controls no longer require file edits:** the sysadmin Settings
+  page can persist trading gates, notification delivery, market-calculation
+  controls, BSCS freshness, and trail retention on the shared singleton.
+- **Inheritance stays explicit:** nullable controls can return to their
+  configured defaults, while explicit database values take effect on the next
+  consumer read or scheduled computation.
+- **Operator changes are accountable:** effective changes record the
+  administrator and a sanitized before/after snapshot; no-op saves add no
+  audit event.
+- **System truth stays visible and protected:** the page shows the effective
+  opening posture and current BSCS state without making computed score,
+  cooldown, or band values editable.
+
+---
+
 # WhereAreWe — 2026-07-25 (trading safety and runtime resilience)
 
 ## Date
