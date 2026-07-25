@@ -323,7 +323,12 @@ case "$SERVER_ROLE" in
 esac
 
 for unit in $UNITS; do
-    if supervisorctl status "$unit" 2>/dev/null | grep -qE "RUNNING|STOPPED|FATAL|EXITED"; then
+    # supervisorctl exits non-zero for a configured program in STOPPED/FATAL
+    # state. Capture the status before matching so pipefail does not
+    # misclassify that program as absent and skip the required restart.
+    unit_status=$(supervisorctl status "$unit" 2>/dev/null || true)
+
+    if grep -qE "RUNNING|STOPPED|FATAL|EXITED" <<< "$unit_status"; then
         supervisorctl restart "$unit" 2>&1 | sed 's/^/    /' || true
     else
         echo "    $unit: not configured on this host, skipping"

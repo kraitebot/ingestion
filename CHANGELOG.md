@@ -12,8 +12,10 @@ Ships `kraitebot/core` 1.84.1 and
 - [FIXED] The post-checkout deploy re-exec carries forward the cooldown proof
   established before checkout, allowing Composer to align package APIs before
   another Artisan boot.
+- [FIXED] Configured Supervisor programs in a stopped state are restarted
+  instead of being misclassified as absent by `pipefail`.
 - [VERIFIED] A deployment regression enforces marker ordering across the
-  checkout/re-exec boundary.
+  checkout/re-exec boundary and stopped-program detection.
 
 ## 1.77.1 - 2026-07-25
 

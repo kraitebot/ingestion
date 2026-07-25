@@ -30,6 +30,8 @@
 - **Package upgrades cross checkout safely:** deployment carries its proven
   cooldown state through the one re-exec, then installs dependencies before
   booting the newly checked-out application again.
+- **Stopped daemons are recognized:** deploy restart checks no longer confuse
+  Supervisor's non-zero `STOPPED` result with a missing program.
 
 ---
 
