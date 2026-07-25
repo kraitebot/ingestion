@@ -42,7 +42,9 @@ echo ""
 # --status reports STATUS:ACTIVE because of accumulating queue depth even
 # though the app is in maintenance + Horizon is processing). Use sparingly and
 # only when the operator has independently verified the box is safe to deploy.
-if [ "${FORCE_DEPLOY:-0}" = "1" ]; then
+if [ "${KRAITE_DEPLOY_REEXECED:-0}" = "1" ] && [ "${KRAITE_COOLDOWN_VERIFIED:-0}" = "1" ]; then
+    echo "[1/9] Cooldown verified by pre-checkout pass"
+elif [ "${FORCE_DEPLOY:-0}" = "1" ]; then
     echo "[1/9] Cooldown check BYPASSED (FORCE_DEPLOY=1)"
 elif ! su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:cooldown --status" 2>&1 | grep -q "STATUS:COOLED_DOWN"; then
     echo "ERROR: Server is NOT cooled down. Run 'php artisan kraite:cooldown' first."
@@ -51,6 +53,12 @@ elif ! su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:cooldown --st
 else
     echo "[1/9] Cooldown verified"
 fi
+
+# The checkout can introduce an application/package API pair that the old
+# vendor tree cannot boot yet. Carry the already-proven cooldown gate into the
+# one post-checkout re-exec so dependency installation can restore parity
+# before another Artisan command runs.
+export KRAITE_COOLDOWN_VERIFIED=1
 
 # --- Step 2: Ensure $KRAITE_USER has composer GitHub auth ---
 # Without this, composer update for private kraitebot repos fails with 401.

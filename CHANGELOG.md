@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.77.2 - 2026-07-25
+
+Ships `kraitebot/core` 1.84.1 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Dependency-safe deployment handoff
+
+- [FIXED] The post-checkout deploy re-exec carries forward the cooldown proof
+  established before checkout, allowing Composer to align package APIs before
+  another Artisan boot.
+- [VERIFIED] A deployment regression enforces marker ordering across the
+  checkout/re-exec boundary.
+
 ## 1.77.1 - 2026-07-25
 
 Ships `kraitebot/core` 1.84.1 and

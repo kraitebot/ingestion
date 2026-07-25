@@ -27,6 +27,9 @@
 - **Production config remains cacheable:** slow-dispatch logging is registered
   at runtime, so deployment can build Laravel's configuration cache without
   serializing a closure.
+- **Package upgrades cross checkout safely:** deployment carries its proven
+  cooldown state through the one re-exec, then installs dependencies before
+  booting the newly checked-out application again.
 
 ---
 
