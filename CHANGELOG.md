@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.77.3 - 2026-07-25
+
+Ships `kraitebot/core` 1.84.2 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### In-flight deployment drain
+
+- [FIXED] Cooldown counts jobs reserved by active Horizon workers, preventing
+  deployment while a queue job is still executing but no longer appears in
+  the ready list.
+- [UNCHANGED] Delayed self-rescheduling work remains outside the drain gate.
+- [VERIFIED] The complete ingestion suite passes: 3,225 tests /
+  10,427 assertions.
+
 ## 1.77.2 - 2026-07-25
 
 Ships `kraitebot/core` 1.84.1 and

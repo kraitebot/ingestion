@@ -68,6 +68,7 @@ it('counts the physical worker queues before declaring cooldown drained', functi
 
             return $queue === 'queues:kraite-positions' ? 3 : 0;
         });
+    $connection->shouldReceive('zcard')->andReturn(0);
     Redis::shouldReceive('connection')->andReturn($connection);
 
     $command = app(CooldownCommand::class);
@@ -83,4 +84,26 @@ it('counts the physical worker queues before declaring cooldown drained', functi
             'queues:kraite-web',
             'queues:kraite',
         );
+});
+
+it('counts reserved jobs before declaring cooldown drained', function (): void {
+    config()->set('kraite.horizon.workers', [
+        'kraite' => [
+            'positions' => ['processes' => 2],
+        ],
+    ]);
+
+    $connection = Mockery::mock();
+    $connection->shouldReceive('llen')->andReturn(0);
+    $connection->shouldReceive('zcard')
+        ->andReturnUsing(
+            fn (string $queue): int => $queue === 'queues:kraite-positions:reserved' ? 1 : 0,
+        );
+    Redis::shouldReceive('connection')->andReturn($connection);
+
+    $command = app(CooldownCommand::class);
+    $method = (new ReflectionClass($command))->getMethod('getQueueDepth');
+    $method->setAccessible(true);
+
+    expect($method->invoke($command))->toBe(1);
 });

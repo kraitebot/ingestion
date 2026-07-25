@@ -1,3 +1,20 @@
+# WhereAreWe — 2026-07-25 (in-flight deployment drain)
+
+## Date
+
+2026-07-25
+
+## This release (2026-07-25)
+
+- **Running queue work cannot disappear from cooldown:** deployment drain now
+  counts both ready jobs and jobs reserved by active Horizon workers.
+- **Future work remains resumable:** delayed self-rescheduling jobs do not
+  block deployment and resume normally after warmup.
+- **The gate fails safely:** any ready or in-flight job keeps the server active
+  until Horizon completes it.
+
+---
+
 # WhereAreWe — 2026-07-25 (database-backed runtime settings)
 
 ## Date
