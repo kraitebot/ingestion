@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.77.4 - 2026-07-25
+
+Ships `kraitebot/core` 1.85.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Sign-up consent is now on the record
+
+- [NEW FEATURE] A trader's acceptance of the Terms and Conditions is stored
+  with the moment they accepted and the published version they saw, so a later
+  dispute can be answered with the exact text that was on the page that day.
+- [UNCHANGED] Accounts created before this release carry no acceptance record;
+  the fields stay empty rather than claiming a consent that was never captured.
+- [UNCHANGED] No trading, scheduling, queue, or exchange behaviour changes in
+  this release.
+- [VERIFIED] The complete ingestion suite passes on the new core: 3,225 tests /
+  10,427 assertions, plus the step dispatcher's own 214 tests.
+
 ## 1.77.3 - 2026-07-25
 
 Ships `kraitebot/core` 1.84.2 and
