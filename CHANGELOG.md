@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.77.1 - 2026-07-25
+
+Ships `kraitebot/core` 1.84.1 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Production configuration caching
+
+- [FIXED] Slow-dispatch logging is registered as runtime behavior instead of
+  storing a closure in Laravel configuration, so `config:cache` succeeds
+  during deployment.
+- [VERIFIED] The slow-dispatch regression passes and production-shaped
+  configuration caching completes successfully.
+
 ## 1.77.0 - 2026-07-25
 
 Ships `kraitebot/core` 1.84.1 and

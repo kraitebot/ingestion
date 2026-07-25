@@ -24,6 +24,9 @@
   throttling scope.
 - **Deploy cooldown uses real queue truth:** it totals every configured
   physical Horizon lane before declaring the bot drained.
+- **Production config remains cacheable:** slow-dispatch logging is registered
+  at runtime, so deployment can build Laravel's configuration cache without
+  serializing a closure.
 
 ---
 

@@ -20,8 +20,7 @@ final class AppServiceProvider extends ServiceProvider
 
         // Only persist ticks that took longer than 5 seconds
         StepsDispatcher::recordTickWhen(fn (StepsDispatcherTicks $tick) => $tick->duration > 5000);
-        config()->set(
-            'step-dispatcher.dispatch.on_slow_dispatch',
+        StepsDispatcher::onSlowDispatch(
             static fn (int $durationMs) => Log::channel('jobs')->warning(
                 '[STEP-DISPATCHER] slow dispatch tick',
                 ['duration_ms' => $durationMs],
