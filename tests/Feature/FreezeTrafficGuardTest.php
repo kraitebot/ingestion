@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
-use Kraite\Core\Abstracts\BaseQueueableJob;
 use Kraite\Core\Exceptions\SystemFrozenException;
 use Kraite\Core\Jobs\Fleet\ReportFleetMetricsJob;
 use Kraite\Core\Models\ApiRequestLog;
@@ -20,16 +19,7 @@ use Kraite\Core\Support\NotificationService;
 use Kraite\Core\Support\ValueObjects\ApiProperties;
 use Kraite\Core\Support\ValueObjects\ApiRequest;
 use StepDispatcher\Models\Step;
-
-final class FreezeProbeQueueJob extends BaseQueueableJob
-{
-    public bool $computed = false;
-
-    public function compute(): void
-    {
-        $this->computed = true;
-    }
-}
+use Tests\Support\FreezeProbeQueueJob;
 
 beforeEach(function (): void {
     config([

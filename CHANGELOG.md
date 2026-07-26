@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.77.5 - 2026-07-26
+
+Ships `kraitebot/core` 1.85.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Maintenance release — nothing the bot does changes
+
+- [UNCHANGED] No trading, scheduling, queue, or exchange behaviour changes in
+  this release. Engine code is byte-identical to 1.77.4.
+- [IMPROVED] The stand-ins used by the safety-net tests — the freeze switch,
+  the stream reconnect backoff, the exchange rate-limit throttle, and the
+  production database clone — now live in one shared place instead of being
+  redefined inside each test file. The guards themselves are untouched; only
+  the scaffolding around them moved.
+- [DEPENDENCIES] The framework and supporting packages were refreshed to their
+  current releases, and the full suite was re-proven against them before this
+  tag was cut.
+- [REMOVED] A local-only workaround for the Boost browser-log capture was
+  dropped. It never applied to production, which runs with Boost switched off
+  entirely.
+- [VERIFIED] The complete ingestion suite passes: 3,225 tests / 10,427
+  assertions, plus the step dispatcher's own 214 tests.
+
 ## 1.77.4 - 2026-07-25
 
 Ships `kraitebot/core` 1.85.0 and

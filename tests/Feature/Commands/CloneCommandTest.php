@@ -9,72 +9,7 @@ use Illuminate\Support\Str;
 use Kraite\Core\Contracts\ProductionDatabaseCloneGateway;
 use Kraite\Core\Models\User;
 use Kraite\Core\Support\FreezeMode;
-
-final class FakeProductionDatabaseCloneGateway implements ProductionDatabaseCloneGateway
-{
-    /** @var list<string> */
-    public array $remoteMigrations = [];
-
-    /** @var list<string> */
-    public array $remoteTables = [];
-
-    /** @var list<string> */
-    public array $dumpedTables = [];
-
-    /** @var list<string> */
-    public array $importedTables = [];
-
-    public bool $downloaded = false;
-
-    public bool $remoteCleaned = false;
-
-    public bool $localCleaned = false;
-
-    public bool $migrationProbeRan = false;
-
-    public bool $failImport = false;
-
-    public function productionMigrationNames(): array
-    {
-        $this->migrationProbeRan = true;
-
-        return $this->remoteMigrations;
-    }
-
-    public function productionTableNames(): array
-    {
-        return $this->remoteTables;
-    }
-
-    public function createProductionDump(array $tables, string $remotePath): void
-    {
-        $this->dumpedTables = $tables;
-    }
-
-    public function downloadDump(string $remotePath, string $localPath): void
-    {
-        $this->downloaded = true;
-    }
-
-    public function replaceLocalTables(array $tables, string $localPath): void
-    {
-        $this->importedTables = $tables;
-
-        if ($this->failImport) {
-            throw new RuntimeException('simulated import failure');
-        }
-    }
-
-    public function deleteProductionDump(string $remotePath): void
-    {
-        $this->remoteCleaned = true;
-    }
-
-    public function deleteLocalDump(string $localPath): void
-    {
-        $this->localCleaned = true;
-    }
-}
+use Tests\Support\FakeProductionDatabaseCloneGateway;
 
 beforeEach(function (): void {
     config([

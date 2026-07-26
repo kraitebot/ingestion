@@ -5,29 +5,11 @@ declare(strict_types=1);
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Kraite\Core\Abstracts\BaseApiThrottler;
 use Kraite\Core\Models\Server;
 use Kraite\Core\Support\Throttlers\BinanceThrottler;
+use Tests\Support\AtomicReservationProbeThrottler;
 
 uses(RefreshDatabase::class);
-
-final class AtomicReservationProbeThrottler extends BaseApiThrottler
-{
-    protected static function getRateLimitConfig(): array
-    {
-        return [
-            'requests_per_window' => 2,
-            'window_seconds' => 60,
-            'atomic_reservation' => true,
-            'cache_failure_backoff_ms' => 30000,
-        ];
-    }
-
-    protected static function getCacheKeyPrefix(): string
-    {
-        return 'atomic-reservation-probe';
-    }
-}
 
 beforeEach(function (): void {
     $this->freezeTime();
