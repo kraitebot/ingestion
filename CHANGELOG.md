@@ -25,6 +25,24 @@ Ships `kraitebot/core` 1.85.0 and
 - [VERIFIED] The complete ingestion suite passes: 3,225 tests / 10,427
   assertions, plus the step dispatcher's own 214 tests.
 
+## 1.77.5 - 2026-07-26
+
+Ships `kraitebot/core` 1.86.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Backtesting decisions carry their date
+
+- [NEW FEATURE] Every approve or reject on a token now records when it was
+  taken, so a token being re-tested shows how old its standing decision is.
+- [IMPROVED] The date travels with the decision when it fans out to the same
+  token's other listings, so no listing shows a verdict without its date.
+- [UNCHANGED] Existing decisions keep their verdict; their dates are recovered
+  from the audit trail where it still reaches, and stay empty otherwise rather
+  than inventing a date.
+- [UNCHANGED] No trading, scheduling, queue, or exchange behaviour changes.
+- [VERIFIED] The complete ingestion suite passes on the new core: 3,225 tests /
+  10,427 assertions.
+
 ## 1.77.4 - 2026-07-25
 
 Ships `kraitebot/core` 1.85.0 and
