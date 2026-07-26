@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.77.5 - 2026-07-26
+## 1.77.6 - 2026-07-26
 
 Ships `kraitebot/core` 1.85.0 and
 `brunocfalcao/step-dispatcher` 1.20.1.
