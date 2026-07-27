@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.79.0 - 2026-07-27
+
+Ships `kraitebot/core` 1.88.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### The circuit-breaker pause is now yours to tune
+
+- [NEW FEATURE] The trading pause armed by a critical black-swan score is now
+  configurable at runtime from the admin Runtime Settings screen (BSCS safety
+  → Cooldown window, 1–168 hours). Changes apply on the next hourly analysis —
+  no deploy, no restart. Blank inherits the default.
+- [CHANGED] That default is now 12 hours (was 24). The window still re-arms
+  automatically while the market keeps reading critical, so a longer storm
+  still means a longer pause.
+- [UNCHANGED] The fast shock breaker's short 1-hour ride-out pause is a
+  separate deliberate behaviour and keeps its own duration.
+- [VERIFIED] Gate arming pinned to the exact configured window (column set
+  and inherit paths both tested); full market-regime suite green; static
+  analysis clean.
+
 ## 1.78.0 - 2026-07-27
 
 Ships `kraitebot/core` 1.87.0 and

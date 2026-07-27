@@ -157,3 +157,32 @@ it('uses the configured cooldown_hours window when arming', function (): void {
     // cooldown timestamp computation inside the job.
     expect($diffHours)->toBeBetween(11.99, 12.01);
 });
+
+it('arms exactly the runtime-configured cooldown window when the column is set', function (): void {
+    $this->freezeTime();
+    setBscsState(score: 95);
+    Kraite::find(1)->updateSaving(['bscs_cooldown_hours' => 5]);
+
+    $result = (new AnalyseBscsJob)->compute();
+
+    $kraite = Kraite::find(1)->refresh();
+
+    expect($result['action'])->toBe('cooldown_armed')
+        ->and($kraite->bscs_cooldown_until->toDateTimeString())
+        ->toBe(now()->addHours(5)->toDateTimeString(), 'The singleton column must decide the window when set.');
+});
+
+it('falls back to the config default window when the runtime column is null', function (): void {
+    $this->freezeTime();
+    config(['kraite.market_regime.cooldown.hours' => 12]);
+    setBscsState(score: 95);
+    Kraite::find(1)->updateSaving(['bscs_cooldown_hours' => null]);
+
+    $result = (new AnalyseBscsJob)->compute();
+
+    $kraite = Kraite::find(1)->refresh();
+
+    expect($result['action'])->toBe('cooldown_armed')
+        ->and($kraite->bscs_cooldown_until->toDateTimeString())
+        ->toBe(now()->addHours(12)->toDateTimeString(), 'NULL inherits the config default.');
+});
