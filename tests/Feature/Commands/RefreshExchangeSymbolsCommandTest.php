@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Cron\CronExpression;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
+use Kraite\Core\Jobs\Atomic\ApiSystem\ReconcileSymbolLabelsWithCmcJob;
 use Kraite\Core\Jobs\Atomic\ApiSystem\UpsertExchangeSymbolsFromExchangeJob;
 use Kraite\Core\Jobs\Lifecycles\ApiSystem\Bitget\SyncLeverageBracketsJob as BitgetSyncLeverageBracketsJob;
 use Kraite\Core\Jobs\Lifecycles\ApiSystem\Bybit\SyncLeverageBracketsJob as BybitSyncLeverageBracketsJob;
@@ -51,10 +52,11 @@ test('targeted hourly exchange refresh creates no leverage bracket step', functi
         ->where('block_uuid', $upsertStep->block_uuid)
         ->get();
 
-    expect($workflowSteps)->toHaveCount(4)
+    expect($workflowSteps)->toHaveCount(5)
         ->and($workflowSteps->pluck('index')->unique()->sort()->values()->all())->toBe([1, 2, 3])
         ->and($upsertStep->index)->toBe(1)
         ->and($workflowSteps->where('class', DiscoverCMCTokensForOrphanedSymbolsJob::class)->sole()->index)->toBe(2)
+        ->and($workflowSteps->where('class', ReconcileSymbolLabelsWithCmcJob::class)->sole()->index)->toBe(2)
         ->and($workflowSteps->where('class', TouchTaapiDataForExchangeSymbolsJob::class)->sole()->index)->toBe(2)
         ->and($workflowSteps->where('class', $expectedLeverageJob))->toBeEmpty()
         ->and($workflowSteps->where('class', VerifyPriceAlignmentsJob::class)->sole()->index)->toBe(3)
@@ -125,13 +127,14 @@ test('full refresh preserves Binance-first workflow ordering', function (): void
     $blockUuid = $upsertSteps->sole(fn (Step $step): bool => $step->index === 1)->block_uuid;
     $workflowSteps = Step::query()->where('block_uuid', $blockUuid)->get();
 
-    expect($workflowSteps)->toHaveCount(7)
+    expect($workflowSteps)->toHaveCount(8)
         ->and($workflowSteps->pluck('index')->unique()->sort()->values()->all())->toBe([1, 2, 3, 4])
         ->and($upsertSteps->where('index', 1)->sole()->arguments['apiSystemId'])->toBe($exchanges['binance']->id)
         ->and($upsertSteps->where('index', 2)->pluck('arguments')->pluck('apiSystemId')->sort()->values()->all())->toBe(
             $exchanges->except('binance')->pluck('id')->sort()->values()->all()
         )
-        ->and($workflowSteps->where('index', 3))->toHaveCount(2)
+        ->and($workflowSteps->where('index', 3))->toHaveCount(3)
+        ->and($workflowSteps->where('class', ReconcileSymbolLabelsWithCmcJob::class)->sole()->index)->toBe(3)
         ->and($workflowSteps
             ->whereIn('class', [
                 SyncLeverageBracketsJob::class,

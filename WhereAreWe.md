@@ -1,3 +1,32 @@
+# WhereAreWe — 2026-07-27 (exchange-symbol rename lifecycle + burst-fill guard)
+
+## Date
+
+2026-07-27
+
+## This release (2026-07-27)
+
+- **A renamed coin is recognised as the same coin:** when an exchange renames
+  a contract (TON → GRAM), the old listing retires as a sealed archive, the
+  successor records its ancestry, and Bruno gets a Pushover naming both sides
+  plus any open positions (held for a human decision, never auto-migrated).
+- **The catalogue follows CoinMarketCap identity, not tickers:** labels
+  refresh at link time and via a batched hourly reconciliation, which also
+  disarms the recycled-ticker trap.
+- **The archive cannot be destroyed:** retired listings are invisible to
+  every pipeline — including the backtesting fan-out whose rejected verdict
+  would otherwise have fed the candle purge and deleted the only copy of the
+  coin's pre-rename history. The ancestry link is delete-protected.
+- **The successor re-earns tradability honestly:** with provider history
+  restarting at the rename, the standard data gates reject it until enough
+  new-name data accumulates — by design.
+- **Burst fills can no longer corrupt a filled order's price (TOSHIUSDT
+  incident):** out-of-order user-data frames are rejected by lifecycle rank,
+  and a positive executed price is never overwritten with zero — ending the
+  2-hour drift-alert loop that sync could not heal.
+
+---
+
 # WhereAreWe — 2026-07-25 (in-flight deployment drain)
 
 ## Date

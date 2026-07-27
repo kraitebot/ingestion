@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.78.0 - 2026-07-27
+
+Ships `kraitebot/core` 1.87.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### A renamed coin is now recognised as the same coin
+
+- [NEW FEATURE] When an exchange renames a contract (Binance's TON became
+  GRAM), the bot now detects it: the old listing retires as a sealed archive,
+  the new listing records which coin it continues, and the admin gets a
+  Pushover naming both tickers — including how many open positions still sit
+  on the old name, which are held for a human decision and never auto-moved.
+- [NEW FEATURE] The coin catalogue now follows CoinMarketCap identity numbers
+  instead of trusting tickers: labels refresh the moment a coin is linked and
+  through a batched hourly reconciliation. An abandoned ticker therefore stops
+  matching anything — a recycled name can no longer be welded to the wrong
+  coin.
+- [IMPROVED] Retired listings are invisible to every pipeline: no indicator
+  queries for dead tickers, no candle fetching, and — critically — no
+  backtesting fan-out. Without that last exclusion, the renamed coin's honest
+  "not enough data yet" rejection would have flipped the archived listing to
+  rejected and fed the nightly purge that deletes rejected coins' candles,
+  destroying the only surviving copy of the coin's pre-rename price history.
+- [UNCHANGED] The renamed coin re-earns tradability through the normal
+  backtesting funnel. It sits rejected until enough new-name data accumulates —
+  by design, since data providers restart the coin's history at the rename.
+- [BUG FIX] Burst fills can no longer corrupt a filled order's recorded price
+  (the TOSHIUSDT incident): out-of-order fill events are now rejected by
+  lifecycle rank, and a known executed price is never overwritten with zero.
+  This ends the repeating drift alerts that fired every five minutes for two
+  hours and could not be healed automatically.
+- [VERIFIED] The complete ingestion suite passes: 3,237 tests / 10,488
+  assertions (12 new: 8 rename-lifecycle, 4 burst-fill), plus the step
+  dispatcher's own 214 tests. Static analysis clean.
+
 ## 1.77.6 - 2026-07-26
 
 Ships `kraitebot/core` 1.85.0 and

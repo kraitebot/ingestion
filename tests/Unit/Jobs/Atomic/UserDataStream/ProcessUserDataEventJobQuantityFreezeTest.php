@@ -362,6 +362,163 @@ it('still updates status and average price on a normal NEW→PARTIALLY_FILLED→
     expect((float) $fresh->quantity)->toBe(81.9);
 });
 
+/**
+ * Pin the fix for the 2026-07-26 TOSHIUSDT incident.
+ *
+ * The bug: burst fills (a ~1M-unit MARKET on a sub-cent token executes
+ * as several partial trades within one second) delivered user-data
+ * frames out of order. The OrderObserver reverted the STATUS regression
+ * (FILLED stayed FILLED), but `applyToOrderModel` still wrote the stale
+ * working frame's literal price — 0 for MARKET frames — over the FILLED
+ * frame's real average (0.00011640). The drift spotter then computed a
+ * local weighted entry of 0 against the exchange's 0.000116 and alerted
+ * every 5 minutes until the position closed. Sync could not heal it:
+ * MARKET orders are excluded from polling sync by design.
+ *
+ * Fix: `applyToOrderModel` rejects any frame ranked below the local
+ * order's lifecycle rank (stale-burst protection), and never overwrites
+ * a positive price with zero.
+ */
+it('does not zero a filled MARKET price when a stale NEW frame arrives after FILLED', function (): void {
+    $order = buildOrderForUserDataEvent(exchangeOrderId: 'toshi-stale-new-'.Str::random(6), originalQuantity: '1001816', initialStatus: 'FILLED');
+    $order->updateQuietly(['price' => '0.00011640']);
+
+    $payload = buildBinanceOrderUpdatePayload([
+        's' => $order->position->parsed_trading_pair,
+        'c' => $order->client_order_id,
+        'i' => $order->exchange_order_id,
+        'X' => 'NEW',
+        'x' => 'TRADE',
+        'q' => '1001816',
+        'z' => '0',
+        'l' => '0',
+        'p' => '0',
+        'ap' => '0',
+        'L' => '0',
+    ]);
+
+    expect($order->fresh()->getRawOriginal('price'))->toBe('0.00011640');
+
+    (new ProcessUserDataEventJob(
+        accountId: $order->position->account_id,
+        apiSystemId: $order->position->account->api_system_id,
+        apiSystemCanonical: 'binance',
+        payload: $payload,
+    ))->compute();
+
+    $fresh = $order->fresh();
+
+    expect($fresh->getRawOriginal('price'))
+        ->toBe('0.00011640', 'A stale NEW frame after FILLED must not zero the executed average price.');
+    expect($fresh->status)->toBe('FILLED');
+});
+
+it('does not zero a filled MARKET price when a stale PARTIALLY_FILLED frame trails the FILLED frame', function (): void {
+    $order = buildOrderForUserDataEvent(exchangeOrderId: 'toshi-stale-partial-'.Str::random(6), originalQuantity: '1001816', initialStatus: 'FILLED');
+    $order->updateQuietly(['price' => '0.00011640']);
+
+    // The exact TOSHIUSDT trailing frame: working status, real running
+    // average in `ap`, but literal `p` = 0 (MARKET). Pre-fix the working
+    // branch selected `p` and zeroed the price.
+    $payload = buildBinanceOrderUpdatePayload([
+        's' => $order->position->parsed_trading_pair,
+        'c' => $order->client_order_id,
+        'i' => $order->exchange_order_id,
+        'X' => 'PARTIALLY_FILLED',
+        'x' => 'TRADE',
+        'q' => '1001816',
+        'z' => '500000',
+        'l' => '500000',
+        'p' => '0',
+        'ap' => '0.00011640',
+        'L' => '0.00011640',
+    ]);
+
+    (new ProcessUserDataEventJob(
+        accountId: $order->position->account_id,
+        apiSystemId: $order->position->account->api_system_id,
+        apiSystemCanonical: 'binance',
+        payload: $payload,
+    ))->compute();
+
+    $fresh = $order->fresh();
+
+    expect($fresh->getRawOriginal('price'))
+        ->toBe('0.00011640', 'A trailing PARTIALLY_FILLED frame must not regress a filled order.');
+    expect($fresh->status)->toBe('FILLED');
+});
+
+it('replays the TOSHIUSDT out-of-order burst and lands on the executed average price', function (): void {
+    $order = buildOrderForUserDataEvent(exchangeOrderId: 'toshi-burst-'.Str::random(6), originalQuantity: '1001816', initialStatus: 'NEW');
+    $order->updateQuietly(['price' => '0.00000000']);
+
+    $frames = [
+        ['X' => 'PARTIALLY_FILLED', 'z' => '400000', 'l' => '400000', 'ap' => '0.00011640', 'L' => '0.00011640'],
+        ['X' => 'FILLED', 'z' => '1001816', 'l' => '601816', 'ap' => '0.00011640', 'L' => '0.00011650'],
+        // Stale frames processed after the terminal one — the prod sequence.
+        ['X' => 'NEW', 'z' => '0', 'l' => '0', 'ap' => '0', 'L' => '0'],
+        ['X' => 'PARTIALLY_FILLED', 'z' => '400000', 'l' => '400000', 'ap' => '0.00011640', 'L' => '0.00011640'],
+    ];
+
+    foreach ($frames as $frame) {
+        (new ProcessUserDataEventJob(
+            accountId: $order->position->account_id,
+            apiSystemId: $order->position->account->api_system_id,
+            apiSystemCanonical: 'binance',
+            payload: buildBinanceOrderUpdatePayload(array_merge([
+                's' => $order->position->parsed_trading_pair,
+                'c' => $order->client_order_id,
+                'i' => $order->exchange_order_id,
+                'x' => 'TRADE',
+                'q' => '1001816',
+                'p' => '0',
+            ], $frame)),
+        ))->compute();
+    }
+
+    $fresh = $order->fresh();
+
+    expect($fresh->getRawOriginal('price'))
+        ->toBe('0.00011640', 'The executed average must survive the stale tail of the burst.');
+    expect($fresh->status)->toBe('FILLED');
+    expect($fresh->getRawOriginal('quantity'))->toBe('1001816.00000000');
+});
+
+it('keeps a known positive price when a same-rank terminal frame carries no usable price', function (): void {
+    $order = buildOrderForUserDataEvent(exchangeOrderId: 'toshi-degenerate-'.Str::random(6), originalQuantity: '1001816', initialStatus: 'FILLED');
+    $order->updateQuietly(['price' => '0.00011640']);
+
+    // Same-rank frame (FILLED after FILLED) passes the monotonicity
+    // guard, but both `p` and `ap` are 0 — the zero-clobber guard must
+    // preserve the known executed price.
+    $payload = buildBinanceOrderUpdatePayload([
+        's' => $order->position->parsed_trading_pair,
+        'c' => $order->client_order_id,
+        'i' => $order->exchange_order_id,
+        'X' => 'FILLED',
+        'x' => 'TRADE',
+        'q' => '1001816',
+        'z' => '1001816',
+        'l' => '0',
+        'p' => '0',
+        'ap' => '0',
+        'L' => '0',
+    ]);
+
+    (new ProcessUserDataEventJob(
+        accountId: $order->position->account_id,
+        apiSystemId: $order->position->account->api_system_id,
+        apiSystemCanonical: 'binance',
+        payload: $payload,
+    ))->compute();
+
+    $fresh = $order->fresh();
+
+    expect($fresh->getRawOriginal('price'))
+        ->toBe('0.00011640', 'A terminal frame without execution price must not destroy the known average.');
+    expect($fresh->status)->toBe('FILLED');
+});
+
 it('routes a rejected exchange order immediately into replacement', function (): void {
     $order = buildActiveProfitOrderForPartialFill('rejected-'.Str::random(8));
     $payload = buildBinanceOrderUpdatePayload([
