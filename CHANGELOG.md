@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.80.0 - 2026-07-28
+
+Ships `kraitebot/core` 1.89.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### The error-storm breaker no longer cries wolf — and lets go on its own
+
+- [BUG FIX] Closing a position that the exchange already closed (take-profit
+  filled first) no longer fires repeated doomed close orders at the empty
+  book. Both July "exchange error storms" were manufactured entirely by
+  those retries — 15+ rejections in 20 minutes during take-profit bursts.
+- [BUG FIX] The error-storm breaker no longer counts that self-inflicted
+  "nothing left to close" rejection family at all, so it can only trip on
+  genuine exchange degradation now.
+- [NEW FEATURE] When the breaker's own storm latch is holding openings and
+  the exchange has been completely clean for 30 minutes (configurable), the
+  system re-enables openings by itself, archives the incident with a written
+  resolution, and sends a "KRAITE RESUMED" Pushover. Latches from any other
+  trigger — or set by hand — remain strictly manual, as before.
+- [VERIFIED] Full suite run per release policy: 3,249 tests / 10,500+
+  assertions green, including 10 new cases pinning every direction of the
+  three fixes (redundant order never sent · real exposure still closes ·
+  benign noise never counts · real failures still count · release on clean
+  window · held while dirty · never for other triggers · never for manual
+  latches). Static analysis clean.
+
 ## 1.79.0 - 2026-07-27
 
 Ships `kraitebot/core` 1.88.0 and

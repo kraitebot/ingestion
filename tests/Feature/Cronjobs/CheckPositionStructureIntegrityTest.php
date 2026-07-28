@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -20,6 +21,7 @@ use Kraite\Core\Models\Symbol;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\Drift\AccountDriftReport;
 use Kraite\Core\Support\Drift\DriftChecker;
+use Kraite\Core\Support\Health\Remediation\TradingCooldown;
 use Mockery as M;
 use StepDispatcher\Models\Step;
 use StepDispatcher\States\Completed;
@@ -602,5 +604,132 @@ it('stays green (no cool, no incident) when engine health is clean', function ()
 
     expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue();
     expect(File::exists(base_path('monitoring/OPEN-INCIDENT')))->toBeFalse();
+    cleanMonitoringDir();
+});
+
+// ---------------------------------------------------------------------------
+// Scope 5 — error-storm cooldown auto-release (2026-07-28)
+//
+// The latch was manual-only: both 2026-07-27/28 storm trips parked new
+// openings for hours after the errors stopped, waiting for a human. The
+// guard now releases its OWN storm latches once the exchange ledger has
+// been clean for the recovery window. Latches from any other trigger —
+// or set by hand with no incident on file — stay strictly manual.
+// ---------------------------------------------------------------------------
+
+function enterStormLatch(): void
+{
+    (new TradingCooldown)->enter('exchange_error_storm', [
+        'exchange_errors' => 16,
+        'threshold' => 15,
+        'window_minutes' => 20,
+    ]);
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
+}
+
+function seedExchangeErrorRow(int $minutesAgo, string $response = '{"code":-1000,"msg":"Internal error"}', int $code = 500): void
+{
+    $apiSystem = ApiSystem::query()->where('is_exchange', true)->first()
+        ?? ApiSystem::factory()->exchange()->create(['canonical' => 'binance', 'name' => 'Binance']);
+
+    DB::table('api_request_logs')->insert([
+        'api_system_id' => $apiSystem->id,
+        'http_response_code' => $code,
+        'response' => $response,
+        'path' => '/test/storm',
+        'http_method' => 'POST',
+        'hostname' => 'kraite',
+        'created_at' => now()->subMinutes($minutesAgo),
+        'updated_at' => now()->subMinutes($minutesAgo),
+    ]);
+}
+
+it('auto-resumes openings when a storm latch goes clean for the recovery window', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config(['kraite.guard.exchange_error_recovery_minutes' => 30]);
+
+    enterStormLatch();
+    // Ledger clean: the only rows are older than the recovery window.
+    seedExchangeErrorRow(minutesAgo: 45);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue()
+        ->and(File::exists(base_path('monitoring/OPEN-INCIDENT')))->toBeFalse();
+
+    $incidents = glob(base_path('monitoring/*.md')) ?: [];
+    expect($incidents)->toHaveCount(1)
+        ->and(File::get($incidents[0]))->toContain('auto-released');
+
+    Illuminate\Support\Facades\Http::assertSent(
+        fn ($r) => str_contains($r->url(), 'pushover.net')
+            && str_contains((string) json_encode($r->data()), 'resumed'),
+    );
+
+    cleanMonitoringDir();
+});
+
+it('keeps the latch held while exchange errors sit inside the recovery window', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config(['kraite.guard.exchange_error_recovery_minutes' => 30]);
+
+    enterStormLatch();
+    seedExchangeErrorRow(minutesAgo: 5);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse()
+        ->and(File::exists(base_path('monitoring/OPEN-INCIDENT')))->toBeTrue();
+
+    cleanMonitoringDir();
+});
+
+it('releases even when benign already-flat rejections sit inside the window', function (): void {
+    // Interlock with the storm-counter fix: self-inflicted -2022 noise
+    // neither trips the latch nor holds its recovery.
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config(['kraite.guard.exchange_error_recovery_minutes' => 30]);
+
+    enterStormLatch();
+    seedExchangeErrorRow(minutesAgo: 3, response: '{"code":-2022,"msg":"ReduceOnly Order is rejected."}', code: 400);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeTrue();
+
+    cleanMonitoringDir();
+});
+
+it('never auto-clears a latch created by a different trigger', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config(['kraite.guard.exchange_error_recovery_minutes' => 30]);
+
+    (new TradingCooldown)->enter('failed_positions_burst', [
+        'failed_positions' => 2,
+    ]);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse()
+        ->and(File::exists(base_path('monitoring/OPEN-INCIDENT')))->toBeTrue();
+
+    cleanMonitoringDir();
+});
+
+it('never auto-clears a manually set latch with no incident on file', function (): void {
+    Illuminate\Support\Facades\Http::fake();
+    cleanMonitoringDir();
+    config(['kraite.guard.exchange_error_recovery_minutes' => 30]);
+
+    Kraite::query()->first()->update(['allow_opening_positions' => false]);
+
+    $this->artisan('kraite:cron-check-drifts')->run();
+
+    expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
+
     cleanMonitoringDir();
 });

@@ -274,7 +274,10 @@ it('completes a rescheduled Binance flat confirmation on the second valid snapsh
     });
 
     Sleep::assertNeverSlept();
-    Http::assertSentCount(2);
+    // One request only: the confirmation snapshot. The re-pass no longer
+    // fires a redundant close order at the already-flat book (the
+    // 2026-07-27/28 error-storm source).
+    Http::assertSentCount(1);
 });
 
 it('does not treat Binance -2022 as success while the exact position remains open', function (): void {
@@ -386,4 +389,78 @@ it('does not leave an orphan MARKET-CANCEL Order row when apiPlace fails with -2
         ->count();
 
     expect($orphans)->toBe(0);
+});
+
+it('does not place another close order on a rescheduled flat-confirmation pass', function (): void {
+    // The 2026-07-27/28 error storms: every 20-second confirmation
+    // re-pass ran "always attempt the close first" again, firing another
+    // doomed reduceOnly MARKET at an already-flat book. 15+ of those
+    // rejections inside 20 minutes tripped the exchange_error_storm
+    // monitor twice in 32 hours — both false alarms manufactured by our
+    // own retries. The re-pass must check its pending confirmation
+    // FIRST and only re-attempt the close when the position turns out
+    // to still be live.
+    fakeBinanceCloseRejectionWithPositionSnapshots([]);
+
+    $position = buildTpClosedPosition();
+
+    Steps::usingPrefix('trading', function () use ($position): void {
+        $step = Step::create([
+            'class' => ClosePositionAtomicallyJob::class,
+            'queue' => 'positions',
+            'state' => Running::class,
+            'response' => ['binance_flat_confirmation_started_at' => now()->subSeconds(20)->toIso8601String()],
+        ]);
+        $job = new ClosePositionAtomicallyJob($position->id);
+        $job->step = $step;
+        $job->assignExceptionHandler();
+
+        $result = $job->computeApiable();
+
+        expect($result['result'])->toBe(['already_closed' => true]);
+    });
+
+    Http::assertNotSent(function (Request $request): bool {
+        return str_contains($request->url(), '/fapi/v1/order');
+    });
+    Http::assertSentCount(1);
+});
+
+it('re-attempts the close when the pending confirmation finds the position live again', function (): void {
+    // Safety direction of the same fix: if the flat snapshot was a lag
+    // artefact and the position is still on the book at re-pass time,
+    // the close MUST still be sent — the no-redundant-order optimisation
+    // can never leave real exposure unclosed.
+    Http::fake([
+        '*/fapi/v3/positionRisk*' => Http::response(json_encode([liveBinancePosition()]), 200),
+        '*/fapi/v1/order*' => Http::response(
+            json_encode(['code' => -2022, 'msg' => 'ReduceOnly Order is rejected.']),
+            400,
+        ),
+    ]);
+
+    $position = buildTpClosedPosition();
+
+    Steps::usingPrefix('trading', function () use ($position): void {
+        $step = Step::create([
+            'class' => ClosePositionAtomicallyJob::class,
+            'queue' => 'positions',
+            'state' => Running::class,
+            'response' => ['binance_flat_confirmation_started_at' => now()->subSeconds(20)->toIso8601String()],
+        ]);
+        $job = new ClosePositionAtomicallyJob($position->id);
+        $job->step = $step;
+        $job->assignExceptionHandler();
+
+        try {
+            $job->computeApiable();
+        } catch (Throwable) {
+            // The live-position close still rejects with -2022 in this fixture;
+            // the point under test is only that the order WAS attempted.
+        }
+    });
+
+    Http::assertSent(function (Request $request): bool {
+        return str_contains($request->url(), '/fapi/v1/order');
+    });
 });
