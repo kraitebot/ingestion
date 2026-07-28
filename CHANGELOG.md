@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.81.0 - 2026-07-28
+
+Ships `kraitebot/core` 1.90.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Faster circuit-breaker re-evaluation and resilient offsite backups
+
+- [CHANGED] The critical-score trading pause now defaults to 4 hours per arm
+  (was 12): still re-arms while the market keeps reading critical, but a calm
+  market waits at most 4 hours for openings to resume. Production already ran
+  4h via the runtime setting; this makes it the shipped default.
+- [BUG FIX] Offsite backups stop dying in Backblaze brownouts: archives now
+  upload in 100 MB chunks (6 per backup instead of ~112 — each chunk was a
+  fresh chance to hit their transient outages, killing roughly half of one
+  day's runs), and a failed backup retries after 5 minutes instead of 60
+  seconds so the retry lands beyond the outage instead of inside it.
+- [VERIFIED] Full suite green (3,250 tests) including new pins on the chunk
+  size and retry delay; a live production backup completed first-try with the
+  new settings.
+
 ## 1.80.0 - 2026-07-28
 
 Ships `kraitebot/core` 1.89.0 and

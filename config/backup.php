@@ -212,8 +212,12 @@ return [
         /*
          * The number of seconds to wait before attempting a new backup if the previous try failed
          * Set to `0` for none
+         *
+         * 300s, not 60: B2's ServiceUnavailable brownouts run minutes,
+         * not seconds — a 60s retry landed inside the same brownout and
+         * died identically (2026-07-28, four double-failures in one day).
          */
-        'retry_delay' => 60,
+        'retry_delay' => 300,
     ],
 
     /*

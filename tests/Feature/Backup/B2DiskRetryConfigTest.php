@@ -72,5 +72,18 @@ it('retries the complete backup after a terminal destination failure', function 
     expect(config('backup.backup.tries'))
         ->toBe(2, 'A single terminal B2 multipart failure must receive one complete backup retry.')
         ->and(config('backup.backup.retry_delay'))
-        ->toBe(60, 'The complete retry must wait briefly before rebuilding and uploading the archive.');
+        ->toBe(300, 'The complete retry must outlast a B2 brownout — the previous 60s '
+            .'retry landed inside the same ServiceUnavailable episode and died '
+            .'identically (2026-07-28, four double-failures in one day).');
+});
+
+it('uploads in 100MB parts so a B2 brownout has few parts to hit', function (): void {
+    // 2026-07-28: a ~560MB dump split into ~112 default 5MB parts, and
+    // every part was a fresh chance to draw a brownout 503 — half the
+    // scheduled backups died despite 10 adaptive attempts per part. Six
+    // parts cut the exposure ~20x while keeping per-part retry
+    // granularity, which is why mup_threshold single-shot is deliberately
+    // NOT used.
+    expect(config('filesystems.disks.b2.options.part_size'))
+        ->toBe(100 * 1024 * 1024, 'b2 uploads must use 100MB multipart chunks.');
 });

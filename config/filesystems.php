@@ -77,6 +77,15 @@ return [
         // transient reasons. Adaptive mode adds client-side rate
         // limiting on top of standard exponential backoff so a
         // throttled B2 endpoint does not feed itself.
+        //
+        // part_size 100 MB (default 5 MB): a ~560 MB dump used to split
+        // into ~112 parts, and every part was a fresh chance to draw one
+        // of B2's brownout `ServiceUnavailable` 503s — on 2026-07-28
+        // roughly half the scheduled backups died this way even with 10
+        // adaptive attempts per part. Six parts instead of ~112 cuts the
+        // exposure ~20x while keeping per-part retry granularity (a lone
+        // 503 re-sends 100 MB, not the whole archive — which is why we
+        // deliberately do NOT raise mup_threshold to force single-shot).
         'b2' => [
             'driver' => 's3',
             'key' => env('B2_KEY_ID'),
@@ -90,6 +99,9 @@ return [
             'retries' => [
                 'mode' => 'adaptive',
                 'max_attempts' => 10,
+            ],
+            'options' => [
+                'part_size' => 100 * 1024 * 1024,
             ],
         ],
 
