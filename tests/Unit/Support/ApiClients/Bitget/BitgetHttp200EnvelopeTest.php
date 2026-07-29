@@ -68,9 +68,11 @@ it('accepts code 00000, preserves the response body, and records success', funct
     $response = $this->client->publicRequest(bitgetHttp200TestRequest());
     $log = bitgetHttp200Log($this->apiSystem);
 
+    // The caller still receives the whole envelope; only what is *stored*
+    // is trimmed, and a fast success stores its shape rather than its body.
     expect(json_decode((string) $response->getBody(), associative: true))->toBe($payload)
         ->and($log->http_response_code)->toBe(200)
-        ->and($log->response)->toBe($payload)
+        ->and($log->response)->toBeNull()
         ->and($log->payload)->toBeNull();
 
     Http::assertSentCount(1);
@@ -139,8 +141,11 @@ it('retries a retryable Bitget envelope once and accepts the succeeding response
     $response = $this->client->publicRequest(bitgetHttp200TestRequest());
     $log = bitgetHttp200Log($this->apiSystem);
 
+    // Retry succeeded: the caller gets the success envelope, and the log
+    // keeps the outcome without the body of a fast successful call.
     expect(json_decode((string) $response->getBody(), associative: true))->toBe($success)
-        ->and($log->response)->toBe($success)
+        ->and($log->http_response_code)->toBe(200)
+        ->and($log->response)->toBeNull()
         ->and($log->payload)->toBeNull();
 
     Http::assertSentCount(2);

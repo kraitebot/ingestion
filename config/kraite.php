@@ -44,10 +44,37 @@ return [
     | undetected corruption window has to span multiple weeks before
     | it wipes the safety net.
     */
+    /*
+     * How much of an exchange call survives in `api_request_logs`.
+     *
+     * On a successful call the response body averages 11.5 KB — 92% of the
+     * row — and at 67k calls a day that built a 3.2 GB table against a 2 GB
+     * buffer pool, making it the most expensive object in the database by I/O
+     * time. Failures and slow calls keep everything; a fast success keeps its
+     * status, timing and path.
+     *
+     * Set `retain_all_bodies` while debugging a call that succeeds but
+     * misbehaves, and turn it back off afterwards.
+     */
+    'api_request_logs' => [
+        'retain_body_above_ms' => (int) env('API_LOG_RETAIN_BODY_ABOVE_MS', 3000),
+        'retain_all_bodies' => (bool) env('API_LOG_RETAIN_ALL_BODIES', false),
+    ],
+
+    /*
+     * Backup retention, grandfather-father-son. Was 3/0/0 — a rolling nine
+     * hours, which meant corruption noticed on a Monday morning had no clean
+     * copy left from Sunday. That window was a storage-cost decision made when
+     * every dump carried 3.2 GB of HTTP logs; excluding diagnostics from the
+     * dump made each one small enough that history is affordable.
+     *
+     * 8 hourly covers a full day of three-hourly snapshots; 14 daily and 8
+     * weekly reach back two months for a corruption only spotted late.
+     */
     'backup_tiers' => [
-        'hourly' => (int) env('BACKUP_TIER_HOURLY', 3),
-        'daily' => (int) env('BACKUP_TIER_DAILY', 0),
-        'weekly' => (int) env('BACKUP_TIER_WEEKLY', 0),
+        'hourly' => (int) env('BACKUP_TIER_HOURLY', 8),
+        'daily' => (int) env('BACKUP_TIER_DAILY', 14),
+        'weekly' => (int) env('BACKUP_TIER_WEEKLY', 8),
     ],
 
     /**
