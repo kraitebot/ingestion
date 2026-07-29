@@ -231,6 +231,14 @@ if (! $isCoolingDown()) {
         ->everyFiveMinutes()
         ->withoutOverlapping();
 
+    // Mirrors the exchange income ledger so daily figures can be booked on the
+    // day each fee and fill happened. One paginated call per account, offset
+    // from the PnL sync so the two never share a minute against the exchange's
+    // per-IP limit.
+    Schedule::command('kraite:cron-sync-account-incomes')
+        ->cron('3,13,23,33,43,53 * * * *')
+        ->withoutOverlapping();
+
     Schedule::command('kraite:cron-refresh-exchange-symbols')
         ->cron('15 1-5,7-11,13-17,19-23 * * *')
         ->withoutOverlapping();

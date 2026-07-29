@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.83.0 - 2026-07-29
+
+Ships `kraitebot/core` 1.93.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Daily figures are booked when the exchange booked them
+
+- [ADDED] Carries the schema for the exchange income ledger
+  (`account_incomes`, `accounts.incomes_synced_from`) and the two columns
+  behind the country-change basis offer. Ingestion owns the shared schema,
+  so this release is what creates them.
+- [ADDED] `kraite:cron-sync-account-incomes` runs every ten minutes,
+  offset from the PnL sync so the two never share a minute against the
+  exchange's per-IP limit. It asks for a whole account in one paginated
+  call — never per symbol.
+- [UNCHANGED] Trading, dispatch, streams and audit records are untouched.
+  The ledger is a reporting mirror; the engine keeps writing UTC.
+
 ## 1.82.0 - 2026-07-29
 
 Ships `kraitebot/core` 1.92.0 and
