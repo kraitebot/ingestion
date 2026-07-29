@@ -154,6 +154,10 @@ it('records a slow query before the admin singleton exists without crashing migr
     $handler = new ReflectionMethod(CoreServiceProvider::class, 'handleSlowQuery');
     $handler->invoke(null, $query, 5000);
 
-    expect(SlowQuery::query()->count())->toBe(1);
+    // Scoped to the query under test rather than the whole table: the slow-query
+    // listener is registered globally, so on a slow runner an unrelated query
+    // crossing the threshold lands here too and a bare count() reads 2. CI hit
+    // exactly that on 2026-07-29 while the same test passed locally.
+    expect(SlowQuery::query()->where('sql', $query->sql)->count())->toBe(1);
     Notification::assertNothingSent();
 });
