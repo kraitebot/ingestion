@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.85.0 - 2026-07-29
+
+Ships `kraitebot/core` 1.95.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Every exchange call now meters itself
+
+- [ADDED] A per-attempt brake on the Binance client. Binance meters the
+  server's address rather than the account, so order placement, position
+  sync, protective cancels and background backfills all draw on one
+  2,400-per-minute pool. Every real HTTP attempt — including the client's
+  own internal retry, and every caller that never runs as a step — now
+  checks that pool before it leaves.
+- [CHANGED] Budget pressure pauses a call up to `client_max_sleep_ms`
+  (default 1s) and then lets it through. Nothing that succeeds today starts
+  failing: a job can be rescheduled for free, but a live request cannot,
+  and refusing it would break the minute-by-minute listen-key refresh whose
+  failure silently expires the user-data stream.
+- [ADDED] A known IP ban refuses outright and non-notifiably — Binance bans
+  run from two minutes to three days, so no bounded pause is meaningful,
+  and the ban was already announced once when it was recorded. An
+  unreadable ban ledger pauses instead of refusing, deliberately softer
+  than the step-level gate's fail-closed.
+- [WHY] On 2026-07-29 a diagnostic sweep asking for earnings history one
+  symbol at a time spent the entire minute's budget in 83 seconds and took
+  a `-1003`. The throttler's ledger tracked it exactly, 31 through 2408,
+  thirty weight per call — and nothing read the ledger, because the old
+  guard runs once when a job starts and the burst crossed no step boundary.
+  No trading was harmed: one request failed, no orders or positions were
+  touched. The same shape from inside the engine would have reached real
+  money.
+- [KNOWN] This brakes sequential bursts, which both observed incidents
+  were. It reads the ledger without booking a slot, so concurrent workers
+  can still each read clear and fire together. A hard guarantee needs the
+  reservation path, which first needs a decision on whether protective
+  calls get a reserved slice of the budget.
+
 ## 1.84.0 - 2026-07-29
 
 Ships `kraitebot/core` 1.94.0 and

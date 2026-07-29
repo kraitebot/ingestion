@@ -1,3 +1,40 @@
+# WhereAreWe — 2026-07-29 (every exchange call now meters itself)
+
+## Date
+
+2026-07-29
+
+## This release (2026-07-29)
+
+- **Background work can no longer starve live trading of its exchange
+  budget:** Binance meters the server's address, not the account, and every
+  order, sync, protective cancel and bookkeeping backfill drew from the same
+  2,400-per-minute pool with nothing counting the spend between calls. Now
+  every single call checks the meter first.
+- **The check pauses instead of failing:** when the budget is tight a call
+  waits briefly and then goes through. Nothing that works today starts
+  failing — including the minute-by-minute refresh that keeps the Binance
+  live feed alive, whose failure would silently kill the feed.
+- **A genuine ban stops calls outright**, because Binance bans run from two
+  minutes to three days and there is no useful way to wait one out.
+- **What prompted it:** on 2026-07-29 a diagnostic sweep asking for earnings
+  history one coin at a time spent the entire minute's budget in 83 seconds
+  and was rejected. No trading was harmed — one request failed, no orders
+  and no positions were touched — but the same shape from inside the engine
+  would have hit real money. The old guard only ever ran when a job started,
+  so a loop was checked once and anything that was not a job was never
+  checked at all.
+- **Known limit, deliberately accepted for now:** this brakes runaway
+  sequential bursts, which is what both observed incidents were. It reads
+  the meter without booking a slot, so several workers running at once can
+  still each read "clear" and go together. Closing that needs a decision on
+  whether protective calls get a guaranteed slice of the budget.
+
+> Note: entries for v1.81.0 through v1.84.0 were not recorded here at the
+> time. `deploy-notes.md` remains the complete operational log.
+
+---
+
 # WhereAreWe — 2026-07-27 (exchange-symbol rename lifecycle + burst-fill guard)
 
 ## Date
