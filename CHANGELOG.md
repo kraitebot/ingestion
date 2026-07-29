@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.82.0 - 2026-07-29
+
+Ships `kraitebot/core` 1.92.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Traders can report their day on their exchange's basis
+
+- [ADDED] Carries the engine change that gives each trader a trading day
+  basis — the fixed UTC offset their exchange rolls the day on. Ingestion
+  owns the shared schema, so this release is what creates the column;
+  every existing trader defaults to UTC and nothing they see moves until
+  they choose otherwise.
+- [UNCHANGED] The engine keeps writing UTC timestamps everywhere. Trading,
+  dispatch, streams and audit records are untouched — the basis only
+  affects how the trader-facing products group days for reporting.
+- [ALSO SHIPS] The 1.91.0 engine fix stopping transferred money from being
+  reported as trading performance.
+
 ## 1.81.0 - 2026-07-28
 
 Ships `kraitebot/core` 1.90.0 and
