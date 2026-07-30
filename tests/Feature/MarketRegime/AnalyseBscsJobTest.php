@@ -3,9 +3,14 @@
 declare(strict_types=1);
 
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Kraite\Core\Enums\RegimeBand;
 use Kraite\Core\Jobs\Models\MarketRegime\AnalyseBscsJob;
+use Kraite\Core\Models\Account;
 use Kraite\Core\Models\Kraite;
+use Kraite\Core\Models\Notification as NotificationDefinition;
+use Kraite\Core\Notifications\AlertNotification;
+use Kraite\Core\Notifications\Channels\AppPushChannel;
 use Kraite\Core\Support\MarketRegime\Bscs;
 
 /**
@@ -34,8 +39,11 @@ use Kraite\Core\Support\MarketRegime\Bscs;
  * Distinct from `ComputeMarketRegimeJob`. Compute writes the score
  * snapshot. Analyse acts on it.
  */
-function setBscsState(int $score, ?CarbonImmutable $cooldownUntil = null): void
-{
+function setBscsState(
+    int $score,
+    ?CarbonImmutable $cooldownUntil = null,
+    ?string $cooldownSource = null,
+): void {
     Kraite::find(1)->updateSaving([
         'bscs_score' => $score,
         'bscs_band' => RegimeBand::fromScore($score)->value,
@@ -44,6 +52,7 @@ function setBscsState(int $score, ?CarbonImmutable $cooldownUntil = null): void
         'bscs_block_threshold' => 80,
         'bscs_freshness_max_seconds' => 6900,
         'bscs_cooldown_until' => $cooldownUntil,
+        'bscs_cooldown_source' => $cooldownSource,
     ]);
 }
 
@@ -58,6 +67,7 @@ it('arms a cooldown when score crosses threshold and no cooldown is active', fun
     expect($result['action'])->toBe('cooldown_armed')
         ->and($kraite->bscs_cooldown_until)->not->toBeNull()
         ->and($kraite->bscs_cooldown_until->isFuture())->toBeTrue()
+        ->and($kraite->bscs_cooldown_source)->toBe(Kraite::BSCS_COOLDOWN_SOURCE)
         ->and(Bscs::current()->shouldBlockOpens())->toBeTrue();
 });
 
@@ -125,6 +135,52 @@ it('only fires market_regime_recovered ONCE — second tick after recovery is a 
     // does NOT re-enter the recovery branch.
     $second = (new AnalyseBscsJob)->compute();
     expect($second['action'])->toBe('noop_below_threshold');
+});
+
+it('sends BSCS activation only to the traders app channel', function (): void {
+    NotificationFacade::fake();
+    Kraite::find(1)->updateSaving(['notifications_enabled' => true]);
+    NotificationDefinition::query()->where('canonical', 'market_regime_critical')->update(['is_active' => true]);
+    $trader = Account::factory()->create()->user;
+    setBscsState(score: 88);
+
+    (new AnalyseBscsJob)->compute();
+
+    NotificationFacade::assertSentTo(
+        $trader,
+        AlertNotification::class,
+        fn (AlertNotification $notification, array $channels): bool => $notification->canonical === 'market_regime_critical'
+            && $channels === [AppPushChannel::class],
+    );
+    NotificationFacade::assertNotSentTo(Kraite::admin(), AlertNotification::class);
+});
+
+it('labels market shock recovery correctly and sends it only to the traders app', function (): void {
+    NotificationFacade::fake();
+    Kraite::find(1)->updateSaving(['notifications_enabled' => true]);
+    NotificationDefinition::query()->where('canonical', 'market_shock_recovered')->update(['is_active' => true]);
+    $trader = Account::factory()->create()->user;
+    setBscsState(
+        score: 30,
+        cooldownUntil: CarbonImmutable::now()->subMinute(),
+        cooldownSource: Kraite::MARKET_SHOCK_COOLDOWN_SOURCE,
+    );
+
+    (new AnalyseBscsJob)->compute();
+
+    NotificationFacade::assertSentTo(
+        $trader,
+        AlertNotification::class,
+        fn (AlertNotification $notification, array $channels): bool => $notification->canonical === 'market_shock_recovered'
+            && $channels === [AppPushChannel::class],
+    );
+    NotificationFacade::assertNotSentTo(
+        $trader,
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->canonical === 'market_regime_recovered',
+    );
+
+    expect(Kraite::find(1)->bscs_cooldown_source)->toBeNull();
 });
 
 it('no-ops when score is below threshold and no cooldown was active', function (): void {

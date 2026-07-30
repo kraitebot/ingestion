@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.86.0 - 2026-07-30
+
+Ships `kraitebot/core` 1.96.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Trading notifications now reach the trader's iPhone
+
+- [ADDED] Trader-addressed notifications keep their existing channels and are
+  also persisted for the app push channel.
+- [ADDED] BSCS, sudden market-shock, and error-storm breaker activation and
+  recovery are app-only trader events. They do not go to Pushover, email, or
+  Telegram.
+- [ADDED] Shared schema for registered iPhones, app-history lookup, and the
+  breaker source needed to name the correct recovery.
+- [VERIFIED] Focused notification and breaker coverage passes. Full ingestion
+  regression passes: 3,293 tests and 10,599 assertions.
+
 ## 1.85.0 - 2026-07-29
 
 Ships `kraitebot/core` 1.95.0 and

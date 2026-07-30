@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Kraite\Core\Models\User;
 use Kraite\Core\Notifications\AlertNotification;
+use Kraite\Core\Notifications\Channels\AppPushChannel;
 use NotificationChannels\Telegram\TelegramChannel;
 use NotificationChannels\Telegram\TelegramMessage;
 
@@ -49,7 +50,7 @@ it('AlertNotification::via includes the Telegram channel when the user has it co
         title: 'Test alert',
     );
 
-    expect($notification->via($user))->toBe([TelegramChannel::class]);
+    expect($notification->via($user))->toBe([TelegramChannel::class, AppPushChannel::class]);
 });
 
 it('AlertNotification::toTelegram returns a TelegramMessage targeting the user\'s chat_id', function (): void {

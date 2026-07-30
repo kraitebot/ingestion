@@ -113,7 +113,8 @@ it('arms a 24h cooldown and notifies when a shock rule fires', function (): void
     expect($result['action'])->toBe('cooldown_armed')
         ->and($result['rules_triggered'])->toContain('btc_15m')
         ->and($kraite->bscs_cooldown_until)->not->toBeNull()
-        ->and($kraite->bscs_cooldown_until->isFuture())->toBeTrue();
+        ->and($kraite->bscs_cooldown_until->isFuture())->toBeTrue()
+        ->and($kraite->bscs_cooldown_source)->toBe(Kraite::MARKET_SHOCK_COOLDOWN_SOURCE);
 });
 
 it('uses the configured cooldown_hours when arming (default 24)', function (): void {

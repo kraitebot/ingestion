@@ -13,6 +13,7 @@ use Kraite\Core\Models\NotificationLog;
 use Kraite\Core\Models\Subscription;
 use Kraite\Core\Models\User;
 use Kraite\Core\Notifications\AlertNotification;
+use Kraite\Core\Notifications\Channels\AppPushChannel;
 use Kraite\Core\Support\NotificationMessageBuilder;
 use Kraite\Core\Support\RegistrationWelcomeNotifier;
 
@@ -131,7 +132,7 @@ it('warns when registration detected an existing position or limit order', funct
         ->and($existingActivity['body'])->toContain('works best when it starts with no existing positions or limit orders');
 });
 
-it('sends the welcome once through the mail channel with the account activity result', function (): void {
+it('sends the welcome through mail and the trader app with the account activity result', function (): void {
     $account = registrationWelcomeAccount(hasExistingActivity: true);
     $user = $account->user;
 
@@ -147,7 +148,7 @@ it('sends the welcome once through the mail channel with the account activity re
         function (AlertNotification $notification, array $channels) use ($account): bool {
             $warning = collect($notification->emailBlocks)->firstWhere('label', 'Existing trades detected');
 
-            return $channels === ['mail']
+            return $channels === ['mail', AppPushChannel::class]
                 && $notification->canonical === 'registration_welcome'
                 && $notification->relatable?->is($account)
                 && $warning['body'] === 'We detected open positions or limit orders in your Bitget futures account. Kraite will not touch them and will use only your available balance. The bot works best when it starts with no existing positions or limit orders. Close or cancel them when appropriate; Kraite will detect when your account is clear.';

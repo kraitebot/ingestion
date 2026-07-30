@@ -15,10 +15,12 @@ use Kraite\Core\Models\ApiRequestLog;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite;
+use Kraite\Core\Models\Notification as NotificationDefinition;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Notifications\AlertNotification;
+use Kraite\Core\Notifications\Channels\AppPushChannel;
 use Kraite\Core\Support\Drift\AccountDriftReport;
 use Kraite\Core\Support\Drift\DriftChecker;
 use Kraite\Core\Support\Health\Remediation\TradingCooldown;
@@ -192,7 +194,7 @@ it('notifies and halts opens when the take profit is missing on an active positi
     $exit = $this->artisan('kraite:cron-check-drifts')->run();
 
     expect($exit)->toBe(0);
-    Notification::assertCount(1);
+    Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
     Notification::assertSentTo(Kraite::admin(), AlertNotification::class);
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
@@ -217,7 +219,7 @@ it('treats a CANCELLED stop-loss as missing and halts opens', function (): void 
     $exit = $this->artisan('kraite:cron-check-drifts')->run();
 
     expect($exit)->toBe(0);
-    Notification::assertCount(1);
+    Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
 
@@ -243,7 +245,7 @@ it('flags incomplete limit-order count when fewer live limits exist than total_l
     $exit = $this->artisan('kraite:cron-check-drifts')->run();
 
     expect($exit)->toBe(0);
-    Notification::assertCount(1);
+    Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
 
@@ -287,7 +289,7 @@ it('still halts opens when the replacement workflow is terminal and the structur
 
     $this->artisan('kraite:cron-check-drifts')->run();
 
-    Notification::assertSentTimes(AlertNotification::class, 1);
+    Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
 
@@ -321,7 +323,7 @@ it('throttles repeated detections of the same broken position to a single notifi
     $this->artisan('kraite:cron-check-drifts')->run();
 
     // Three consecutive ticks, same broken position — throttle keeps it at one.
-    Notification::assertCount(1);
+    Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
 });
 
 it('emits one notification per broken position when several break at once', function (): void {
@@ -343,7 +345,7 @@ it('emits one notification per broken position when several break at once', func
 
     $this->artisan('kraite:cron-check-drifts')->run();
 
-    Notification::assertCount(2);
+    Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 2);
 });
 
 /**
@@ -423,7 +425,7 @@ it('STILL halts opens when a genuinely-open (no exit fired) position is missing 
 
     $this->artisan('kraite:cron-check-drifts')->run();
 
-    Notification::assertSentTimes(AlertNotification::class, 1);
+    Notification::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
     expect(Kraite::query()->first()->allow_opening_positions)->toBeFalse();
 });
 
@@ -465,8 +467,8 @@ it('cools the bot and writes ONE incident when fresh failed positions burst', fu
     expect($incidents)->toHaveCount(1);
     expect(File::get($incidents[0]))->toContain('failed_positions_burst')->toContain('narrated: NO');
 
-    // Guard pushover fired once.
-    Illuminate\Support\Facades\Http::assertSent(fn ($r) => str_contains($r->url(), 'pushover.net'));
+    // Breaker transitions are app-only; no direct Pushover transport remains.
+    Illuminate\Support\Facades\Http::assertNothingSent();
 
     cleanMonitoringDir();
 });
@@ -646,8 +648,14 @@ function seedExchangeErrorRow(int $minutesAgo, string $response = '{"code":-1000
 
 it('auto-resumes openings when a storm latch goes clean for the recovery window', function (): void {
     Illuminate\Support\Facades\Http::fake();
+    Notification::fake();
     cleanMonitoringDir();
     config(['kraite.guard.exchange_error_recovery_minutes' => 30]);
+    Kraite::find(1)->updateSaving(['notifications_enabled' => true]);
+    NotificationDefinition::query()
+        ->whereIn('canonical', ['trading_guard_paused', 'trading_guard_recovered'])
+        ->update(['is_active' => true]);
+    $trader = Account::factory()->create()->user;
 
     enterStormLatch();
     // Ledger clean: the only rows are older than the recovery window.
@@ -662,10 +670,19 @@ it('auto-resumes openings when a storm latch goes clean for the recovery window'
     expect($incidents)->toHaveCount(1)
         ->and(File::get($incidents[0]))->toContain('auto-released');
 
-    Illuminate\Support\Facades\Http::assertSent(
-        fn ($r) => str_contains($r->url(), 'pushover.net')
-            && str_contains((string) json_encode($r->data()), 'resumed'),
+    Notification::assertSentTo(
+        $trader,
+        AlertNotification::class,
+        fn (AlertNotification $notification, array $channels): bool => $notification->canonical === 'trading_guard_paused'
+            && $channels === [AppPushChannel::class],
     );
+    Notification::assertSentTo(
+        $trader,
+        AlertNotification::class,
+        fn (AlertNotification $notification, array $channels): bool => $notification->canonical === 'trading_guard_recovered'
+            && $channels === [AppPushChannel::class],
+    );
+    Illuminate\Support\Facades\Http::assertNothingSent();
 
     cleanMonitoringDir();
 });
