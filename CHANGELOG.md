@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.86.1 - 2026-08-01
+
+Ships `kraitebot/core` 1.96.1 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Background trader notifications show one unread event
+
+- [FIXED] iPhone pushes now set the Kraite Home Screen badge to `1` until the
+  app makes the notification visible and marks it read locally.
+- [VERIFIED] App-push channel coverage passes: 5 tests and 17 assertions.
+
 ## 1.86.0 - 2026-07-30
 
 Ships `kraitebot/core` 1.96.0 and

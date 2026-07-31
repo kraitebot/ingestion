@@ -73,6 +73,7 @@ it('sends an exact Expo payload and writes a trader-owned app history row', func
             && $payload['to'] === 'ExponentPushToken[phone_one]'
             && $payload['title'] === 'BSCS Critical — 91/100, opens paused 12h'
             && $payload['body'] === 'BSCS Critical 91/100 — opens paused for 12h'
+            && $payload['badge'] === 1
             && $payload['data']['canonical'] === 'market_regime_critical'
             && $payload['data']['screen'] === 'Dashboard'
             && $payload['data']['severity'] === 'high'
