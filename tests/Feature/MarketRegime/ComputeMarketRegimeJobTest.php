@@ -3,13 +3,19 @@
 declare(strict_types=1);
 
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Kraite\Core\Jobs\Models\MarketRegime\ComputeMarketRegimeJob;
+use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\Candle;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\MarketRegimeSnapshot;
+use Kraite\Core\Models\Notification as NotificationDefinition;
 use Kraite\Core\Models\Symbol;
+use Kraite\Core\Models\User;
+use Kraite\Core\Notifications\AlertNotification;
+use Kraite\Core\Notifications\Channels\AppPushChannel;
 
 /**
  * Phase 1 contract for the BSCS compute pipeline:
@@ -114,6 +120,41 @@ it('denormalises score, band, and synced_at onto the kraite singleton', function
     expect($kraite->bscs_score)->toBe($result['score'])
         ->and($kraite->bscs_band)->toBe($result['band'])
         ->and($kraite->bscs_synced_at)->not->toBeNull();
+});
+
+it('sends a BSCS score transition only to the traders app when the score returns to zero', function (): void {
+    NotificationFacade::fake();
+    Kraite::find(1)->updateSaving([
+        'notifications_enabled' => true,
+        'bscs_score' => 60,
+        'bscs_band' => 'fragile',
+    ]);
+    NotificationDefinition::query()
+        ->where('canonical', 'market_regime_score_changed')
+        ->update(['is_active' => true]);
+    $trader = User::factory()->create([
+        'name' => 'BSCS Transition Trader',
+        'email' => 'bscs-transition-trader@example.com',
+    ]);
+    Account::factory()->for($trader)->create([
+        'name' => 'BSCS Transition Account',
+    ]);
+    $btc = makeBinanceSymbolForRegime('BTC');
+    seedFifteenCalmDaysOfBtcKlines($btc->id);
+
+    expect(Kraite::find(1)->bscs_score)->toBe(60);
+
+    (new ComputeMarketRegimeJob)->compute();
+
+    expect(Kraite::find(1)->bscs_score)->toBe(0);
+    NotificationFacade::assertSentTo(
+        $trader,
+        AlertNotification::class,
+        fn (AlertNotification $notification, array $channels): bool => $notification->canonical === 'market_regime_score_changed'
+            && $notification->title === 'BSCS cleared — 0/100'
+            && $channels === [AppPushChannel::class],
+    );
+    NotificationFacade::assertNotSentTo(Kraite::admin(), AlertNotification::class);
 });
 
 it('Phase 1 invariant: bscs_block_active stays false regardless of score or pre-state', function (): void {

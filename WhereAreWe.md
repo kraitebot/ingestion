@@ -1,3 +1,23 @@
+# WhereAreWe — 2026-08-01 (selective BSCS iPhone alerts)
+
+## Date
+
+2026-08-01
+
+## This release (2026-08-01)
+
+- **The trader sees meaningful BSCS state changes without hourly noise:** the
+  iPhone alerts when the score leaves zero, reaches `100`, or returns to zero.
+  Intermediate non-zero changes remain silent.
+- **Trading pauses can never be hidden by the score filter:** crossing the
+  configured breaker threshold still sends its separate iPhone alert. A
+  `60 → 80` move therefore stays visible because openings pause.
+- **Score state and trading state remain honest:** a zero score says the BSCS
+  warning signals cleared; it does not claim that an active cooldown ended.
+  The separate recovery notification confirms when openings resume.
+
+---
+
 # WhereAreWe — 2026-08-01 (safe transport recovery and complete API evidence)
 
 ## Date

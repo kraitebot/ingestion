@@ -9,6 +9,7 @@ use Kraite\Core\Jobs\Models\MarketRegime\AnalyseBscsJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Notification as NotificationDefinition;
+use Kraite\Core\Models\User;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Notifications\Channels\AppPushChannel;
 use Kraite\Core\Support\MarketRegime\Bscs;
@@ -137,15 +138,27 @@ it('only fires market_regime_recovered ONCE — second tick after recovery is a 
     expect($second['action'])->toBe('noop_below_threshold');
 });
 
-it('sends BSCS activation only to the traders app channel', function (): void {
+it('keeps the score-80 trading breaker notification on the traders app channel', function (): void {
     NotificationFacade::fake();
     Kraite::find(1)->updateSaving(['notifications_enabled' => true]);
     NotificationDefinition::query()->where('canonical', 'market_regime_critical')->update(['is_active' => true]);
-    $trader = Account::factory()->create()->user;
-    setBscsState(score: 88);
+    $trader = User::factory()->create([
+        'name' => 'BSCS Breaker Trader',
+        'email' => 'bscs-breaker-trader@example.com',
+    ]);
+    Account::factory()->for($trader)->create([
+        'name' => 'BSCS Breaker Account',
+    ]);
+    setBscsState(score: 60);
+    expect(Kraite::find(1)->bscs_score)->toBe(60);
+
+    setBscsState(score: 80);
+    expect(Kraite::find(1)->bscs_score)->toBe(80)
+        ->and(Kraite::find(1)->bscs_cooldown_until)->toBeNull();
 
     (new AnalyseBscsJob)->compute();
 
+    expect(Kraite::find(1)->bscs_cooldown_until?->isFuture())->toBeTrue();
     NotificationFacade::assertSentTo(
         $trader,
         AlertNotification::class,

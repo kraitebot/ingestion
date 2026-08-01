@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.87.0 - 2026-08-01
+
+Ships `kraitebot/core` 1.97.0 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Selective BSCS score alerts for the trader app
+
+- [ADDED] BSCS notifies the trader's iPhone when the hourly score leaves
+  zero, reaches `100`, or returns to zero. Intermediate non-zero changes stay
+  silent.
+- [PRESERVED] The separate score-80 breaker alert remains active, so a real
+  trading pause is never hidden by the quieter score-transition rule.
+- [VERIFIED] Market-regime and app-push coverage passes: 56 tests and 144
+  assertions, plus Pint and PHP syntax checks.
+
 ## 1.86.2 - 2026-08-01
 
 Ships `kraitebot/core` 1.96.2 and
