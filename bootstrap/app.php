@@ -20,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // possible), but `api/webhooks/*` would silently grant that
         // exemption to any future route dropped under the prefix. Listing
         // each URI forces a new webhook to be a conscious addition here.
-        $middleware->validateCsrfTokens(except: [
+        $middleware->preventRequestForgery(except: [
             'api/webhooks/zeptomail/events',
             'api/webhooks/pushover/receipt',
         ]);

@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.88.0 - 2026-08-01
+
+Ships `kraitebot/core` 1.98.0,
+`brunocfalcao/step-dispatcher` 1.20.2, and
+`brunocfalcao/blade-feather-icons` 6.0.3 on Laravel 13.23.0.
+
+### Laravel 13 runtime and complete closing notifications
+
+- [IMPROVED] WAP position closures now produce one complete trader notification
+  with the final result, preserving the iPhone delivery work from the app
+  release without duplicate close alerts.
+- [FIXED] Exchange throttlers safely honor malformed and future cache
+  timestamps, and model observation remains active under Laravel 13.
+- [CHANGED] Local testing runs on Pest 5 with automatic TIA. Production ships
+  a separate exact runtime lock with no tests, TIA, development packages,
+  factory autoload, or development scripts.
+- [VERIFIED] The full release gate passes: 3,336 tests, 10,725 assertions,
+  100% type coverage, Pint, Rector, PHPStan, dependency audit, and a clean
+  production-only install from the committed lock.
+
 ## 1.87.0 - 2026-08-01
 
 Ships `kraitebot/core` 1.97.0 and

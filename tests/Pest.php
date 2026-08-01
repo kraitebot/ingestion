@@ -11,6 +11,11 @@ use Illuminate\Support\Str;
 use Kraite\Core\Models\Kraite;
 use Tests\TestCase;
 
+pest()->tia()
+    ->always()
+    ->locally()
+    ->filtered();
+
 /**
  * Pre-seed `Kraite::ip()` for every test so the fallback — which reaches
  * out to ipify.org — never fires under `Http::preventStrayRequests()`.

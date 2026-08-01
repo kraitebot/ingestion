@@ -1,3 +1,28 @@
+# WhereAreWe — 2026-08-01 (Laravel 13 and safer release feedback)
+
+## Date
+
+2026-08-01
+
+## This release (2026-08-01)
+
+- **The production runtime moves to Laravel 13 without carrying test tools:**
+  every local release gate uses Pest 5 and coverage-backed Test Impact
+  Analysis, while production installs a separate exact runtime lock with no
+  test commands, factory autoload, or development dependencies.
+- **Exchange pacing remains fail-safe after the framework upgrade:** request
+  timestamps use portable millisecond values, and unreadable cache state
+  causes a bounded pause instead of allowing an unmetered call.
+- **Model audit history remains single and complete:** the observer registration
+  follows Laravel 13's inherited metadata path and records each change once.
+- **WAP outcomes become visible at close:** a successfully WAP'ed position sends
+  exactly one close notification, using the high-profit variant only when the
+  account threshold is met.
+- **The sysadmin SQL workspace is inspection-only:** mutation routes are gone;
+  SELECT results use bounded pagination and safe per-column filters.
+
+---
+
 # WhereAreWe — 2026-08-01 (selective BSCS iPhone alerts)
 
 ## Date

@@ -10,6 +10,24 @@ beforeEach(function (): void {
     ModelLog::enable();
 });
 
+test('boots inherited observer metadata and logs each created attribute once', function (): void {
+    $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'token' => 'L13OBSERVER',
+        'is_manually_enabled' => true,
+    ]);
+
+    $logs = ModelLog::query()
+        ->where('loggable_type', ExchangeSymbol::class)
+        ->where('loggable_id', $exchangeSymbol->id)
+        ->where('event_type', 'attribute_created')
+        ->where('attribute_name', 'is_manually_enabled')
+        ->get();
+
+    expect($logs)->toHaveCount(1)
+        ->and($logs->sole()->previous_value)->toBeNull()
+        ->and($logs->sole()->new_value)->toBe('1');
+});
+
 test('logs all initial attribute values when model is created', function (): void {
     // Create a new ExchangeSymbol
     $exchangeSymbol = ExchangeSymbol::factory()->create([

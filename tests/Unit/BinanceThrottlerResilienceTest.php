@@ -7,6 +7,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Kraite\Core\Models\Server;
 use Kraite\Core\Support\Throttlers\BinanceThrottler;
+use Kraite\Core\Support\Throttlers\BybitThrottler;
+use Kraite\Core\Support\Throttlers\KucoinThrottler;
+use Kraite\Core\Support\Throttlers\TaapiThrottler;
 use Tests\Support\AtomicReservationProbeThrottler;
 
 uses(RefreshDatabase::class);
@@ -34,6 +37,9 @@ function seedBinanceThrottleIp(): string
 
 it('atomically reserves the configured request budget without recordDispatch double-counting', function (): void {
     expect(AtomicReservationProbeThrottler::canDispatch())->toBe(0);
+    expect((int) Cache::get('atomic-reservation-probe:last_dispatch'))
+        ->toBe((int) round(now()->getPreciseTimestamp(3)));
+
     AtomicReservationProbeThrottler::recordDispatch();
 
     expect(AtomicReservationProbeThrottler::canDispatch())->toBe(0);
@@ -43,6 +49,90 @@ it('atomically reserves the configured request budget without recordDispatch dou
         ->toBeGreaterThan(0)
         ->toBeLessThanOrEqual(60000);
 });
+
+it('stores non-atomic dispatch timestamps as epoch milliseconds', function (): void {
+    $this->travelTo(Carbon::parse('2026-08-01 12:34:56.123'));
+
+    TaapiThrottler::recordDispatch();
+
+    expect((int) Cache::get('taapi_throttler:last_dispatch'))
+        ->toBe((int) round(now()->getPreciseTimestamp(3)));
+});
+
+it('normalizes numeric Redis-style dispatch timestamps without losing precision', function (): void {
+    $this->travelTo(Carbon::parse('2026-08-01 12:34:56.123'));
+    config()->set('kraite.throttlers.taapi.min_delay_between_requests_ms', 221);
+    $nowMs = (int) round(now()->getPreciseTimestamp(3));
+    Cache::put('taapi_throttler:last_dispatch', (string) ($nowMs - 183), 60);
+
+    expect(TaapiThrottler::canDispatch())->toBe(38);
+});
+
+it('enforces the full base throttle delay when the cached timestamp is in the future', function (): void {
+    config()->set('kraite.throttlers.taapi.min_delay_between_requests_ms', 221);
+    $nowMs = (int) round(now()->getPreciseTimestamp(3));
+    Cache::put('taapi_throttler:last_dispatch', $nowMs + 5000, 60);
+
+    expect(TaapiThrottler::canDispatch())->toBe(221);
+});
+
+it('fails closed when a base throttle dispatch timestamp is malformed', function (): void {
+    config()->set('kraite.throttlers.taapi.min_delay_between_requests_ms', 221);
+    Cache::put('taapi_throttler:last_dispatch', new stdClass, 60);
+
+    expect(TaapiThrottler::canDispatch())->toBe(30000);
+});
+
+it('enforces exchange pre-flight delays from scalar dispatch timestamps', function (
+    string $throttler,
+    string $prefix,
+    string $configKey,
+): void {
+    seedBinanceThrottleIp();
+    $this->travelTo(Carbon::parse('2026-08-01 12:34:56.183'));
+    config()->set($configKey, 200);
+    $nowMs = (int) round(now()->getPreciseTimestamp(3));
+    Cache::put($prefix.':last_dispatch', $nowMs - 183, 60);
+
+    expect($throttler::isSafeToDispatch())->toBe(17);
+})->with([
+    'Binance' => [BinanceThrottler::class, 'binance_throttler', 'kraite.throttlers.binance.min_delay_ms'],
+    'Bybit' => [BybitThrottler::class, 'bybit_throttler', 'kraite.throttlers.bybit.min_delay_ms'],
+    'KuCoin' => [KucoinThrottler::class, 'kucoin_throttler', 'kraite.throttlers.kucoin.min_delay_ms'],
+]);
+
+it('enforces the full exchange delay when the cached timestamp is in the future', function (
+    string $throttler,
+    string $prefix,
+    string $configKey,
+): void {
+    seedBinanceThrottleIp();
+    config()->set($configKey, 200);
+    $nowMs = (int) round(now()->getPreciseTimestamp(3));
+    Cache::put($prefix.':last_dispatch', $nowMs + 5000, 60);
+
+    expect($throttler::isSafeToDispatch())->toBe(200);
+})->with([
+    'Binance' => [BinanceThrottler::class, 'binance_throttler', 'kraite.throttlers.binance.min_delay_ms'],
+    'Bybit' => [BybitThrottler::class, 'bybit_throttler', 'kraite.throttlers.bybit.min_delay_ms'],
+    'KuCoin' => [KucoinThrottler::class, 'kucoin_throttler', 'kraite.throttlers.kucoin.min_delay_ms'],
+]);
+
+it('fails closed when an exchange pre-flight dispatch timestamp is malformed', function (
+    string $throttler,
+    string $prefix,
+    string $configKey,
+): void {
+    seedBinanceThrottleIp();
+    config()->set($configKey, 200);
+    Cache::put($prefix.':last_dispatch', new stdClass, 60);
+
+    expect($throttler::isSafeToDispatch())->toBe(30000);
+})->with([
+    'Binance' => [BinanceThrottler::class, 'binance_throttler', 'kraite.throttlers.binance.min_delay_ms'],
+    'Bybit' => [BybitThrottler::class, 'bybit_throttler', 'kraite.throttlers.bybit.min_delay_ms'],
+    'KuCoin' => [KucoinThrottler::class, 'kucoin_throttler', 'kraite.throttlers.kucoin.min_delay_ms'],
+]);
 
 it('backs off when the ban cache cannot prove Binance is safe', function (): void {
     seedBinanceThrottleIp();

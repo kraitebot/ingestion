@@ -15,10 +15,10 @@ set -Eeuo pipefail
 #   the project files. Root-created files get root:root ownership and
 #   PHP-FPM (www-data) can't read them.
 # - The repo ships composer.json with ../packages/ path repos for local dev,
-#   and composer.production.json with VCS repos + versioned constraints for
-#   production. After git checkout, this script swaps composer.production.json
-#   over composer.json so the resolved manifest is the one tracked in git for
-#   the deployed tag. End of server-local composer.json drift.
+#   and composer.production.json/composer.production.lock with VCS repos and
+#   tagged dependencies for production. After git checkout, this script swaps
+#   both files over composer.json/composer.lock. Production installs exactly
+#   the dependency graph tested and committed in the release tag.
 # - config:cache must run as `kraite` — root-cached .php files
 #   block PHP-FPM.
 # - SERVER_ROLE is read from artisan AFTER reset, not from .env BEFORE reset,
@@ -96,14 +96,13 @@ su - $KRAITE_USER -c "cd $PROJECT_DIR && git checkout $DEPLOY_TAG"
 # manifest drift from repo state (incident 2026-05-22: app/helpers.php
 # autoload entry survived the dead-code sweep on every server because
 # the server-local manifest was never updated).
-if [ ! -f "$PROJECT_DIR/composer.production.json" ]; then
-    echo "ERROR: composer.production.json missing at tag $DEPLOY_TAG."
-    echo "Production deploys swap composer.production.json over composer.json."
-    echo "Add the file to the repo and re-tag, or fall back to v1.49.5 (pre-swap deploy.sh)."
+if [ ! -f "$PROJECT_DIR/composer.production.json" ] || [ ! -f "$PROJECT_DIR/composer.production.lock" ]; then
+    echo "ERROR: committed production Composer manifest or lock missing at tag $DEPLOY_TAG."
+    echo "Production deploys require both composer.production.json and composer.production.lock."
     exit 1
 fi
-su - $KRAITE_USER -c "cd $PROJECT_DIR && cp composer.production.json composer.json"
-chown $KRAITE_USER:www-data "$PROJECT_DIR/composer.json"
+su - $KRAITE_USER -c "cd $PROJECT_DIR && cp composer.production.json composer.json && cp composer.production.lock composer.lock"
+chown $KRAITE_USER:www-data "$PROJECT_DIR/composer.json" "$PROJECT_DIR/composer.lock"
 
 # --- Step 3.5: Re-exec from the freshly-checked-out deploy.sh ---
 # Bash reads scripts incrementally from disk, so the `git checkout` above
@@ -132,37 +131,22 @@ echo "[3.5/9] Re-exec already done (KRAITE_DEPLOY_REEXECED=1)"
 COMMIT=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && git log --oneline -1")
 echo "[3/9] Code: $COMMIT"
 
-# --- Step 4: Install + update dependencies ---
-# Order matters: composer update (4 path packages) runs BEFORE composer install.
-#
-# Why this order? The shipped composer.lock comes from a dev environment
-# where the four kraite-owned packages resolve via local path repos and
-# get locked as `dev-master`. Only `kraitebot/core` carries a
-# `branch-alias` (`dev-master → 1.x-dev`) in its composer.json — the
-# three brunocfalcao packages do not, so their `dev-master` lock entry
-# does NOT satisfy the production constraints `^6.0` / `^1.12` / `^1.0`.
-# That means `composer install` against the shipped lock aborts with
-# "Required package … is in the lock file as dev-master but that does
-# not satisfy your constraint …" — exactly the failure that bit the
-# v1.49.1 athena deploy on 2026-05-16.
-#
-# Calling `composer update <named-packages>` first sidesteps the lock
-# validation for the unnamed packages and regenerates the four entries
-# with their latest tagged versions (resolved via the production VCS
-# repos, since composer.json was already swapped to the prod manifest).
-# Once those four are pinned to real tags, the lock matches every
-# composer.json constraint and the subsequent `composer install` is a
-# clean no-op against the freshly-rewritten lock.
-#
-# 2026-05-13 v1.40.1 incident — kept here for the record: the previous
-# form named only kraitebot/core + brunocfalcao/step-dispatcher; deploy
-# ran clean but the resulting lock kept all four kraite-owned packages
-# on dev-master across every server until a manual
-# `composer update <all four>` was issued per host. List all four every
-# time — partial updates leave unnamed packages on dev-master and
-# cross-references then block the named ones too.
-su - $KRAITE_USER -c "cd $PROJECT_DIR && composer update kraitebot/core brunocfalcao/step-dispatcher brunocfalcao/blade-feather-icons brunocfalcao/laravel-helpers --no-interaction --no-dev"
-su - $KRAITE_USER -c "cd $PROJECT_DIR && composer install --no-interaction --no-dev --optimize-autoloader --quiet"
+# --- Step 4: Install committed production dependencies ---
+# Dependency resolution happens locally before the release tag is created.
+# Production never runs composer update and never installs require-dev.
+COMPOSER_BIN="/home/kraite/.local/bin/composer"
+if [ ! -x "$COMPOSER_BIN" ]; then
+    echo "ERROR: production Composer executable missing at $COMPOSER_BIN."
+    exit 1
+fi
+
+DEV_LOCK_COUNT=$(python3 -c "import json; print(len(json.load(open('$PROJECT_DIR/composer.lock')).get('packages-dev', [])))")
+if [ "$DEV_LOCK_COUNT" != "0" ]; then
+    echo "ERROR: composer.production.lock contains development packages."
+    exit 1
+fi
+
+su - $KRAITE_USER -c "cd $PROJECT_DIR && $COMPOSER_BIN install --no-interaction --no-dev --optimize-autoloader --quiet"
 CORE_VERSION=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='kraitebot/core']" 2>/dev/null || echo "unknown")
 SD_VERSION=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='brunocfalcao/step-dispatcher']" 2>/dev/null || echo "unknown")
 echo "[4/9] Composer: installed (core $CORE_VERSION, step-dispatcher $SD_VERSION)"

@@ -11,6 +11,8 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use Kraite\Core\Notifications\AlertNotification;
+use Kraite\Core\Notifications\Channels\AppPushChannel;
 use StepDispatcher\Models\Step;
 use StepDispatcher\Support\Steps;
 
@@ -211,4 +213,10 @@ it('sends the WAP-applied notification exactly once per job run, cache or no cac
     })->call($job);
 
     Illuminate\Support\Facades\Notification::assertCount(1);
+    Illuminate\Support\Facades\Notification::assertSentTo(
+        $user,
+        AlertNotification::class,
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_wap_applied'
+            && in_array(AppPushChannel::class, $notification->via($user), true),
+    );
 });
