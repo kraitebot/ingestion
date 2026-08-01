@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Composer\InstalledVersions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Kraite\Core\Enums\NotificationSeverity;
@@ -157,7 +158,13 @@ it('preserves an existing operator notification toggle when definitions are refr
         ->where('canonical', 'market_regime_critical')
         ->update(['is_active' => false]);
 
-    $migration = require base_path('../packages/kraitebot/core/database/migrations/2026_07_30_210454_add_app_push_notification_definitions.php');
+    $corePath = InstalledVersions::getInstallPath('kraitebot/core');
+
+    if ($corePath === null) {
+        throw new RuntimeException('The installed kraitebot/core package path could not be resolved.');
+    }
+
+    $migration = require $corePath.'/database/migrations/2026_07_30_210454_add_app_push_notification_definitions.php';
     $migration->up();
 
     expect(Notification::query()
