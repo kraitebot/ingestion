@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.86.2 - 2026-08-01
+
+Ships `kraitebot/core` 1.96.2 and
+`brunocfalcao/step-dispatcher` 1.20.1.
+
+### Lost exchange responses recover safely and remain visible
+
+- [FIXED] Read-only exchange calls with no HTTP response now use the bounded
+  step retry path. Mutating calls remain failed until reconciliation proves
+  their exchange outcome, preventing blind duplicate operations.
+- [FIXED] Final API failures consistently record error, completion time,
+  duration, and final response details when available. The money guard now
+  sees transport failures and vendor errors hidden inside HTTP 200.
+- [VERIFIED] Targeted transport and failure-ledger coverage passes: 20 tests
+  and 122 assertions. PHPStan and Pint pass.
+
 ## 1.86.1 - 2026-08-01
 
 Ships `kraitebot/core` 1.96.1 and

@@ -1,3 +1,27 @@
+# WhereAreWe — 2026-08-01 (safe transport recovery and complete API evidence)
+
+## Date
+
+2026-08-01
+
+## This release (2026-08-01)
+
+- **Read-only exchange calls recover from lost responses:** connection resets
+  without an HTTP response now enter the normal bounded retry path for GET,
+  HEAD, and OPTIONS work.
+- **Money-moving calls are never replayed blindly:** a lost POST response may
+  mean the exchange accepted the mutation, so placements, cancellations, and
+  modifications remain failed until existing reconciliation establishes the
+  exchange outcome.
+- **Every final API failure is visible:** transport failures, HTTP failures,
+  vendor errors inside HTTP 200, and non-HTTP client errors now persist their
+  error, completion time, and duration. Successful retries stay successful.
+- **The money guard sees the complete failure set:** the exchange-error storm
+  detector can count no-response failures and HTTP-200 vendor failures instead
+  of missing them.
+
+---
+
 # WhereAreWe — 2026-07-29 (every exchange call now meters itself)
 
 ## Date

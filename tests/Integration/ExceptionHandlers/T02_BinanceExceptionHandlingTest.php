@@ -392,6 +392,66 @@ it('retries 400/-2013 exception with backoff in dispatch_after', function (): vo
     expect($step->retries)->toBe(1);
 });
 
+it('retries a read-only transport failure that has no HTTP response', function (): void {
+    $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
+    $user = User::factory()->create();
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'api_system_id' => $apiSystem->id,
+    ]);
+
+    $step = StepTester::createSteps([
+        ['arguments' => [
+            'accountId' => $account->id,
+            'throw_exception_stub' => 'transportFailureWithoutResponse',
+            'throw_exception_stub_args' => ['GET', 56],
+        ]],
+    ], TestBinanceApiableJob::class)[0];
+
+    StepTester::withSteps([$step])
+        ->withStatusMatrix([
+            1 => [$step->id => 'pending'],
+        ])
+        ->withLabel('binance_curl_56_read_retry')
+        ->test();
+
+    $step->refresh();
+    expect($step->state->value())->toBe('pending')
+        ->and($step->retries)->toBe(1)
+        ->and($step->dispatch_after)->not->toBeNull()
+        ->and($step->error_message)->toBeNull();
+});
+
+it('does not blindly retry a mutating transport failure with an ambiguous exchange outcome', function (): void {
+    $apiSystem = ApiSystem::factory()->create(['canonical' => 'binance']);
+    $user = User::factory()->create();
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'api_system_id' => $apiSystem->id,
+    ]);
+
+    $step = StepTester::createSteps([
+        ['arguments' => [
+            'accountId' => $account->id,
+            'throw_exception_stub' => 'transportFailureWithoutResponse',
+            'throw_exception_stub_args' => ['POST', 56],
+        ]],
+    ], TestBinanceApiableJob::class)[0];
+
+    StepTester::withSteps([$step])
+        ->withStatusMatrix([
+            1 => [$step->id => 'failed'],
+        ])
+        ->withLabel('binance_curl_56_mutation_no_retry')
+        ->test();
+
+    $step->refresh();
+    expect($step->state->value())->toBe('failed')
+        ->and($step->retries)->toBe(0)
+        ->and($step->dispatch_after)->toBeNull()
+        ->and($step->error_message)->toContain('cURL error 56');
+});
+
 it('handles 400/-1021 recvWindow mismatch by updating recvwindow_margin', function (): void {
     // Fake notifications to prevent actual sending
     Illuminate\Support\Facades\Notification::fake();

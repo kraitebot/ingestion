@@ -1312,6 +1312,24 @@ final class ResponseException
     }
 
     /**
+     * Create the no-response RequestException shape Guzzle emits for cURL
+     * transport failures that it does not classify as ConnectException.
+     */
+    public static function transportFailureWithoutResponse(
+        string $method = 'GET',
+        int $curlError = 56,
+        string $message = 'Recv failure: Connection reset by peer'
+    ): RequestException {
+        return new RequestException(
+            "cURL error {$curlError}: {$message}",
+            new Request($method, '/test'),
+            null,
+            null,
+            ['errno' => $curlError]
+        );
+    }
+
+    /**
      * Create a generic RequestException with custom parameters.
      *
      * @param  int  $httpStatus  HTTP status code
