@@ -79,6 +79,9 @@ function buildWapAtomicityFixture(string $token): array
         'quote' => 'USDT',
         'api_system_id' => $apiSystem->id,
         'symbol_id' => $symbol->id,
+        'price_precision' => 3,
+        'quantity_precision' => 2,
+        'tick_size' => '0.001',
     ]);
     $account = Account::factory()->create(['api_system_id' => $apiSystem->id]);
     $position = Position::factory()->long()->create([
@@ -218,5 +221,41 @@ it('sends the WAP-applied notification exactly once per job run, cache or no cac
         AlertNotification::class,
         static fn (AlertNotification $notification): bool => $notification->canonical === 'position_wap_applied'
             && in_array(AppPushChannel::class, $notification->via($user), true),
+    );
+});
+
+it('formats WAP notification prices and quantities with the token precisions', function (): void {
+    Illuminate\Support\Facades\Notification::fake();
+    config(['kraite.notifications_enabled' => true]);
+
+    [$position, $profitOrder] = buildWapAtomicityFixture('WAPNOTIF2');
+
+    $user = Kraite\Core\Models\User::factory()->create([
+        'is_active' => true,
+        'notification_channels' => ['mail'],
+    ]);
+    $position->account->update(['user_id' => $user->id]);
+    $profitOrder->forceFill([
+        'price' => '6.66100000',
+        'quantity' => '49.71000000',
+    ]);
+
+    $job = new CalculateWapAndModifyProfitOrderJob($position->id);
+    $job->profitOrder = $profitOrder;
+    $job->breakEvenPrice = '6.637363800000001';
+
+    (function (): void {
+        /** @var CalculateWapAndModifyProfitOrderJob $this */
+        $this->dispatchWapAppliedNotification('7.05900000', '16.57000000');
+    })->call($job);
+
+    Illuminate\Support\Facades\Notification::assertSentTo(
+        $user,
+        AlertNotification::class,
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_wap_applied'
+            && str_contains((string) $notification->pushoverMessage, 'TP price: 7.059 → 6.661')
+            && str_contains((string) $notification->pushoverMessage, 'TP qty: 16.57 → 49.71')
+            && str_contains((string) $notification->pushoverMessage, 'Break-even: 6.637')
+            && ! str_contains((string) $notification->pushoverMessage, '6.637363800000001'),
     );
 });

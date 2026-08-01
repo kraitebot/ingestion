@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.88.1 - 2026-08-01
+
+Ships `kraitebot/core` 1.98.1.
+
+### Token-accurate trader notification values
+
+- [FIXED] WAP and WAP-position close notifications use the token's configured
+  price and quantity decimals instead of exposing raw floating-point values.
+- [VERIFIED] Focused notification coverage passes: 8 tests and 25 assertions.
+
 ## 1.88.0 - 2026-08-01
 
 Ships `kraitebot/core` 1.98.0,

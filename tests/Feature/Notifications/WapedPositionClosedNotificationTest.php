@@ -67,6 +67,8 @@ function buildPositionForWapedCloseNotification(bool $wasWaped, array $channels 
         'quote' => 'USDT',
         'api_system_id' => $apiSystem->id,
         'symbol_id' => $symbol->id,
+        'price_precision' => 3,
+        'tick_size' => '0.001',
     ]);
     $user = User::factory()->active()->create([
         'email' => mb_strtolower("wap-close-{$token}@example.test"),
@@ -99,7 +101,7 @@ function dispatchWapedCloseNotification(
     return $method->invoke(
         $job,
         $position,
-        '12.45000000',
+        '12.45678900',
         $filledLimitCount,
         false,
         $notifyThreshold,
@@ -139,6 +141,8 @@ it('sends a WAP-position close through the trader channels including the iPhone 
 
         return $payload['to'] === $token
             && $payload['title'] === "Position Closed — LONG {$position->parsed_trading_pair}"
+            && str_contains($payload['body'], 'Exit: 12.456')
+            && ! str_contains($payload['body'], '12.456789')
             && $payload['data']['canonical'] === 'position_closed'
             && $payload['data']['screen'] === 'Dashboard'
             && $payload['badge'] === 1;
@@ -189,6 +193,8 @@ it('sends only the specialized high-profit close when its threshold is met', fun
         $user,
         AlertNotification::class,
         static fn (AlertNotification $notification): bool => $notification->canonical === 'position_high_profit_closed'
-            && $notification->via($user) === ['mail', AppPushChannel::class],
+            && $notification->via($user) === ['mail', AppPushChannel::class]
+            && str_contains((string) $notification->pushoverMessage, 'Exit: 12.456')
+            && ! str_contains((string) $notification->pushoverMessage, '12.456789'),
     );
 });
