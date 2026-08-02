@@ -100,6 +100,37 @@ it('sends an exact Expo payload and writes a trader-owned app history row', func
         ->not->toBeEmpty();
 });
 
+it('increments the absolute iPhone badge for consecutive unread pushes', function (): void {
+    Http::fake([
+        'https://exp.host/--/api/v2/push/send' => Http::response([
+            'data' => [['status' => 'ok', 'id' => 'expo-ticket']],
+        ]),
+    ]);
+    $trader = User::factory()->create(['notification_channels' => []]);
+    Account::factory()->create(['user_id' => $trader->id]);
+    $device = createPushDevice($trader, 'ExponentPushToken[phone_badge]');
+
+    foreach ([91, 92] as $score) {
+        expect(NotificationService::send(
+            user: $trader,
+            canonical: 'market_regime_critical',
+            referenceData: ['score' => $score, 'cooldown_hours' => 12],
+            duration: 0,
+            channels: [AppPushChannel::class],
+        ))->toBeTrue();
+    }
+
+    $badges = Http::recorded()
+        ->map(fn (array $record): mixed => $record[0]->data()[0]['badge'] ?? null)
+        ->values()
+        ->all();
+
+    expect($badges)
+        ->toBe([1, 2])
+        ->and($device->refresh()->unread_count)
+        ->toBe(2);
+});
+
 it('still stores app history when the trader has no registered phone', function (): void {
     Http::fake();
     $trader = User::factory()->create(['notification_channels' => []]);
