@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Kraite\Core\Jobs\Atomic\Order\CalculateWapAndModifyProfitOrderJob;
 use Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob;
+use Kraite\Core\Models\Account;
+use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
@@ -20,7 +22,19 @@ use StepDispatcher\Support\Steps;
  */
 function makeWapScenarioPosition(): Position
 {
+    $account = Account::factory()->create();
+    $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'api_system_id' => $account->api_system_id,
+        'token' => 'BTC',
+        'quote' => 'USDT',
+        'price_precision' => 2,
+        'quantity_precision' => 3,
+        'tick_size' => '0.01',
+    ]);
+
     return Position::factory()->long()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $exchangeSymbol->id,
         'status' => 'waping',
         'profit_percentage' => 0.35,
         'parsed_trading_pair' => 'BTCUSDT',

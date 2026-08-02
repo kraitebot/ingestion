@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.88.3 - 2026-08-02
+
+Ships `kraitebot/core` 1.99.1.
+
+### Fresh indicator conclusions and corrected CHOP payloads
+
+- [FIXED] CHOP conclusions now evaluate the latest value when TAAPI returns
+  its production array payload.
+- [FIXED] Indicator conclusions invalidate stale or still-open market candles
+  without sending notifications, allowing the next refresh cycle to retry.
+- [VERIFIED] Full Pest 5/TIA coverage passes: 3,351 tests and 10,789
+  assertions, with type coverage, Pint, Rector, and PHPStan clean.
+
 ## 1.88.1 - 2026-08-01
 
 Ships `kraitebot/core` 1.98.1.

@@ -11,10 +11,35 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Indicator;
 use Kraite\Core\Models\IndicatorHistory;
 use Kraite\Core\Models\Kraite as KraiteSettings;
+use Kraite\Core\Models\NotificationLog;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\TradeConfiguration;
 use StepDispatcher\Models\Step;
 use StepDispatcher\Models\StepsDispatcher;
+
+function timeframeSecondsForConcludeTest(string $timeframe): int
+{
+    preg_match('/^(\d+)([smhdw])$/i', $timeframe, $matches);
+
+    $quantity = (int) ($matches[1] ?? 1);
+    $unitSeconds = match (mb_strtolower($matches[2] ?? 'm')) {
+        's' => 1,
+        'm' => 60,
+        'h' => 3600,
+        'd' => 86400,
+        'w' => 604800,
+    };
+
+    return $quantity * $unitSeconds;
+}
+
+function latestClosedCandleTimestampForConcludeTest(string $timeframe): int
+{
+    $intervalSeconds = timeframeSecondsForConcludeTest($timeframe);
+    $currentCandleTimestamp = intdiv(now()->timestamp, $intervalSeconds) * $intervalSeconds;
+
+    return $currentCandleTimestamp - $intervalSeconds;
+}
 
 /**
  * Helper to create exchange symbol with unique token for conclude direction tests
@@ -95,6 +120,8 @@ function createLongIndicatorHistories(ExchangeSymbol $exchangeSymbol, string $ti
     $emasIndicator = Indicator::where('canonical', 'emas-same-direction')->first();
 
     $timestamp = now()->timestamp;
+    $candleTimestamp = latestClosedCandleTimestampForConcludeTest($timeframe);
+    $intervalSeconds = timeframeSecondsForConcludeTest($timeframe);
 
     // Candle comparison (bullish - close > open)
     IndicatorHistory::create([
@@ -103,7 +130,7 @@ function createLongIndicatorHistories(ExchangeSymbol $exchangeSymbol, string $ti
         'timeframe' => $timeframe,
         'timestamp' => $timestamp,
         'data' => [
-            'timestamp' => [$timestamp - 3600, $timestamp],
+            'timestamp' => [$candleTimestamp - $intervalSeconds, $candleTimestamp],
             'open' => [50000.0, 50100.0],
             'high' => [50200.0, 50300.0],
             'low' => [49900.0, 50000.0],
@@ -148,6 +175,8 @@ function createShortIndicatorHistories(ExchangeSymbol $exchangeSymbol, string $t
     $emasIndicator = Indicator::where('canonical', 'emas-same-direction')->first();
 
     $timestamp = now()->timestamp;
+    $candleTimestamp = latestClosedCandleTimestampForConcludeTest($timeframe);
+    $intervalSeconds = timeframeSecondsForConcludeTest($timeframe);
 
     // Candle comparison (bearish - close < open)
     IndicatorHistory::create([
@@ -156,7 +185,7 @@ function createShortIndicatorHistories(ExchangeSymbol $exchangeSymbol, string $t
         'timeframe' => $timeframe,
         'timestamp' => $timestamp,
         'data' => [
-            'timestamp' => [$timestamp - 3600, $timestamp],
+            'timestamp' => [$candleTimestamp - $intervalSeconds, $candleTimestamp],
             'open' => [50200.0, 50100.0],
             'high' => [50300.0, 50200.0],
             'low' => [50000.0, 49900.0],
@@ -202,6 +231,8 @@ function createInconclusiveIndicatorHistories(ExchangeSymbol $exchangeSymbol, st
     $emasIndicator = Indicator::where('canonical', 'emas-same-direction')->first();
 
     $timestamp = now()->timestamp;
+    $candleTimestamp = latestClosedCandleTimestampForConcludeTest($timeframe);
+    $intervalSeconds = timeframeSecondsForConcludeTest($timeframe);
 
     // Candle comparison says LONG
     IndicatorHistory::create([
@@ -210,7 +241,7 @@ function createInconclusiveIndicatorHistories(ExchangeSymbol $exchangeSymbol, st
         'timeframe' => $timeframe,
         'timestamp' => $timestamp,
         'data' => [
-            'timestamp' => [$timestamp - 3600, $timestamp],
+            'timestamp' => [$candleTimestamp - $intervalSeconds, $candleTimestamp],
             'open' => [50000.0, 50100.0],
             'close' => [50100.0, 50200.0],
         ],
@@ -252,6 +283,8 @@ function createFailedValidationIndicatorHistories(ExchangeSymbol $exchangeSymbol
     $emasIndicator = Indicator::where('canonical', 'emas-same-direction')->first();
 
     $timestamp = now()->timestamp;
+    $candleTimestamp = latestClosedCandleTimestampForConcludeTest($timeframe);
+    $intervalSeconds = timeframeSecondsForConcludeTest($timeframe);
 
     // Candle comparison
     IndicatorHistory::create([
@@ -260,7 +293,7 @@ function createFailedValidationIndicatorHistories(ExchangeSymbol $exchangeSymbol
         'timeframe' => $timeframe,
         'timestamp' => $timestamp,
         'data' => [
-            'timestamp' => [$timestamp - 3600, $timestamp],
+            'timestamp' => [$candleTimestamp - $intervalSeconds, $candleTimestamp],
             'open' => [50000.0, 50100.0],
             'close' => [50100.0, 50200.0],
         ],
@@ -1152,7 +1185,7 @@ test('does not duplicate finalization steps when a stale conclusion job sees fre
 
     expect($firstFinalizationIds)->toHaveCount(6);
 
-    $this->travel(10)->minutes();
+    $this->travel(2)->hours();
     createLongIndicatorHistories($exchangeSymbol, '1h');
 
     $staleJob = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h');
@@ -1215,4 +1248,145 @@ test('rolls back the symbol conclusion when finalization insertion fails', funct
         ->and($exchangeSymbol->fresh()->direction)->toBeNull()
         ->and($exchangeSymbol->fresh()->indicators_values)->toBeNull()
         ->and(Step::where('block_uuid', $parent->block_uuid)->whereKeyNot($parent->id)->exists())->toBeFalse();
+});
+
+test('silently invalidates stale market data and concludes on a later fresh retry', function (): void {
+    seedIndicatorsForConcludeTest();
+
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONSTALEMARKET');
+    $bitget = ApiSystem::firstOrCreate(
+        ['canonical' => 'bitget'],
+        ['name' => 'Bitget', 'is_exchange' => true],
+    );
+    $sibling = ExchangeSymbol::factory()->create([
+        'token' => $exchangeSymbol->token,
+        'quote' => $exchangeSymbol->quote,
+        'symbol_id' => $exchangeSymbol->symbol_id,
+        'api_system_id' => $bitget->id,
+        'overlaps_with_binance' => true,
+        'direction' => 'SHORT',
+        'indicators_timeframe' => '1h',
+        'indicators_values' => ['existing' => true],
+        'has_invalid_indicator_direction' => false,
+    ]);
+
+    $exchangeSymbol->update([
+        'direction' => 'SHORT',
+        'indicators_timeframe' => '1h',
+        'indicators_values' => ['existing' => true],
+        'indicators_synced_at' => now()->subHour(),
+        'has_invalid_indicator_direction' => false,
+        'pivot_r1' => '1.25',
+        'pivot_p' => '1.00',
+        'pivot_s1' => '0.75',
+        'pivot_synced_at' => now()->subHour(),
+    ]);
+
+    $staleStep = createStepForConcludeJob($exchangeSymbol, '1h');
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    $candleIndicator = Indicator::where('canonical', 'candle-comparison')->firstOrFail();
+    $candleHistory = IndicatorHistory::query()
+        ->where('exchange_symbol_id', $exchangeSymbol->id)
+        ->where('indicator_id', $candleIndicator->id)
+        ->where('timeframe', '1h')
+        ->firstOrFail();
+    $staleTimestamp = now()->subDays(3)->startOfHour()->timestamp;
+    $staleCandleData = $candleHistory->data;
+    $staleCandleData['timestamp'] = [$staleTimestamp - 3600, $staleTimestamp];
+    $candleHistory->update(['data' => $staleCandleData]);
+
+    $notificationCount = NotificationLog::count();
+
+    expect($exchangeSymbol->fresh()->direction)->toBe('SHORT')
+        ->and($sibling->fresh()->direction)->toBe('SHORT')
+        ->and(NotificationLog::count())->toBe($notificationCount)
+        ->and(Step::where('block_uuid', $staleStep->block_uuid)->whereKeyNot($staleStep->id)->exists())->toBeFalse();
+
+    $staleJob = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h');
+    $staleJob->step = $staleStep;
+    $staleResult = $staleJob->compute();
+
+    expect($staleResult)->toMatchArray([
+        'result' => 'inconclusive',
+        'reason' => 'stale_indicator_data',
+        'timeframe' => '1h',
+        'latest_market_timestamp' => $staleTimestamp,
+        'retry' => 'next_refresh_cycle',
+    ]);
+
+    $exchangeSymbol->refresh();
+    $sibling->refresh();
+
+    expect($exchangeSymbol->direction)->toBeNull()
+        ->and($exchangeSymbol->indicators_values)->toBeNull()
+        ->and($exchangeSymbol->indicators_timeframe)->toBeNull()
+        ->and($exchangeSymbol->indicators_synced_at?->toDateTimeString())->toBe(now()->toDateTimeString())
+        ->and($exchangeSymbol->has_invalid_indicator_direction)->toBeTrue()
+        ->and($exchangeSymbol->pivot_r1)->toBeNull()
+        ->and($exchangeSymbol->pivot_p)->toBeNull()
+        ->and($exchangeSymbol->pivot_s1)->toBeNull()
+        ->and($exchangeSymbol->pivot_synced_at)->toBeNull()
+        ->and($sibling->direction)->toBeNull()
+        ->and($sibling->has_invalid_indicator_direction)->toBeTrue()
+        ->and(NotificationLog::count())->toBe($notificationCount)
+        ->and(Step::where('block_uuid', $staleStep->block_uuid)->whereKeyNot($staleStep->id)->exists())->toBeFalse();
+
+    $this->travel(1)->hour();
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    $retryStep = createStepForConcludeJob($exchangeSymbol, '1h');
+    $retryJob = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h');
+    $retryJob->step = $retryStep;
+    $retryResult = $retryJob->compute();
+
+    expect($retryResult)->toMatchArray([
+        'result' => 'concluded',
+        'direction' => 'LONG',
+        'timeframe' => '1h',
+    ])
+        ->and($exchangeSymbol->fresh()->direction)->toBe('LONG')
+        ->and($exchangeSymbol->fresh()->has_invalid_indicator_direction)->toBeFalse()
+        ->and($sibling->fresh()->direction)->toBe('LONG')
+        ->and(NotificationLog::count())->toBe($notificationCount);
+});
+
+test('treats the current open candle as stale market data', function (): void {
+    seedIndicatorsForConcludeTest();
+
+    $exchangeSymbol = createExchangeSymbolForConcludeTest('CONOPENMARKET');
+    $exchangeSymbol->update([
+        'direction' => 'SHORT',
+        'indicators_timeframe' => '1h',
+        'indicators_values' => ['existing' => true],
+        'has_invalid_indicator_direction' => false,
+    ]);
+
+    $step = createStepForConcludeJob($exchangeSymbol, '1h');
+    createLongIndicatorHistories($exchangeSymbol, '1h');
+
+    $candleIndicator = Indicator::where('canonical', 'candle-comparison')->firstOrFail();
+    $candleHistory = IndicatorHistory::query()
+        ->where('exchange_symbol_id', $exchangeSymbol->id)
+        ->where('indicator_id', $candleIndicator->id)
+        ->where('timeframe', '1h')
+        ->firstOrFail();
+    $openCandleTimestamp = now()->startOfHour()->timestamp;
+    $candleData = $candleHistory->data;
+    $candleData['timestamp'] = [$openCandleTimestamp - 3600, $openCandleTimestamp];
+    $candleHistory->update(['data' => $candleData]);
+
+    $job = new ConcludeSymbolDirectionAtTimeframeJob($exchangeSymbol->id, '1h');
+    $job->step = $step;
+    $result = $job->compute();
+
+    expect($result)->toMatchArray([
+        'result' => 'inconclusive',
+        'reason' => 'stale_indicator_data',
+        'latest_market_timestamp' => $openCandleTimestamp,
+        'minimum_market_timestamp' => $openCandleTimestamp - 3600,
+    ])
+        ->and($exchangeSymbol->fresh()->direction)->toBeNull()
+        ->and($exchangeSymbol->fresh()->has_invalid_indicator_direction)->toBeTrue()
+        ->and(Step::where('block_uuid', $step->block_uuid)->whereKeyNot($step->id)->exists())->toBeFalse();
 });
