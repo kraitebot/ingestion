@@ -418,7 +418,7 @@ it('aborts Bitget orphan reconciliation when the UTA strategy catalogue fails', 
         CheckSystemHealthCommand::class,
     );
 
-    expect(fn (): int => $reconcile($account))->toThrow(Illuminate\Http\Client\RequestException::class);
+    expect(fn (): int => $reconcile($account))->toThrow(GuzzleHttp\Exception\RequestException::class);
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/current-position'));
 });
 

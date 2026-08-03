@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.89.0 - 2026-08-03
+
+Ships `kraitebot/core` 1.100.0.
+
+### Fresh Futures-first indicator conclusions
+
+- [ADDED] Indicator conclusions preserve fresh Futures values and use Spot as
+  a freshness-checked fallback for missing or stale provider data.
+- [FIXED] Stale or empty data from both providers stays inconclusive and
+  silent, allowing a later retry without a misleading notification.
+- [CHANGED] The active timeframe ladder is now `1h → 4h → 1d`; the migration
+  clears obsolete `12h` conclusions before the next evaluation.
+- [VERIFIED] Targeted Pest 5/TIA coverage passes for the fallback, timeframe,
+  candle, transport, and conclusion paths; formatting, Rector, and syntax
+  checks pass.
+
 ## 1.88.3 - 2026-08-02
 
 Ships `kraitebot/core` 1.99.1.

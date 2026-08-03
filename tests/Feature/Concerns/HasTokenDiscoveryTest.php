@@ -15,12 +15,10 @@ use StepDispatcher\Models\StepsDispatcher;
 beforeEach(function (): void {
     // The timeframe list used to live per-exchange on `api_systems.timeframes`;
     // after the 2026-04-24 move it's a single kraite-singleton column. Seed
-    // the canonical four-slot set so every test that doesn't call the
-    // helper below (which overrides with a larger set) still has a
-    // sensible default for the code under test.
+    // the active ladder so every test has the production timeframe set.
     KraiteSettings::updateOrCreate(
         ['id' => 1],
-        ['timeframes' => ['1h', '4h', '12h', '1d']]
+        ['timeframes' => ['1h', '4h', '1d']]
     );
 });
 
@@ -83,11 +81,9 @@ function createAccountForTokenDiscoveryTest(string $suffix = ''): Account
         ]
     );
 
-    // Override the default beforeEach set with the 5-timeframe fixture
-    // this helper's suite of tests expects (tests scoring across 5m..1d).
     KraiteSettings::updateOrCreate(
         ['id' => 1],
-        ['timeframes' => ['5m', '1h', '4h', '12h', '1d']]
+        ['timeframes' => ['1h', '4h', '1d']]
     );
 
     // Create ISOLATED test quote to avoid collision with seeded symbols

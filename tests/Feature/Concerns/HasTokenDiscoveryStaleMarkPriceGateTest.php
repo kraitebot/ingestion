@@ -32,7 +32,7 @@ use Kraite\Core\Models\TradeConfiguration;
 beforeEach(function (): void {
     KraiteSettings::updateOrCreate(
         ['id' => 1],
-        ['timeframes' => ['1h', '4h', '12h', '1d']]
+        ['timeframes' => ['1h', '4h', '1d']]
     );
 });
 
@@ -45,7 +45,7 @@ function createAccountForStaleGateTest(): Account
 
     KraiteSettings::updateOrCreate(
         ['id' => 1],
-        ['timeframes' => ['5m', '1h', '4h', '12h', '1d']]
+        ['timeframes' => ['1h', '4h', '1d']]
     );
 
     $tradeConfig = TradeConfiguration::firstOrCreate(

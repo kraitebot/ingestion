@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Artisan;
 use Kraite\Core\Jobs\Models\ExchangeSymbol\DispatchPerSymbolKlineBlocksJob;
 use Kraite\Core\Jobs\Models\ExchangeSymbol\FetchKlinesJob;
 use Kraite\Core\Models\ApiSystem;
@@ -53,6 +54,30 @@ beforeEach(function (): void {
         'token' => 'SOL',
         'quote' => 'USDT',
     ]);
+});
+
+test('schedules all-symbol candle refreshes only for the active timeframe ladder', function (): void {
+    config(['kraite.server_role' => 'ingestion']);
+    KraiteSettings::query()->firstOrFail()->update([
+        'is_cooling_down' => false,
+        'timeframes' => ['1h', '4h', '1d'],
+    ]);
+    Illuminate\Support\Once::flush();
+    require base_path('routes/console.php');
+
+    Artisan::call('schedule:list', ['--json' => true]);
+
+    $events = collect(json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR))
+        ->filter(fn (array $event): bool => str_contains($event['command'], 'kraite:cron-fetch-klines --timeframe=')
+            && ! str_contains($event['command'], '--reference-set'))
+        ->values();
+
+    expect($events)->toHaveCount(3)
+        ->and($events->sole(fn (array $event): bool => str_contains($event['command'], '--timeframe=1h'))['expression'])->toBe('5 * * * *')
+        ->and($events->sole(fn (array $event): bool => str_contains($event['command'], '--timeframe=4h'))['expression'])->toBe('5 */4 * * *')
+        ->and($events->sole(fn (array $event): bool => str_contains($event['command'], '--timeframe=1d'))['expression'])->toBe('5 0 * * *')
+        ->and($events->contains(fn (array $event): bool => str_contains($event['command'], '--timeframe=6h')))->toBeFalse()
+        ->and($events->contains(fn (array $event): bool => str_contains($event['command'], '--timeframe=12h')))->toBeFalse();
 });
 
 test('bulk path creates shared BTC block with orchestrator at index 2', function (): void {

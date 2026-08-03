@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Illuminate\Http\Client\RequestException;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Http;
 use Kraite\Core\Enums\BitgetAccountMode;
 use Kraite\Core\Models\Account;

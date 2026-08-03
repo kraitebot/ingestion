@@ -1,3 +1,24 @@
+# WhereAreWe — 2026-08-03 (fresh indicator fallback and supported timeframe ladder)
+
+## Date
+
+2026-08-03
+
+## This release
+
+- **Indicator conclusions stay trustworthy when Futures data is stale:** the
+  engine retries the same indicator set from Spot before deciding that the
+  result is inconclusive. A stale or empty result from both sources stays
+  silent and can retry later; real provider failures still follow the normal
+  retry path.
+- **The source is recorded per conclusion run:** Spot and Futures values are
+  never mixed accidentally when a fallback is needed.
+- **The active timeframe path is now `1h → 4h → 1d`:** unsupported `12h`
+  state is cleared by a forward migration and the next cycle re-evaluates the
+  symbol on the supported ladder.
+
+---
+
 # WhereAreWe — 2026-08-01 (Laravel 13 and safer release feedback)
 
 ## Date

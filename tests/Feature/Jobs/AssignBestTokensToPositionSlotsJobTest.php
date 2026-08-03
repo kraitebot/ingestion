@@ -28,10 +28,10 @@ function createAccountForSlotTest(string $suffix = '', int $maxLongs = 2, int $m
     );
 
     // Timeframes used to live per-exchange on `api_systems`; now on the
-    // kraite singleton. Seed the 5-timeframe fixture this suite exercises.
+    // kraite singleton. Seed the active production ladder.
     KraiteSettings::updateOrCreate(
         ['id' => 1],
-        ['timeframes' => ['5m', '1h', '4h', '12h', '1d']]
+        ['timeframes' => ['1h', '4h', '1d']]
     );
 
     // Create ISOLATED test quote to avoid collision with seeded symbols

@@ -406,6 +406,49 @@ test('uses latest indicator history when multiple exist for same timeframe', fun
     expect($result['response'])->toContain('CONFIRMED');
 });
 
+test('uses the concluded candle snapshot instead of a later history from another source', function (): void {
+    $exchangeSymbol = createExchangeSymbolForPriceAlignmentTest('PALPINNED', 'LONG', '1h');
+    $exchangeSymbol->updateSaving([
+        'indicators_values' => [
+            'candle-comparison' => [
+                'result' => [
+                    'open' => [10.0, 11.0],
+                    'close' => [11.0, 12.5],
+                ],
+            ],
+        ],
+        'has_price_trend_misalignment' => false,
+    ]);
+    $step = createStepForPriceAlignmentJob($exchangeSymbol);
+    $indicator = Indicator::query()->where('canonical', 'candle-comparison')->firstOrFail();
+
+    IndicatorHistory::query()->create([
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'indicator_id' => $indicator->id,
+        'taapi_construct_id' => 'binance_later_spot_history',
+        'timeframe' => '1h',
+        'timestamp' => (string) (now()->timestamp + 1),
+        'data' => [
+            'open' => [13.0, 12.0],
+            'close' => [12.0, 10.0],
+        ],
+        'conclusion' => 'SHORT',
+    ]);
+
+    expect($exchangeSymbol->fresh()->direction)->toBe('LONG')
+        ->and($exchangeSymbol->fresh()->has_price_trend_misalignment)->toBeFalse();
+
+    $job = new ConfirmPriceAlignmentWithDirectionJob($exchangeSymbol->id);
+    $job->step = $step;
+    $result = $job->compute();
+
+    expect($result['response'])->toContain('CONFIRMED')
+        ->and($result['response'])->toContain('Open: 11')
+        ->and($result['response'])->toContain('Close: 12.5')
+        ->and($exchangeSymbol->fresh()->direction)->toBe('LONG')
+        ->and($exchangeSymbol->fresh()->has_price_trend_misalignment)->toBeFalse();
+});
+
 /*
 |--------------------------------------------------------------------------
 | Symbol State Update Tests

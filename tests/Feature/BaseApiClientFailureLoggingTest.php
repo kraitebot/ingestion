@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 use Kraite\Core\Abstracts\BaseApiClient;
 use Kraite\Core\Abstracts\BaseExceptionHandler;
 use Kraite\Core\Commands\Cronjobs\CheckDriftsCommand;
@@ -82,6 +84,28 @@ function sequencedApiClient(ApiSystem $apiSystem, array $outcomes, string $path)
             }
 
             return $outcome;
+        }
+    };
+}
+
+function laravelHttpBackedApiClient(ApiSystem $apiSystem, string $path): BaseApiClient
+{
+    return new class($apiSystem, $path) extends BaseApiClient
+    {
+        public function __construct(ApiSystem $apiSystem, private readonly string $path)
+        {
+            parent::__construct('https://api.example.test');
+            $this->apiSystem = $apiSystem;
+        }
+
+        public function send(): ResponseInterface
+        {
+            return $this->processRequest(ApiRequest::make('GET', $this->path));
+        }
+
+        protected function getHeaders(): array
+        {
+            return [];
         }
     };
 }
@@ -253,4 +277,48 @@ it('persists completion metadata for non-HTTP failures without changing unrelate
         ->and($log->duration)->toBeGreaterThanOrEqual(1)
         ->and($unrelated->duration)->toBe(321)
         ->and($unrelated->error_message)->toBeNull();
+});
+
+it('converts Laravel HTTP fake failures to production Guzzle exceptions with response metadata', function (): void {
+    $apiSystem = ApiSystem::factory()->create([
+        'canonical' => 'test-http-adapter',
+        'name' => 'Test HTTP adapter',
+        'is_exchange' => false,
+    ]);
+    $path = '/regression/testing-http-503';
+
+    Http::fake(['*' => Http::response(['errors' => ['Unavailable']], 503)]);
+
+    expect(fn (): ResponseInterface => laravelHttpBackedApiClient($apiSystem, $path)->send())
+        ->toThrow(RequestException::class);
+
+    $log = ApiRequestLog::query()->where('path', $path)->sole();
+
+    expect($log->http_response_code)->toBe(503)
+        ->and($log->response)->toBe(['errors' => ['Unavailable']])
+        ->and($log->error_message)->toContain('503 Service Unavailable');
+
+    Http::assertSentCount(1);
+});
+
+it('converts Laravel HTTP fake connection failures to production Guzzle connect exceptions', function (): void {
+    $apiSystem = ApiSystem::factory()->create([
+        'canonical' => 'test-connect-adapter',
+        'name' => 'Test connect adapter',
+        'is_exchange' => false,
+    ]);
+    $path = '/regression/testing-connect-failure';
+
+    Http::fake(['*' => Http::failedConnection()]);
+
+    expect(fn (): ResponseInterface => laravelHttpBackedApiClient($apiSystem, $path)->send())
+        ->toThrow(ConnectException::class);
+
+    $log = ApiRequestLog::query()->where('path', $path)->sole();
+
+    expect($log->http_response_code)->toBeNull()
+        ->and($log->response)->toBeNull()
+        ->and($log->error_message)->not->toBeNull();
+
+    Http::assertSentCount(1);
 });

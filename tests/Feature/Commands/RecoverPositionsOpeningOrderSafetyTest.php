@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Client\Request;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;

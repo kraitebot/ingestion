@@ -211,16 +211,16 @@ if (! $isCoolingDown()) {
         ->withoutOverlapping();
 
     // Fetch klines for all symbols at indicator timeframes (for correlation data)
+    Schedule::command('kraite:cron-fetch-klines --timeframe=1h')
+        ->cron('5 * * * *')
+        ->withoutOverlapping();
+
     Schedule::command('kraite:cron-fetch-klines --timeframe=4h')
         ->cron('5 */4 * * *')
         ->withoutOverlapping();
 
-    Schedule::command('kraite:cron-fetch-klines --timeframe=6h')
-        ->cron('5 */6 * * *')
-        ->withoutOverlapping();
-
-    Schedule::command('kraite:cron-fetch-klines --timeframe=12h')
-        ->cron('5 */12 * * *')
+    Schedule::command('kraite:cron-fetch-klines --timeframe=1d')
+        ->cron('5 0 * * *')
         ->withoutOverlapping();
 
     Schedule::command('kraite:cron-store-accounts-balances')
