@@ -97,3 +97,30 @@ it('notDelisted scope matches the instance-level isDelisted truth', function ():
         ->and($ids)->toContain($futureDelivery->id)
         ->and($ids)->not->toContain($expiredFuture->id);
 });
+
+it('needsIndicatorAttempt excludes terminal symbols but retains live delisting warnings', function (): void {
+    $terminal = buildDelistableSymbol([
+        'api_statuses' => ['has_taapi_data' => true],
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->subMinute(),
+    ]);
+    $live = buildDelistableSymbol([
+        'api_statuses' => ['has_taapi_data' => true],
+    ]);
+    $warningOnly = buildDelistableSymbol([
+        'api_statuses' => ['has_taapi_data' => true],
+        'is_marked_for_delisting' => true,
+    ]);
+    $scheduled = buildDelistableSymbol([
+        'api_statuses' => ['has_taapi_data' => true],
+        'is_marked_for_delisting' => true,
+        'delivery_at' => now()->addDay(),
+    ]);
+
+    $ids = ExchangeSymbol::needsIndicatorAttempt()->pluck('id')->all();
+
+    expect($ids)->toContain($live->id)
+        ->and($ids)->toContain($warningOnly->id)
+        ->and($ids)->toContain($scheduled->id)
+        ->and($ids)->not->toContain($terminal->id);
+});
