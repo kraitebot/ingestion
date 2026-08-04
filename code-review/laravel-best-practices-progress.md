@@ -452,3 +452,18 @@ when production evidence identifies a more urgent boundary.
   pass afterward. The adjacent model-log gate passes 50 tests and 135
   assertions; Larastan is green.
 - Release state: corrective Core and ingestion patch release required.
+
+## Production release follow-up — transitional runtime snapshot
+
+- Production evidence: the first health pass after `v1.91.1` reported
+  `runtime_units_unhealthy_kraite` while every Supervisor program was RUNNING.
+  A synchronous fleet report immediately followed by the same health command
+  emitted zero alerts.
+- Root cause: warmup queued its first fleet snapshot while the scheduler was
+  intentionally still stopped; the release workflow starts the scheduler only
+  after consumers and application warmup are healthy.
+- Red-to-green coverage: the full health command now suppresses runtime-unit
+  snapshots only while the existing post-warmup recovery marker is active, and
+  the same snapshot alerts again as soon as that marker is cleared. The full
+  health gate passes 71 tests, one skip, and 165 assertions.
+- Release state: corrective Core and ingestion patch release required.

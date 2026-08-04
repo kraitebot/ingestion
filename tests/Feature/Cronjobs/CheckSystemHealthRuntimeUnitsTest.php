@@ -9,6 +9,7 @@ use Kraite\Core\Commands\Cronjobs\CheckSystemHealthCommand;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Support\Health\SystemHealthCheckType;
+use Kraite\Core\Support\MaintenanceMode;
 
 const RUNTIME_UNITS_HOST = 'runtime-units-test';
 
@@ -21,6 +22,7 @@ beforeEach(function (): void {
     ]);
 
     Notification::fake();
+    MaintenanceMode::clearPostWarmupRecovery();
     Cache::forget('system_health_alert-signal:runtime_units_unhealthy_'.RUNTIME_UNITS_HOST);
 
     try {
@@ -31,6 +33,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
+    MaintenanceMode::clearPostWarmupRecovery();
     Cache::forget('system_health_alert-signal:runtime_units_unhealthy_'.RUNTIME_UNITS_HOST);
 
     try {
@@ -120,4 +123,36 @@ it('leaves snapshots with an unreadable timestamp to the existing fleet silence 
 it('runs the runtime unit check in every standard health pass', function (): void {
     expect(SystemHealthCheckType::standardCases())
         ->toContain(SystemHealthCheckType::RuntimeUnitStatus);
+});
+
+it('suppresses the transitional runtime unit snapshot during post-warmup recovery', function (): void {
+    writeRuntimeUnitSnapshot([
+        'kraite-horizon' => 'RUNNING',
+        'kraite-scheduler' => 'STOPPED',
+    ]);
+    MaintenanceMode::startPostWarmupRecovery();
+
+    $this->artisan('kraite:cron-check-system-health')->assertSuccessful();
+
+    Notification::assertNotSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => str_contains(
+            (string) ($notification->title ?? ''),
+            RUNTIME_UNITS_HOST,
+        ),
+    );
+
+    MaintenanceMode::clearPostWarmupRecovery();
+
+    $this->artisan('kraite:cron-check-system-health')->assertSuccessful();
+
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => str_contains(
+            (string) ($notification->title ?? ''),
+            RUNTIME_UNITS_HOST,
+        ),
+    );
 });

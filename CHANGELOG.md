@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.91.2 - 2026-08-04
+
+Ships `kraitebot/core` 1.102.2.
+
+### Accurate post-warmup health monitoring
+
+- [FIXED] Transitional fleet snapshots no longer emit a false critical
+  scheduler alert during the bounded post-warmup recovery window.
+- [PRESERVED] Runtime-unit alerts resume after recovery, while independent
+  daemon, scheduler, queue, database, Redis, and market-price checks stay live.
+- [VERIFIED] The system-health gate passes 71 tests, one intentional skip, and
+  165 assertions; Larastan is green.
+
 ## 1.91.1 - 2026-08-04
 
 Ships `kraitebot/core` 1.102.1.
