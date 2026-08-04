@@ -13,7 +13,7 @@ reviewed under the new standard until current evidence is recorded here.
 Authoritative skill:
 `/Users/falcaob/Herd/engineering-standards/skills/laravel-best-practices`
 
-Verified starting stack: Laravel 13.23.0, PHP 8.5.5.
+Verified release stack: Laravel 13.24.0, PHP 8.5.5.
 
 ## System boundary
 
@@ -437,5 +437,18 @@ when production evidence identifies a more urgent boundary.
   assertions passed in the expanded incident gate.
 - Notification accuracy: drift detection remains alert-only, so notification
   text no longer falsely claims that it dispatched order synchronization.
-- Release state: local only at this checkpoint; production quantity remains
-  drifted until the requested release completes and the scheduled path runs.
+- Release state: deployed in ingestion `v1.91.0`; the scheduled sync reconciled
+  production position 4365 from `718` to exchange truth `714`.
+
+## Production release follow-up — Core step relationships
+
+- Production evidence: a post-release relationship query failed because eight
+  Core models resolved `Step::class` inside the `Kraite\Core\Models`
+  namespace, where no Step model exists.
+- Root cause: the relationships omitted the `StepDispatcher\Models\Step`
+  import. Account, API system, exchange symbol, indicator, order, position,
+  symbol, and user shared the same defect.
+- Red-to-green coverage: all eight model cases failed before the imports and
+  pass afterward. The adjacent model-log gate passes 50 tests and 135
+  assertions; Larastan is green.
+- Release state: corrective Core and ingestion patch release required.

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.91.1 - 2026-08-04
+
+Ships `kraitebot/core` 1.102.1.
+
+### Correct Core step relationships
+
+- [FIXED] Core model step relationships now resolve the installed Step
+  Dispatcher model, preventing runtime class-not-found failures during
+  relationship access.
+- [VERIFIED] Red-to-green coverage passes for all eight affected models; the
+  adjacent model-log gate passes 50 tests and 135 assertions, with Larastan
+  green.
+
 ## 1.91.0 - 2026-08-04
 
 Ships `kraitebot/core` 1.102.0 and
