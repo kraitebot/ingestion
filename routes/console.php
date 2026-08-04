@@ -129,11 +129,30 @@ Schedule::command('kraite:cron-check-binance-listen-keys-stale')
     ->everyFiveMinutes()
     ->withoutOverlapping();
 
-// Generic system-health watchdog. Nine sequential checks across the
+// Host/runtime heartbeat. The PHP collector records CPU, RAM, disk, version,
+// and Supervisor unit states. Cadence belongs here rather than to a hidden
+// self-rescheduling job or a server-only Bash/systemd monitor.
+Schedule::command('kraite:fleet-report')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(4)
+    ->onOneServer()
+    ->evenInMaintenanceMode();
+
+// Compact operational evidence previously written by the standalone
+// production Bash monitors. Safety decisions stay in the watchdog and drift
+// guard; this scheduled command preserves recent workflow failures plus the
+// opened-position/order and trading-gate snapshot for incident review.
+Schedule::command('kraite:cron-record-operational-snapshot')
+    ->everyThirtyMinutes()
+    ->withoutOverlapping(29)
+    ->onOneServer()
+    ->evenInMaintenanceMode();
+
+// Generic system-health watchdog. Sequential checks across the
 // bot's critical data paths (indicator freshness, balance freshness,
 // daemon heartbeat, dispatcher tick rate, scheduler liveness,
-// failed_jobs overflow, DB connection, Redis connection, Horizon
-// queue depth). Every alert routes through the shared
+// failed_jobs overflow, DB/Redis connectivity, Horizon queue depth,
+// runtime units, and other operational signals). Every alert routes through the shared
 // `system_health_alert` notification with a per-signal cache key
 // (5-minute throttle) so distinct failures dedupe independently.
 // evenInMaintenanceMode: the scheduler skips every event while the app

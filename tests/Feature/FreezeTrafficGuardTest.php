@@ -68,7 +68,7 @@ it('blocks exchange clients before an API audit row or network request is create
     Http::assertNothingSent();
 });
 
-it('does not seed self-rescheduling queue work while frozen', function (): void {
+it('does not queue an immediate fleet snapshot while frozen', function (): void {
     Queue::fake();
     FreezeMode::activate();
 

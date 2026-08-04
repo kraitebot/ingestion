@@ -1,3 +1,21 @@
+# WhereAreWe — 2026-08-04 (Laravel-owned operational monitoring)
+
+## Date
+
+2026-08-04
+
+## This release
+
+- **Operational monitoring has one application owner:** the ingestion Laravel
+  scheduler now records the single-host fleet heartbeat and a bounded
+  operational snapshot on fixed cadences.
+- **The health watchdog covers the user-visible boundary:** public endpoints
+  and non-running runtime units share the existing per-signal alert path,
+  while maintenance mode still runs only its stuck-maintenance check.
+- **The retired monitor is no longer required:** the replacement is tested in
+  ingestion and admin, with no standalone Bash or systemd fleet-metrics
+  artifacts in the released core package.
+
 # WhereAreWe — 2026-08-03 (fresh indicator fallback and supported timeframe ladder)
 
 ## Date

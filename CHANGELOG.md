@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.90.0 - 2026-08-04
+
+Ships `kraitebot/core` 1.101.0.
+
+### Laravel-owned operational monitoring
+
+- [ADDED] The ingestion scheduler owns the five-minute fleet heartbeat and
+  thirty-minute operational snapshot, including runtime-unit and public-endpoint
+  health checks.
+- [REMOVED] The monitor migration no longer ships standalone Bash or systemd
+  fleet-metrics artifacts.
+- [VERIFIED] Targeted Pest 5/TIA coverage passes: 21 tests and 66 assertions;
+  PHP syntax and Pint checks pass.
+
 ## 1.89.0 - 2026-08-03
 
 Ships `kraitebot/core` 1.100.0.
