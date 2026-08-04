@@ -2,14 +2,36 @@
 
 declare(strict_types=1);
 
+use Illuminate\Notifications\Events\NotificationSending;
+use Illuminate\Support\Facades\Event;
+use Kraite\Core\Enums\NotificationSeverity;
 use Kraite\Core\Jobs\Atomic\Position\Binance\FetchAccountPositionsPnlJob;
 use Kraite\Core\Jobs\Atomic\Position\Bitget\FetchAccountPositionsPnlJob as BitgetFetchAccountPositionsPnlJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Kraite;
+use Kraite\Core\Models\Notification as NotificationDefinition;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
+use Kraite\Core\Notifications\AlertNotification;
 use StepDispatcher\Models\Step;
+
+beforeEach(function (): void {
+    Kraite::findOrFail(1)->updateSaving(['notifications_enabled' => true]);
+
+    NotificationDefinition::query()->updateOrCreate(
+        ['canonical' => 'position_closed'],
+        [
+            'title' => 'Position Closed',
+            'description' => 'PnL pipeline close test definition.',
+            'default_severity' => NotificationSeverity::Info,
+            'cache_duration' => 60,
+            'cache_key' => ['position'],
+            'is_active' => true,
+        ],
+    );
+});
 
 function createBinanceAccountForPnl(): Account
 {
@@ -197,6 +219,88 @@ it('matches Bitget positions by time window and stores netProfit', function (): 
 
     expect($position->pnl)->not->toBeNull()
         ->and((float) $position->pnl)->toEqualWithDelta(14.5, 0.0001);
+});
+
+it('persists Binance PnL before sending the WAP close notification', function (): void {
+    $account = createBinanceAccountForPnl();
+    $position = createClosedPositionForPnl(
+        $account, 'BNB', 'LONG',
+        '2026-05-11 21:30:00', '2026-05-11 21:45:00'
+    );
+    $position->updateSaving(['was_waped' => true, 'waped_at' => now()->subMinute()]);
+    $pnlAtNotification = [];
+
+    Event::listen(NotificationSending::class, function (NotificationSending $event) use ($position, &$pnlAtNotification): bool {
+        if ($event->notification instanceof AlertNotification
+            && $event->notification->canonical === 'position_closed'
+        ) {
+            $pnlAtNotification[] = Position::findOrFail($position->id)->pnl;
+        }
+
+        return false;
+    });
+
+    $step = Step::factory()->create([
+        'class' => FetchAccountPositionsPnlJob::class,
+        'state' => StepDispatcher\States\Pending::class,
+        'arguments' => ['accountId' => $account->id],
+    ]);
+    $job = makeBinancePnlJob($account->id, [
+        'REALIZED_PNL' => [
+            ['income' => '4.25000000', 'symbol' => 'BNBUSDT', 'incomeType' => 'REALIZED_PNL', 'time' => 1778528741000],
+        ],
+        'COMMISSION' => [],
+        'FUNDING_FEE' => [],
+    ]);
+    $job->step = $step;
+
+    $job->computeApiable();
+
+    expect($position->fresh()->pnl)->toBe('4.25000000')
+        ->and($pnlAtNotification)->not->toBeEmpty()
+        ->and(array_values(array_unique($pnlAtNotification)))->toBe(['4.25000000']);
+});
+
+it('persists Bitget PnL before sending the WAP close notification', function (): void {
+    $account = createBitgetAccountForPnl();
+    $position = createClosedPositionForPnl(
+        $account, 'ETH', 'SHORT',
+        '2026-05-11 10:00:00', '2026-05-11 12:00:00'
+    );
+    $position->updateSaving(['was_waped' => true, 'waped_at' => now()->subMinute()]);
+    $pnlAtNotification = [];
+
+    Event::listen(NotificationSending::class, function (NotificationSending $event) use ($position, &$pnlAtNotification): bool {
+        if ($event->notification instanceof AlertNotification
+            && $event->notification->canonical === 'position_closed'
+        ) {
+            $pnlAtNotification[] = Position::findOrFail($position->id)->pnl;
+        }
+
+        return false;
+    });
+
+    $step = Step::factory()->create([
+        'class' => BitgetFetchAccountPositionsPnlJob::class,
+        'state' => StepDispatcher\States\Pending::class,
+        'arguments' => ['accountId' => $account->id],
+    ]);
+    $job = makeBitgetPnlJob($account->id, [
+        [
+            'symbol' => 'ETHUSDT',
+            'holdSide' => 'short',
+            'netProfit' => '7.12500000',
+            'ctime' => '1778493600000',
+            'utime' => '1778500800000',
+        ],
+    ]);
+    $job->step = $step;
+
+    $job->computeApiable();
+
+    expect($position->fresh()->pnl)->toBe('7.12500000')
+        ->and($pnlAtNotification)->not->toBeEmpty()
+        ->and(array_values(array_unique($pnlAtNotification)))->toBe(['7.12500000']);
 });
 
 it('handles sequential same-token positions without cross-contamination', function (): void {

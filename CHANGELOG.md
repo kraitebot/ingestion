@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.90.1 - 2026-08-04
+
+Ships `kraitebot/core` 1.101.1.
+
+### Final PnL before WAP close notifications
+
+- [FIXED] WAP close notifications now follow the exchange PnL write, so the
+  trader receives the final realized result in the close message.
+- [FIXED] Binance and Bitget PnL paths share one idempotent close-notification
+  flow, preserving the specialized high-profit alert without duplicates.
+- [VERIFIED] Focused Pest 5/TIA coverage passes: 11 tests and 38 assertions;
+  PHP syntax and formatting checks pass.
+
 ## 1.90.0 - 2026-08-04
 
 Ships `kraitebot/core` 1.101.0.
