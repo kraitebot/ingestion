@@ -10,6 +10,7 @@ use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Position;
+use Kraite\Core\Models\Subscription;
 use Kraite\Core\Models\Symbol;
 use StepDispatcher\Models\Step;
 use StepDispatcher\States\Pending;
@@ -25,9 +26,21 @@ beforeEach(function (): void {
     // UserFactory defaults to `can_trade=false`; override to true for
     // these idempotency tests, which are scoped to step-creation
     // semantics rather than user-state gating.
+    $subscription = Subscription::firstOrCreate(
+        ['canonical' => 'dispatch-slots'],
+        [
+            'name' => 'Dispatch Slots',
+            'monthly_rate_usdt' => '75.0000',
+            'trial_days' => 7,
+            'max_accounts' => 1,
+        ],
+    );
     $user = Kraite\Core\Models\User::factory()->create([
+        'subscription_id' => $subscription->id,
         'is_active' => true,
         'can_trade' => true,
+        'subscription_renews_at' => now()->addMonth(),
+        'wallet_balance_usdt' => '100.0000',
     ]);
 
     $this->account = Account::factory()->create([
@@ -36,6 +49,7 @@ beforeEach(function (): void {
         'is_active' => true,
         'can_trade' => true,
     ]);
+    $user->update(['active_account_id' => $this->account->id]);
 
     $symbolA = Symbol::factory()->create(['token' => 'BTC']);
     $symbolB = Symbol::factory()->create(['token' => 'ETH']);
@@ -113,7 +127,7 @@ it('refuses final position dispatch when the exchange is deactivated mid-workflo
     expect($result)->toBe([
         'account_id' => $this->account->id,
         'positions_dispatched' => 0,
-        'message' => 'Account or API system became inactive/non-tradeable mid-workflow — refusing to dispatch slots',
+        'message' => 'Account is no longer ready to open positions — refusing to dispatch slots',
     ])->and(dispatchPositionStepsForPosition($position))->toHaveCount(0)
         ->and($position->refresh()->status)->toBe('new');
 });

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -1594,6 +1595,11 @@ it('retires both old UTA protection rows before persisting their combined replac
         ]);
     });
 
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = mb_strtolower($query->sql);
+    });
+
     $job = new PlacePositionTpslJob(
         positionId: $position->id,
         replacedOrderIds: $oldOrders->pluck('id')->all(),
@@ -1612,6 +1618,17 @@ it('retires both old UTA protection rows before persisting their combined replac
         $request->url(),
         '/api/v3/trade/place-strategy-order',
     )))->toHaveCount(1);
+
+    $positionLockIndex = collect($queries)->search(
+        fn (string $sql): bool => str_contains($sql, 'from `positions`') && str_contains($sql, 'for update')
+    );
+    $orderLockIndex = collect($queries)->search(
+        fn (string $sql): bool => str_contains($sql, 'from `orders`') && str_contains($sql, 'for update')
+    );
+
+    expect($positionLockIndex)->not->toBeFalse()
+        ->and($orderLockIndex)->not->toBeFalse()
+        ->and($positionLockIndex)->toBeLessThan($orderLockIndex);
 });
 
 it('cancelling either UTA protection leg reconciles both rows sharing the strategy', function (): void {

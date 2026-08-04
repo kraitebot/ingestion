@@ -98,6 +98,7 @@
         "test:types": "phpstan",
         "test:cleanup": "./cleanup-test-databases.sh",
         "test": [
+            "Composer\\Config::disableProcessTimeout",
             "@test:type-coverage",
             "@test:tia",
             "@test:lint",
@@ -105,6 +106,7 @@
             "@test:cleanup"
         ],
         "test:full": [
+            "Composer\\Config::disableProcessTimeout",
             "@test:type-coverage",
             "@test:tia:fresh",
             "@test:lint",

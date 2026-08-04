@@ -53,6 +53,21 @@ it('forbids a non-owner from triggering a whitelist notification', function (): 
         ->assertForbidden();
 });
 
+it('rejects whitelist notifications for servers outside the connectivity fleet', function (): void {
+    $account = ownedAccount();
+    $owner = User::findOrFail($account->user_id);
+    $serverId = DB::table('servers')->insertGetId([
+        'hostname' => 'database-primary', 'ip_address' => '203.0.113.11', 'is_apiable' => true,
+        'needs_whitelisting' => true, 'own_queue_name' => 'default', 'description' => 'DB',
+        'type' => 'database', 'secret' => null, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $this->actingAs($owner)
+        ->postJson("/api/connectivity-test/accounts/{$account->id}/notify-server", ['server_id' => $serverId])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('server_id');
+});
+
 it('forbids a non-owner from reading another account workflow status', function (): void {
     $account = ownedAccount();
     $stranger = User::factory()->create(['is_admin' => false]);

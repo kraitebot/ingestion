@@ -111,3 +111,29 @@ it('refreshes notification settings in a long-running process', function (): voi
         duration: 0,
     ))->toBeTrue();
 });
+
+it('atomically deduplicates the default database-throttled delivery window', function (): void {
+    NotificationDefinition::factory()->serverRateLimitExceeded()->create([
+        'cache_duration' => 300,
+        'cache_key' => null,
+    ]);
+    $user = User::factory()->create(['notifications_enabled' => true]);
+
+    Notification::fake();
+
+    $first = NotificationService::send(
+        user: $user,
+        canonical: 'server_rate_limit_exceeded',
+        referenceData: ['exchange' => 'binance'],
+    );
+    $racingAttempt = NotificationService::send(
+        user: $user,
+        canonical: 'server_rate_limit_exceeded',
+        referenceData: ['exchange' => 'binance'],
+    );
+
+    expect($first)->toBeTrue()
+        ->and($racingAttempt)->toBeFalse();
+
+    Notification::assertCount(1);
+});

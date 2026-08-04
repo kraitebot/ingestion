@@ -164,15 +164,15 @@ it('routes LIMIT FILLED to ApplyWapJob, NOT SyncPositionQuantityFromExchangeJob'
     expect($syncCount)->toBe(0, 'FILLED LIMIT must NOT trigger the partial-fill sync — WAP already covers it');
 });
 
-it('does not dispatch when a non-LIMIT order is PARTIALLY_FILLED', function (): void {
+it('dispatches position quantity sync when a close order is PARTIALLY_FILLED', function (string $orderType): void {
     ['position' => $position] = buildPartialFillScenario('bitget');
 
-    $tp = Order::withoutEvents(fn () => Order::create([
+    $closeOrder = Order::withoutEvents(fn () => Order::create([
         'position_id' => $position->id,
         'uuid' => Str::uuid()->toString(),
         'client_order_id' => Str::uuid()->toString(),
-        'exchange_order_id' => 'TP-X',
-        'type' => 'PROFIT-LIMIT',
+        'exchange_order_id' => 'CLOSE-X-'.$orderType,
+        'type' => $orderType,
         'side' => 'BUY',
         'position_side' => 'SHORT',
         'status' => 'PARTIALLY_FILLED',
@@ -185,15 +185,15 @@ it('does not dispatch when a non-LIMIT order is PARTIALLY_FILLED', function (): 
     ]));
 
     $observer = app(OrderObserver::class);
-    $observer->updated($tp);
+    $observer->updated($closeOrder);
 
     $count = Steps::usingPrefix('trading', fn (): int => Step::query()
         ->where('class', SyncPositionQuantityFromExchangeJob::class)
         ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
         ->count());
 
-    expect($count)->toBe(0);
-});
+    expect($count)->toBe(1);
+})->with(['PROFIT-LIMIT', 'PROFIT-MARKET', 'STOP-MARKET']);
 
 it('does not dispatch when the position is not in an active state', function (): void {
     ['position' => $position, 'limit' => $limit] = buildPartialFillScenario('bitget');

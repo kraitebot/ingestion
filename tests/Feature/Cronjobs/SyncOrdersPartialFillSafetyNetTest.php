@@ -30,7 +30,7 @@ use StepDispatcher\States\Pending;
  * position has at least one LIMIT in PARTIALLY_FILLED status. Idempotent
  * + deduped via the same Step::exists check.
  */
-function buildSafetyNetPosition(string $exchange, string $limitStatus): Position
+function buildSafetyNetPosition(string $exchange, string $orderStatus, string $orderType = 'LIMIT'): Position
 {
     $apiSystem = ApiSystem::factory()->exchange()->create([
         'canonical' => $exchange,
@@ -75,12 +75,12 @@ function buildSafetyNetPosition(string $exchange, string $limitStatus): Position
         'position_id' => $position->id,
         'uuid' => Str::uuid()->toString(),
         'client_order_id' => Str::uuid()->toString(),
-        'exchange_order_id' => 'LIMIT-1',
-        'type' => 'LIMIT',
+        'exchange_order_id' => 'PARTIAL-1-'.$orderType,
+        'type' => $orderType,
         'side' => 'SELL',
         'position_side' => 'SHORT',
-        'status' => $limitStatus,
-        'reference_status' => $limitStatus,
+        'status' => $orderStatus,
+        'reference_status' => $orderStatus,
         'price' => '0.02663',
         'reference_price' => '0.02663',
         'quantity' => '975',
@@ -108,6 +108,17 @@ it('dispatches a position-quantity sync step when any LIMIT in the position is P
 
     expect($count)->toBe(1);
 });
+
+it('dispatches the safety-net quantity sync for partially filled close orders', function (string $orderType): void {
+    $position = buildSafetyNetPosition('binance', 'PARTIALLY_FILLED', $orderType);
+
+    invokeSafetyNet(new PrepareSyncOrdersJob($position->id));
+
+    expect(Step::query()
+        ->where('class', SyncPositionQuantityFromExchangeJob::class)
+        ->whereRaw("JSON_EXTRACT(arguments, '$.positionId') = ?", [$position->id])
+        ->count())->toBe(1);
+})->with(['PROFIT-LIMIT', 'PROFIT-MARKET', 'STOP-MARKET']);
 
 it('does NOT dispatch a position-quantity sync step when no LIMIT is PARTIALLY_FILLED', function (): void {
     $position = buildSafetyNetPosition('bitget', 'NEW');

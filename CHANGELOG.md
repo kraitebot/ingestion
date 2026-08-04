@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.91.0 - 2026-08-04
+
+Ships `kraitebot/core` 1.102.0 and
+`brunocfalcao/step-dispatcher` 1.20.3.
+
+### Laravel best-practices and partial-close reliability
+
+- [FIXED] Managed partial closes reconcile local position quantity through the
+  live event path and the five-minute polling safety net, resolving the
+  SFPUSDT #4365 drift incident.
+- [HARDENED] Order creation, stale workflow recovery, scheduling leases,
+  provider diagnostics, notification delivery, tenancy, payments, Blade
+  output, and cached configuration now use their tested Laravel boundaries.
+- [VERIFIED] Thirteen controlled source mutations were killed. Fresh TIA gates
+  pass 3,450 ingestion tests with 11,487 assertions and 217 Step Dispatcher
+  tests with 554 assertions; type coverage, Pint, Rector, Larastan, and web
+  production builds are green.
+
 ## 1.90.1 - 2026-08-04
 
 Ships `kraitebot/core` 1.101.1.

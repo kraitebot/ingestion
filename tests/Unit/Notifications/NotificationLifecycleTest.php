@@ -46,6 +46,25 @@ it('NotificationMessageBuilder throws InvalidArgumentException on unknown canoni
     NotificationMessageBuilder::build('this_canonical_does_not_exist_xyz', [], null);
 })->throws(InvalidArgumentException::class, 'unknown canonical');
 
+it('describes position drift as alert-only instead of claiming the drift command dispatched a heal', function (): void {
+    $message = NotificationMessageBuilder::build('position_drift_detected', [
+        'position_id' => 4365,
+        'pair' => 'SFPUSDT',
+        'direction' => 'LONG',
+        'account_name' => 'Binance Account',
+        'exchange' => 'binance',
+        'pair_status' => 'drift',
+        'position_drift_fields' => ['quantity'],
+        'order_drifts' => [],
+    ]);
+
+    expect($message['emailMessage'])
+        ->toContain('alert-only')
+        ->not->toContain('has dispatched `PrepareSyncOrdersJob`')
+        ->and($message['pushoverMessage'])
+        ->not->toContain('sync-orders dispatched');
+});
+
 it('NotificationService.flushNotificationCache exists for test isolation', function (): void {
     // The in-process cache prevents a per-call DB hit on hot paths
     // (`ApiRequestLog::saved` event, every position lifecycle step).

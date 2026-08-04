@@ -72,12 +72,12 @@ if (FreezeMode::isActive()) {
 // MySQL only; the dispatcher hot path stays Redis-only.
 Schedule::command('kraite:cron-flush-dispatcher-saturation')
     ->everyMinute()
-    ->withoutOverlapping()
+    ->withoutOverlapping(2)
     ->onOneServer();
 
 Schedule::command('kraite:cron-flush-dispatcher-saturation --prefix=trading')
     ->everyMinute()
-    ->withoutOverlapping()
+    ->withoutOverlapping(2)
     ->onOneServer();
 
 // Reclaim stalled steps (Running zombies, Dispatched stalls) and release wedged
@@ -90,14 +90,14 @@ Schedule::command('kraite:cron-flush-dispatcher-saturation --prefix=trading')
 // the StaleStepsDetected event (SendStaleStepsNotification listener in kraitebot/core).
 Schedule::command('steps:recover-stale --recover-dispatched --release-locks --watchdog-progress')
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(2);
 
 // Same recover-stale watchdog scoped to the `trading_*` table set.
 // Independent withoutOverlapping lock from the default cron so the
 // two never block each other — they read / write disjoint tables.
 Schedule::command('steps:recover-stale --prefix=trading --recover-dispatched --release-locks --watchdog-progress')
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(2);
 
 // Mark-price freshness is now a check inside `kraite:cron-check-system-health`
 // (see below) — the standalone `kraite:cron-check-stale-data` was retired
@@ -115,7 +115,7 @@ Schedule::command('steps:recover-stale --prefix=trading --recover-dispatched --r
 // not new-work creation.
 Schedule::command('kraite:cron-refresh-binance-listen-keys')
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(2);
 
 // Listen-key staleness watchdog. Detects two failure modes the
 // keepalive cron alone cannot surface: (1) an active Binance account
@@ -127,7 +127,7 @@ Schedule::command('kraite:cron-refresh-binance-listen-keys')
 // dedupe bounds sustained-failure notifications.
 Schedule::command('kraite:cron-check-binance-listen-keys-stale')
     ->everyFiveMinutes()
-    ->withoutOverlapping();
+    ->withoutOverlapping(5);
 
 // Host/runtime heartbeat. The PHP collector records CPU, RAM, disk, version,
 // and Supervisor unit states. Cadence belongs here rather than to a hidden
@@ -184,7 +184,7 @@ if (! $isCoolingDown()) {
     // cooldown lifts.
     Schedule::command('kraite:cron-sync-orders')
         ->everyFiveMinutes()
-        ->withoutOverlapping();
+        ->withoutOverlapping(5);
 
     // Proactive 5-minute drift spotter — safety net on top of the
     // every-minute reactive sync. Audits active positions that have
@@ -195,7 +195,7 @@ if (! $isCoolingDown()) {
     // affected position per cycle (admin-only).
     Schedule::command('kraite:cron-check-drifts')
         ->everyFiveMinutes()
-        ->withoutOverlapping();
+        ->withoutOverlapping(5);
 
     // Trading money-guard narrator — the Haiku documentation layer. When
     // CheckDrifts has cooled the bot and left an un-narrated incident file,
@@ -205,7 +205,7 @@ if (! $isCoolingDown()) {
     // there is no open incident. Runs every 20 minutes.
     Schedule::command('kraite:monitor-narrate')
         ->cron('7,27,47 * * * *')
-        ->withoutOverlapping()
+        ->withoutOverlapping(19)
         ->onOneServer();
 
     // Open new positions every 3 minutes. Runs PreparePositionsOpeningJob
@@ -213,12 +213,12 @@ if (! $isCoolingDown()) {
     // Verify/Query/Assign/Dispatch chain only if slots are available.
     Schedule::command('kraite:cron-create-positions')
         ->cron('*/3 * * * *')
-        ->withoutOverlapping();
+        ->withoutOverlapping(3);
 
     // Fetch klines for active positions only (5m timeframe)
     Schedule::command('kraite:cron-fetch-klines --only-active-positions')
         ->everyFiveMinutes()
-        ->withoutOverlapping();
+        ->withoutOverlapping(5);
 
     // Fetch 15m klines for the BSCS reference basket (BTC + ETH/SOL/BNB/XRP
     // by default, configurable via MARKET_REGIME_SYMBOLS). Required by the
@@ -227,28 +227,28 @@ if (! $isCoolingDown()) {
     // Active-positions-only schedule above doesn't reliably cover this set.
     Schedule::command('kraite:cron-fetch-klines --reference-set --canonical=binance --timeframe=15m')
         ->everyFifteenMinutes()
-        ->withoutOverlapping();
+        ->withoutOverlapping(14);
 
     // Fetch klines for all symbols at indicator timeframes (for correlation data)
     Schedule::command('kraite:cron-fetch-klines --timeframe=1h')
         ->cron('5 * * * *')
-        ->withoutOverlapping();
+        ->withoutOverlapping(30);
 
     Schedule::command('kraite:cron-fetch-klines --timeframe=4h')
         ->cron('5 */4 * * *')
-        ->withoutOverlapping();
+        ->withoutOverlapping(30);
 
     Schedule::command('kraite:cron-fetch-klines --timeframe=1d')
         ->cron('5 0 * * *')
-        ->withoutOverlapping();
+        ->withoutOverlapping(30);
 
     Schedule::command('kraite:cron-store-accounts-balances')
         ->everyFiveMinutes()
-        ->withoutOverlapping();
+        ->withoutOverlapping(5);
 
     Schedule::command('kraite:cron-upsert-pnls')
         ->everyFiveMinutes()
-        ->withoutOverlapping();
+        ->withoutOverlapping(5);
 
     // Mirrors the exchange income ledger so daily figures can be booked on the
     // day each fee and fill happened. One paginated call per account, offset
@@ -256,23 +256,23 @@ if (! $isCoolingDown()) {
     // per-IP limit.
     Schedule::command('kraite:cron-sync-account-incomes')
         ->cron('3,13,23,33,43,53 * * * *')
-        ->withoutOverlapping();
+        ->withoutOverlapping(10);
 
     Schedule::command('kraite:cron-refresh-exchange-symbols')
         ->cron('15 1-5,7-11,13-17,19-23 * * *')
-        ->withoutOverlapping();
+        ->withoutOverlapping(30);
 
     Schedule::command('kraite:cron-refresh-exchange-symbols --with-brackets')
         ->cron('15 */6 * * *')
-        ->withoutOverlapping();
+        ->withoutOverlapping(60);
 
     Schedule::command('kraite:cron-conclude-symbols-direction')
         ->hourlyAt(30)
-        ->withoutOverlapping();
+        ->withoutOverlapping(45);
 
     Schedule::command('kraite:cron-renew-subscriptions')
         ->dailyAt('00:00')
-        ->withoutOverlapping()
+        ->withoutOverlapping(60)
         ->onOneServer();
 
     // Disabled 2026-04-27: deny-list sweep retired in favour of the
@@ -291,7 +291,7 @@ if (! $isCoolingDown()) {
     // snapshot, denormalises score+band onto the kraite singleton.
     Schedule::command('kraite:cron-compute-market-regime')
         ->hourlyAt(50)
-        ->withoutOverlapping()
+        ->withoutOverlapping(30)
         ->onOneServer();
 
     // BSCS gate state machine — runs 5 minutes after the compute cron so
@@ -302,7 +302,7 @@ if (! $isCoolingDown()) {
     // while the cooldown is active. Existing positions untouched.
     Schedule::command('kraite:cron-analyse-bscs')
         ->hourlyAt(55)
-        ->withoutOverlapping()
+        ->withoutOverlapping(30)
         ->onOneServer();
 
     // Cascade detector — fast safety net that closes the hourly BSCS
@@ -314,13 +314,13 @@ if (! $isCoolingDown()) {
     // while a cooldown is already active to avoid notification spam.
     Schedule::command('kraite:cron-detect-market-shock')
         ->everyMinute()
-        ->withoutOverlapping()
+        ->withoutOverlapping(2)
         ->onOneServer();
 
     // Purge old candles daily at 03:00 (keeps last 500 per symbol/timeframe)
     Schedule::command('kraite:purge-candles')
         ->dailyAt('03:00')
-        ->withoutOverlapping();
+        ->withoutOverlapping(120);
 
     // Sweep breadcrumb trails of positions whose clean close has aged past
     // the configured retention window (kraite.positions.trail_retention_hours).
@@ -331,13 +331,13 @@ if (! $isCoolingDown()) {
     // 03:30 generic log purges.
     Schedule::command('kraite:cron-purge-position-trails')
         ->dailyAt('03:20')
-        ->withoutOverlapping();
+        ->withoutOverlapping(60);
 
     // Purge candles for ExchangeSymbols whose backtest review was rejected.
     // Runs hourly so a fresh reject quickly drops dead candle weight.
     Schedule::command('kraite:cron-purge-failed-backtested-klines')
         ->hourly()
-        ->withoutOverlapping()
+        ->withoutOverlapping(30)
         ->onOneServer();
 
     // Purge old operational logs daily at 03:30:
@@ -350,19 +350,19 @@ if (! $isCoolingDown()) {
     //     that, log volume outweighs the forensics value.
     Schedule::command('kraite:purge-old-data --api-request-logs-days=5 --model-logs-days=30')
         ->dailyAt('03:30')
-        ->withoutOverlapping();
+        ->withoutOverlapping(120);
 
     // Archive fully-resolved step trees daily at 04:00 (keeps last 1 day)
     Schedule::command('steps:archive --duration=1')
         ->dailyAt('04:00')
-        ->withoutOverlapping();
+        ->withoutOverlapping(120);
 
     // Same archive pass, scoped to the `trading_*` table set. Offset by
     // 5 minutes so the two passes never compete for I/O on the same
     // physical disk. Same 1-day retention as the default set.
     Schedule::command('steps:archive --prefix=trading --duration=1')
         ->dailyAt('04:05')
-        ->withoutOverlapping();
+        ->withoutOverlapping(120);
 
     // Trim the archive itself daily at 04:30, 30 min after the archive
     // run finishes. --only-archive keeps the live `steps` table and the
@@ -370,13 +370,13 @@ if (! $isCoolingDown()) {
     // 5-day retention window: anything older than that is gone.
     Schedule::command('steps:purge --only-archive --days=5')
         ->dailyAt('04:30')
-        ->withoutOverlapping();
+        ->withoutOverlapping(120);
 
     // Same archive trim, scoped to `trading_steps_archive`. Offset by
     // 5 minutes from the default purge for the same I/O reason.
     Schedule::command('steps:purge --prefix=trading --only-archive --days=5')
         ->dailyAt('04:35')
-        ->withoutOverlapping();
+        ->withoutOverlapping(120);
 
     // ---------------------------------------------------------------
     // OPTIMIZE TABLE on the breadcrumb tables — staggered window
@@ -414,27 +414,27 @@ if (! $isCoolingDown()) {
     // ---------------------------------------------------------------
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=model_logs')
         ->weeklyOn(0, '03:00')
-        ->withoutOverlapping()
+        ->withoutOverlapping(180)
         ->onOneServer();
 
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=api_snapshots')
         ->weeklyOn(0, '03:24')
-        ->withoutOverlapping()
+        ->withoutOverlapping(180)
         ->onOneServer();
 
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=api_request_logs')
         ->weeklyOn(0, '03:48')
-        ->withoutOverlapping()
+        ->withoutOverlapping(180)
         ->onOneServer();
 
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=steps')
         ->weeklyOn(0, '04:12')
-        ->withoutOverlapping()
+        ->withoutOverlapping(180)
         ->onOneServer();
 
     Schedule::command('kraite:cron-optimize-breadcrumb-tables --table=steps_archive')
         ->weeklyOn(0, '04:36')
-        ->withoutOverlapping()
+        ->withoutOverlapping(180)
         ->onOneServer();
 
     // -------------------------------------------------------------------
@@ -456,7 +456,7 @@ if (! $isCoolingDown()) {
     if (app()->isProduction()) {
         Schedule::command('backup:run --only-db --disable-notifications')
             ->cron('7 */3 * * *')
-            ->withoutOverlapping()
+            ->withoutOverlapping(170)
             ->onOneServer()
             ->onSuccess(function (): void {
                 Artisan::call('backup:clean', ['--disable-notifications' => true]);
@@ -469,7 +469,7 @@ if (! $isCoolingDown()) {
         // `system_health_alert` Pushover canonical.
         Schedule::command('backup:monitor')
             ->cron('15 */6 * * *')
-            ->withoutOverlapping()
+            ->withoutOverlapping(60)
             ->onOneServer();
     }
 }

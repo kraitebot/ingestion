@@ -1,3 +1,31 @@
+# WhereAreWe — 2026-08-04 (partial-close reconciliation and Laravel audit)
+
+## Date
+
+2026-08-04
+
+## This release
+
+- **Partial closes keep position exposure current:** push events and the
+  five-minute polling safety net now synchronize quantity for DCA entries,
+  take-profit limits and markets, and stop-market closes. The SFPUSDT #4365
+  incident proved the previous entry-only rule could leave a position at its
+  pre-fill quantity.
+- **Position drift stays an alert, not a hidden mutation:** its notification
+  now says that clearly; the normal event and reconciliation paths own the
+  correction.
+- **Trading concurrency was challenged with real database races:** active
+  order-slot decisions use current locking reads, all creators share the same
+  boundary, and Bitget protection replacement follows one position-then-order
+  lock sequence.
+- **Operational safeguards were tightened across the Laravel surface:** stale
+  step recovery rechecks under lock, scheduled overlap leases match cadence,
+  failed API diagnostics redact credentials, notification delivery uses an
+  atomic claim, and repeated payment receipts remain invoice-scoped and
+  idempotent.
+
+---
+
 # WhereAreWe — 2026-08-04 (Laravel-owned operational monitoring)
 
 ## Date

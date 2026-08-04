@@ -6,6 +6,7 @@ use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Kraite\Core\Abstracts\BaseApiClient;
@@ -13,6 +14,7 @@ use Kraite\Core\Abstracts\BaseExceptionHandler;
 use Kraite\Core\Commands\Cronjobs\CheckDriftsCommand;
 use Kraite\Core\Models\ApiRequestLog;
 use Kraite\Core\Models\ApiSystem;
+use Kraite\Core\Support\ValueObjects\ApiProperties;
 use Kraite\Core\Support\ValueObjects\ApiRequest;
 use Psr\Http\Message\ResponseInterface;
 
@@ -101,6 +103,31 @@ function laravelHttpBackedApiClient(ApiSystem $apiSystem, string $path): BaseApi
         public function send(): ResponseInterface
         {
             return $this->processRequest(ApiRequest::make('GET', $this->path));
+        }
+
+        protected function getHeaders(): array
+        {
+            return [];
+        }
+    };
+}
+
+function sensitivePayloadApiClient(ApiSystem $apiSystem, string $path, ApiProperties $properties): BaseApiClient
+{
+    return new class($apiSystem, $path, $properties) extends BaseApiClient
+    {
+        public function __construct(
+            ApiSystem $apiSystem,
+            private readonly string $path,
+            private readonly ApiProperties $properties,
+        ) {
+            parent::__construct('https://api.example.test');
+            $this->apiSystem = $apiSystem;
+        }
+
+        public function send(): ResponseInterface
+        {
+            return $this->processRequest(ApiRequest::make('POST', $this->path, $this->properties), true);
         }
 
         protected function getHeaders(): array
@@ -321,4 +348,45 @@ it('converts Laravel HTTP fake connection failures to production Guzzle connect 
         ->and($log->error_message)->not->toBeNull();
 
     Http::assertSentCount(1);
+});
+
+it('never persists request credentials in a failed API log', function (): void {
+    $apiSystem = ApiSystem::factory()->create([
+        'canonical' => 'credential-log-test',
+        'name' => 'Credential log test',
+        'is_exchange' => false,
+    ]);
+    $path = '/bulk?signature=path-signature&symbol=ENAUSDT';
+    $properties = ApiProperties::make([
+        'secret' => 'taapi-secret',
+        'options' => [
+            'api_key' => 'payload-api-key',
+            'signature' => 'payload-signature',
+            'symbol' => 'ENAUSDT',
+        ],
+        'construct' => ['exchange' => 'binancefutures', 'interval' => '4h'],
+    ]);
+
+    Http::fake(['*' => Http::response(['errors' => ['Unavailable']], 503)]);
+
+    expect(fn (): ResponseInterface => sensitivePayloadApiClient($apiSystem, $path, $properties)->send())
+        ->toThrow(RequestException::class);
+
+    $log = ApiRequestLog::query()->where('api_system_id', $apiSystem->id)->sole();
+    $stored = json_encode([
+        'path' => $log->path,
+        'payload' => $log->payload,
+    ], JSON_THROW_ON_ERROR);
+
+    expect($stored)->not->toContain('path-signature')
+        ->and($stored)->not->toContain('taapi-secret')
+        ->and($stored)->not->toContain('payload-api-key')
+        ->and($stored)->not->toContain('payload-signature')
+        ->and($stored)->toContain('***REDACTED***')
+        ->and($stored)->toContain('ENAUSDT')
+        ->and($stored)->toContain('binancefutures');
+
+    Http::assertSent(fn (HttpRequest $request): bool => str_contains($request->url(), 'path-signature')
+        && $request->data()['secret'] === 'taapi-secret'
+        && $request->data()['options']['signature'] === 'payload-signature');
 });

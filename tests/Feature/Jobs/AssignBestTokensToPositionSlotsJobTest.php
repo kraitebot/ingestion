@@ -12,7 +12,10 @@ use Kraite\Core\Models\Kraite as KraiteSettings;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\TradeConfiguration;
+use StepDispatcher\Models\Step;
 use StepDispatcher\Models\StepsDispatcher;
+use StepDispatcher\States\Completed;
+use StepDispatcher\States\Stopped;
 
 /**
  * Helper to create a test account with all required relationships
@@ -49,7 +52,7 @@ function createAccountForSlotTest(string $suffix = '', int $maxLongs = 2, int $m
         ]
     );
 
-    return Account::factory()->create([
+    $account = Account::factory()->create([
         'api_system_id' => $apiSystem->id,
         'trade_configuration_id' => $tradeConfig->id,
         'trading_quote' => $testQuoteCanonical,
@@ -57,6 +60,13 @@ function createAccountForSlotTest(string $suffix = '', int $maxLongs = 2, int $m
         'total_positions_long' => $maxLongs,
         'total_positions_short' => $maxShorts,
     ]);
+
+    $account->user()->update([
+        'can_trade' => true,
+        'subscription_renews_at' => now()->addMonth(),
+    ]);
+
+    return $account->fresh(['apiSystem', 'user']);
 }
 
 /**
@@ -679,6 +689,94 @@ test('stops workflow when no slots created', function (): void {
     // The complete() hook should call stopJob() when totalCreated === 0
     // We can't directly test stopJob was called, but we verify state
     expect($job->totalCreated)->toBe(0);
+});
+
+test('retry assigns a pre-existing unassigned slot when no new capacity remains', function (): void {
+    $account = createAccountForSlotTest('retry-unassigned', maxLongs: 1, maxShorts: 0);
+    createBtcForSlotTest('LONG', $account->api_system_id, $account->trading_quote);
+
+    $availableSymbol = createExchangeSymbolForSlotTest(
+        'RETRYASSIGN',
+        'LONG',
+        $account->api_system_id,
+        $account->trading_quote,
+    );
+    $unassignedPosition = Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => null,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+    $unrelatedPosition = Position::factory()->create([
+        'exchange_symbol_id' => null,
+        'status' => 'new',
+        'direction' => 'SHORT',
+    ]);
+
+    storeExchangePositions($account, []);
+    storeOpenOrders($account, []);
+
+    expect($account->positions()->whereKey($unassignedPosition->id)->count())->toBe(1)
+        ->and($unassignedPosition->fresh()->exchange_symbol_id)->toBeNull()
+        ->and($unrelatedPosition->fresh()->exchange_symbol_id)->toBeNull();
+
+    $step = Step::create([
+        'class' => AssignBestTokensToPositionSlotsJob::class,
+        'queue' => 'cronjobs',
+        'arguments' => ['accountId' => $account->id],
+    ]);
+    $job = new AssignBestTokensToPositionSlotsJob($account->id);
+    $job->step = $step;
+    $job->handle();
+
+    expect($job->totalCreated)->toBe(0)
+        ->and($job->assignedCount)->toBe(1)
+        ->and($job->deletedCount)->toBe(0)
+        ->and($unassignedPosition->fresh())
+        ->exchange_symbol_id->toBe($availableSymbol->id)
+        ->status->toBe('new')
+        ->and($account->positions()->whereKey($unassignedPosition->id)->count())->toBe(1)
+        ->and($unrelatedPosition->fresh())
+        ->exchange_symbol_id->toBeNull()
+        ->status->toBe('new')
+        ->and($step->fresh()->state)->toBeInstanceOf(Completed::class);
+});
+
+test('retry deletes a pre-existing unassigned slot when strict BTC policy cannot assign it', function (): void {
+    $account = createAccountForSlotTest('retry-strict', maxLongs: 1, maxShorts: 0);
+    $unassignedPosition = Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => null,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+    $unrelatedPosition = Position::factory()->create([
+        'exchange_symbol_id' => null,
+        'status' => 'new',
+        'direction' => 'SHORT',
+    ]);
+
+    storeExchangePositions($account, []);
+    storeOpenOrders($account, []);
+
+    expect(Position::query()->whereKey($unassignedPosition->id)->count())->toBe(1)
+        ->and(Position::query()->whereKey($unrelatedPosition->id)->count())->toBe(1);
+
+    $step = Step::create([
+        'class' => AssignBestTokensToPositionSlotsJob::class,
+        'queue' => 'cronjobs',
+        'arguments' => ['accountId' => $account->id],
+    ]);
+    $job = new AssignBestTokensToPositionSlotsJob($account->id);
+    $job->step = $step;
+    $job->handle();
+
+    expect($job->totalCreated)->toBe(0)
+        ->and($job->assignedCount)->toBe(0)
+        ->and($job->deletedCount)->toBe(1)
+        ->and(Position::query()->whereKey($unassignedPosition->id)->exists())->toBeFalse()
+        ->and(Position::query()->whereKey($unrelatedPosition->id)->exists())->toBeTrue()
+        ->and($step->fresh()->state)->toBeInstanceOf(Stopped::class);
 });
 
 test('reports deleted slots and policy reason when correlation sign rejects every token', function (): void {

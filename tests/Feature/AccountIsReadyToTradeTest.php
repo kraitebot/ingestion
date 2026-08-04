@@ -2,11 +2,18 @@
 
 declare(strict_types=1);
 
+use Kraite\Core\Jobs\Lifecycles\Account\DispatchPositionSlotsJob;
+use Kraite\Core\Jobs\Lifecycles\Account\PreparePositionsOpeningJob;
+use Kraite\Core\Jobs\Lifecycles\Position\DispatchPositionJob;
+use Kraite\Core\Jobs\Models\Account\AssignBestTokensToPositionSlotsJob;
 use Kraite\Core\Models\Account;
+use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Subscription;
 use Kraite\Core\Models\User;
 use Kraite\Core\Support\Billing\BillingManager;
 use Kraite\Core\Support\Billing\SubscriptionState;
+use StepDispatcher\Models\Step;
 
 /**
  * Spec for the per-account readiness facade used by position-opening
@@ -161,6 +168,39 @@ it('account isReadyToTrade returns false when subscription is paused (gate 3)', 
     [, $account] = freshUserAndAccount(userOverrides: ['subscription_paused_at' => now()]);
 
     expect($account->isReadyToTrade())->toBeFalse();
+});
+
+it('all queued position-opening boundaries stop when the subscription pauses before execution', function (): void {
+    [$user, $account] = freshUserAndAccount();
+    $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'api_system_id' => $account->api_system_id,
+        'quote' => $account->trading_quote,
+        'direction' => 'LONG',
+    ]);
+    $position = Position::factory()->create([
+        'account_id' => $account->id,
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    expect($account->isReadyToTrade())->toBeTrue()
+        ->and(Step::query()->forRelatable($position)->count())->toBe(0);
+
+    $user->update(['subscription_paused_at' => now()]);
+
+    expect($account->fresh()->isReadyToTrade())->toBeFalse()
+        ->and((new PreparePositionsOpeningJob($account->id))->startOrStop())->toBeFalse()
+        ->and((new AssignBestTokensToPositionSlotsJob($account->id))->startOrStop())->toBeFalse()
+        ->and((new DispatchPositionJob($position->id))->startOrStop())->toBeFalse();
+
+    $result = (new DispatchPositionSlotsJob($account->id))->compute();
+
+    expect($result['positions_dispatched'])->toBe(0)
+        ->and($position->fresh())
+        ->status->toBe('new')
+        ->exchange_symbol_id->toBe($exchangeSymbol->id)
+        ->and(Step::query()->forRelatable($position)->count())->toBe(0);
 });
 
 it('account isReadyToTrade allows a unified BitGet account after the v3 order surface ships', function (): void {

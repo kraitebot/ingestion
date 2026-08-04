@@ -106,16 +106,16 @@
         },
         {
             "name": "aws/aws-sdk-php",
-            "version": "3.390.3",
+            "version": "3.390.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/aws/aws-sdk-php.git",
-                "reference": "8026ec372223fb3ffa010b96ca14a1df329085f5"
+                "reference": "51115bd27065e978c2a4cf297f8280d8c39e83da"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/aws/aws-sdk-php/zipball/8026ec372223fb3ffa010b96ca14a1df329085f5",
-                "reference": "8026ec372223fb3ffa010b96ca14a1df329085f5",
+                "url": "https://api.github.com/repos/aws/aws-sdk-php/zipball/51115bd27065e978c2a4cf297f8280d8c39e83da",
+                "reference": "51115bd27065e978c2a4cf297f8280d8c39e83da",
                 "shasum": ""
             },
             "require": {
@@ -197,9 +197,9 @@
             "support": {
                 "forum": "https://github.com/aws/aws-sdk-php/discussions",
                 "issues": "https://github.com/aws/aws-sdk-php/issues",
-                "source": "https://github.com/aws/aws-sdk-php/tree/3.390.3"
+                "source": "https://github.com/aws/aws-sdk-php/tree/3.390.4"
             },
-            "time": "2026-08-03T18:28:24+00:00"
+            "time": "2026-08-04T18:52:58+00:00"
         },
         {
             "name": "binance/binance-connector-php",
@@ -531,16 +531,16 @@
         },
         {
             "name": "brunocfalcao/step-dispatcher",
-            "version": "v1.20.2",
+            "version": "v1.20.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/brunocfalcao/step-dispatcher.git",
-                "reference": "38623ae47313a3b1d7e0afcb98cfb4fad946c409"
+                "reference": "f34faaeb27f53a035cef4ccbc1242c06aab5d530"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/brunocfalcao/step-dispatcher/zipball/38623ae47313a3b1d7e0afcb98cfb4fad946c409",
-                "reference": "38623ae47313a3b1d7e0afcb98cfb4fad946c409",
+                "url": "https://api.github.com/repos/brunocfalcao/step-dispatcher/zipball/f34faaeb27f53a035cef4ccbc1242c06aab5d530",
+                "reference": "f34faaeb27f53a035cef4ccbc1242c06aab5d530",
                 "shasum": ""
             },
             "require": {
@@ -587,10 +587,10 @@
             ],
             "description": "Step-based job execution system with state machines for reliable, sequential task processing",
             "support": {
-                "source": "https://github.com/brunocfalcao/step-dispatcher/tree/v1.20.2",
+                "source": "https://github.com/brunocfalcao/step-dispatcher/tree/v1.20.3",
                 "issues": "https://github.com/brunocfalcao/step-dispatcher/issues"
             },
-            "time": "2026-08-01T16:09:21+00:00"
+            "time": "2026-08-04T22:07:09+00:00"
         },
         {
             "name": "carbonphp/carbon-doctrine-types",
@@ -1686,16 +1686,16 @@
         },
         {
             "name": "kraitebot/core",
-            "version": "v1.101.1",
+            "version": "v1.102.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kraitebot/core.git",
-                "reference": "1321be74355b7734cecc6f9c66b6afd354c16828"
+                "reference": "f364e2f272ea67e41b51e4e74a903b1314e7f84d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kraitebot/core/zipball/1321be74355b7734cecc6f9c66b6afd354c16828",
-                "reference": "1321be74355b7734cecc6f9c66b6afd354c16828",
+                "url": "https://api.github.com/repos/kraitebot/core/zipball/f364e2f272ea67e41b51e4e74a903b1314e7f84d",
+                "reference": "f364e2f272ea67e41b51e4e74a903b1314e7f84d",
                 "shasum": ""
             },
             "require": {
@@ -1749,10 +1749,10 @@
                 "laravel"
             ],
             "support": {
-                "source": "https://github.com/kraitebot/core/tree/v1.101.1",
+                "source": "https://github.com/kraitebot/core/tree/v1.102.0",
                 "issues": "https://github.com/kraitebot/core/issues"
             },
-            "time": "2026-08-04T16:04:51+00:00"
+            "time": "2026-08-04T22:06:45+00:00"
         },
         {
             "name": "laravel-notification-channels/pushover",
@@ -1895,16 +1895,16 @@
         },
         {
             "name": "laravel/framework",
-            "version": "v13.23.0",
+            "version": "v13.24.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/framework.git",
-                "reference": "92a707229148e57f08a249211c8a5a194159c619"
+                "reference": "6d481710375d2aa67656922ef760cdd2b18bcfe0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/framework/zipball/92a707229148e57f08a249211c8a5a194159c619",
-                "reference": "92a707229148e57f08a249211c8a5a194159c619",
+                "url": "https://api.github.com/repos/laravel/framework/zipball/6d481710375d2aa67656922ef760cdd2b18bcfe0",
+                "reference": "6d481710375d2aa67656922ef760cdd2b18bcfe0",
                 "shasum": ""
             },
             "require": {
@@ -1924,7 +1924,7 @@
                 "guzzlehttp/guzzle": "^7.8.2",
                 "guzzlehttp/promises": "^2.0.3",
                 "guzzlehttp/uri-template": "^1.0",
-                "laravel/prompts": "^0.3.0",
+                "laravel/prompts": "^0.3.11",
                 "laravel/serializable-closure": "^2.0.10",
                 "league/commonmark": "^2.8.1",
                 "league/flysystem": "^3.25.1",
@@ -2118,20 +2118,20 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-07-27T14:48:58+00:00"
+            "time": "2026-08-04T15:54:59+00:00"
         },
         {
             "name": "laravel/horizon",
-            "version": "v5.48.1",
+            "version": "v5.48.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/horizon.git",
-                "reference": "7953b21becabb83974ab93111ffa4d9439dcac07"
+                "reference": "2ebe3cb25ab6461b53a4e3ef42e167edeafe7932"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/horizon/zipball/7953b21becabb83974ab93111ffa4d9439dcac07",
-                "reference": "7953b21becabb83974ab93111ffa4d9439dcac07",
+                "url": "https://api.github.com/repos/laravel/horizon/zipball/2ebe3cb25ab6461b53a4e3ef42e167edeafe7932",
+                "reference": "2ebe3cb25ab6461b53a4e3ef42e167edeafe7932",
                 "shasum": ""
             },
             "require": {
@@ -2196,22 +2196,22 @@
             ],
             "support": {
                 "issues": "https://github.com/laravel/horizon/issues",
-                "source": "https://github.com/laravel/horizon/tree/v5.48.1"
+                "source": "https://github.com/laravel/horizon/tree/v5.48.2"
             },
-            "time": "2026-07-20T15:53:58+00:00"
+            "time": "2026-07-27T13:13:49+00:00"
         },
         {
             "name": "laravel/prompts",
-            "version": "v0.3.21",
+            "version": "v0.3.22",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/prompts.git",
-                "reference": "7753c65c281c2550c7c183f14e18062073b7d821"
+                "reference": "02b89b39e8972a998db4d5d4ad4719239dd4aee4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/prompts/zipball/7753c65c281c2550c7c183f14e18062073b7d821",
-                "reference": "7753c65c281c2550c7c183f14e18062073b7d821",
+                "url": "https://api.github.com/repos/laravel/prompts/zipball/02b89b39e8972a998db4d5d4ad4719239dd4aee4",
+                "reference": "02b89b39e8972a998db4d5d4ad4719239dd4aee4",
                 "shasum": ""
             },
             "require": {
@@ -2255,9 +2255,9 @@
             "description": "Add beautiful and user-friendly forms to your command-line applications.",
             "support": {
                 "issues": "https://github.com/laravel/prompts/issues",
-                "source": "https://github.com/laravel/prompts/tree/v0.3.21"
+                "source": "https://github.com/laravel/prompts/tree/v0.3.22"
             },
-            "time": "2026-06-26T00:11:25+00:00"
+            "time": "2026-08-04T14:50:50+00:00"
         },
         {
             "name": "laravel/sentinel",

@@ -11,6 +11,7 @@ use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite as KraiteModel;
 use Kraite\Core\Models\Position;
+use Kraite\Core\Models\Subscription;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\User;
 use Kraite\Core\Trading\Kraite;
@@ -33,8 +34,21 @@ beforeEach(function (): void {
         'name' => 'Binance',
     ]);
 
+    $subscription = Subscription::firstOrCreate(
+        ['canonical' => 'orphan-recovery'],
+        [
+            'name' => 'Orphan Recovery',
+            'monthly_rate_usdt' => '75.0000',
+            'trial_days' => 7,
+            'max_accounts' => 1,
+        ],
+    );
+
     $user = User::factory()->create([
+        'subscription_id' => $subscription->id,
         'can_trade' => true,
+        'subscription_renews_at' => now()->addMonth(),
+        'wallet_balance_usdt' => '100.0000',
     ]);
 
     $this->account = Account::factory()->create([
@@ -45,6 +59,7 @@ beforeEach(function (): void {
         'total_positions_long' => 1,
         'total_positions_short' => 0,
     ]);
+    $user->update(['active_account_id' => $this->account->id]);
 
     $symbol = Symbol::factory()->create(['token' => 'BTC']);
 
@@ -143,6 +158,41 @@ it('does not recover an orphan position after its exchange is deactivated', func
     expect(stepsForPosition($orphan))->toHaveCount(0)
         ->and($orphan->refresh()->status)->toBe('new');
 });
+
+it('does not recover an unopened orphan while any account readiness gate is closed', function (string $closedGate): void {
+    $orphan = Position::factory()->create([
+        'account_id' => $this->account->id,
+        'exchange_symbol_id' => $this->exchangeSymbol->id,
+        'status' => 'new',
+        'direction' => 'LONG',
+    ]);
+
+    match ($closedGate) {
+        'account inactive' => $this->account->update(['is_active' => false]),
+        'account paused' => $this->account->update(['can_trade' => false]),
+        'user inactive' => $this->account->user->update(['is_active' => false]),
+        'user paused' => $this->account->user->update(['can_trade' => false]),
+        'subscription paused' => $this->account->user->update(['subscription_paused_at' => now()]),
+        'subscription expired' => $this->account->user->update(['subscription_renews_at' => now()->subSecond()]),
+    };
+
+    expect($this->account->fresh()->isReadyToTrade())->toBeFalse()
+        ->and(stepsForPosition($orphan))->toHaveCount(0);
+
+    $this->artisan('kraite:cron-create-positions')->assertSuccessful();
+
+    expect(stepsForPosition($orphan))->toHaveCount(0)
+        ->and($orphan->fresh())
+        ->status->toBe('new')
+        ->exchange_symbol_id->toBe($this->exchangeSymbol->id);
+})->with([
+    'account inactive',
+    'account paused',
+    'user inactive',
+    'user paused',
+    'subscription paused',
+    'subscription expired',
+]);
 
 it('detects an existing live step via the indexed relatable_type / relatable_id columns', function (): void {
     // Pin the new indexed code path: a live DispatchPositionJob step
