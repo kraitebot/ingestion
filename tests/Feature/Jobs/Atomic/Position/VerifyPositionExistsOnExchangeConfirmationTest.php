@@ -64,9 +64,12 @@ function replacementConfirmationPosition(string $direction = 'LONG'): Position
     return $position;
 }
 
-function runReplacementVerifier(Position $position, bool $confirmationAttempt = false): array
-{
-    return Steps::usingPrefix('trading', function () use ($position, $confirmationAttempt): array {
+function runReplacementVerifier(
+    Position $position,
+    bool $confirmationAttempt = false,
+    bool $manualCloseDetected = false,
+): array {
+    return Steps::usingPrefix('trading', function () use ($position, $confirmationAttempt, $manualCloseDetected): array {
         $step = Step::create([
             'class' => VerifyPositionExistsOnExchangeJob::class,
             'queue' => 'positions',
@@ -80,6 +83,7 @@ function runReplacementVerifier(Position $position, bool $confirmationAttempt = 
             triggerStatus: 'CANCELLED',
             message: 'test replacement',
             confirmationAttempt: $confirmationAttempt,
+            manualCloseDetected: $manualCloseDetected,
         );
         $job->step = $step;
 
@@ -112,6 +116,17 @@ it('keeps the position active and schedules a delayed re-query after the first v
         ->and(replacementSteps($position, CancelPositionOpenOrdersJob::class))->toHaveCount(0);
 });
 
+it('carries a manual-close signal through confirmation without marking an unconfirmed absence', function (): void {
+    $position = replacementConfirmationPosition();
+    ApiSnapshot::storeFor($position->account, 'account-positions', []);
+
+    runReplacementVerifier($position, manualCloseDetected: true);
+    $confirmation = replacementSteps($position, PreparePositionReplacementJob::class)->sole();
+
+    expect($position->refresh()->manually_closed_at)->toBeNull()
+        ->and($confirmation->arguments['manualCloseDetected'])->toBeTrue();
+});
+
 it('cancels opening orders before closing locally after confirmed absence', function (): void {
     $position = replacementConfirmationPosition();
     ApiSnapshot::storeFor($position->account, 'account-positions', []);
@@ -123,6 +138,18 @@ it('cancels opening orders before closing locally after confirmed absence', func
         ->and(replacementSteps($position, CancelPositionOpenOrdersJob::class))->toHaveCount(1)
         ->and(replacementSteps($position, ClosePositionJob::class))->toHaveCount(1)
         ->and(replacementSteps($position, ClosePositionJob::class)->sole()->arguments['positionConfirmedFlat'])->toBeTrue();
+});
+
+it('records a manual close only after the exchange confirms the position flat', function (): void {
+    $position = replacementConfirmationPosition();
+    ApiSnapshot::storeFor($position->account, 'account-positions', []);
+
+    expect($position->manually_closed_at)->toBeNull();
+
+    runReplacementVerifier($position, confirmationAttempt: true, manualCloseDetected: true);
+
+    expect($position->refresh()->manually_closed_at?->toIso8601String())
+        ->toBe(now()->toIso8601String());
 });
 
 it('does not confuse an opposite hedge side with the local position', function (): void {
@@ -156,4 +183,19 @@ it('replaces orders immediately when the exact position is still open', function
     expect($result['position_exists_on_exchange'])->toBeTrue()
         ->and(replacementSteps($position, SmartReplaceOrdersJob::class))->toHaveCount(1)
         ->and(replacementSteps($position, PreparePositionReplacementJob::class))->toHaveCount(0);
+});
+
+it('does not mark a manual close when the exchange still reports exposure', function (): void {
+    $position = replacementConfirmationPosition('SHORT');
+    ApiSnapshot::storeFor($position->account, 'account-positions', [
+        'REPLACEUSDT:BOTH' => [
+            'symbol' => 'REPLACEUSDT',
+            'positionSide' => 'BOTH',
+            'positionAmt' => '-5',
+        ],
+    ]);
+
+    runReplacementVerifier($position, manualCloseDetected: true);
+
+    expect($position->refresh()->manually_closed_at)->toBeNull();
 });

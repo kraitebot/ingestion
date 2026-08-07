@@ -288,6 +288,31 @@ it('does not send the close notification for a position that never completed WAP
     NotificationFacade::assertNothingSent();
 });
 
+it('labels an exchange-side manual close explicitly even when the position was never WAPed', function (): void {
+    NotificationFacade::fake();
+    $position = buildPositionForWapedCloseNotification(false, pnl: '2.10000000');
+    $position->updateSaving(['manually_closed_at' => now()]);
+    $user = $position->account->user;
+
+    NotificationFacade::assertNothingSent();
+
+    expect(dispatchWapedCloseNotification($position->fresh()))->toBe([
+        'waped_closed_notification_sent' => true,
+        'high_profit_notification_sent' => false,
+    ]);
+
+    NotificationFacade::assertSentToTimes($user, AlertNotification::class, 1);
+    NotificationFacade::assertSentTo(
+        $user,
+        AlertNotification::class,
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_closed'
+            && $notification->title === "Position Manually Closed — LONG {$position->parsed_trading_pair}"
+            && str_contains((string) $notification->pushoverMessage, 'manually closed')
+            && str_contains((string) $notification->pushoverMessage, 'Closed outside Kraite.')
+            && $notification->via($user) === [AppPushChannel::class, 'mail'],
+    );
+});
+
 it('sends only the specialized high-profit close when its threshold is met', function (): void {
     NotificationFacade::fake();
     $position = buildPositionForWapedCloseNotification(true, pnl: '8.75000000');
@@ -319,5 +344,29 @@ it('sends only the specialized high-profit close when its threshold is met', fun
         AlertNotification::class,
         static fn (AlertNotification $notification): bool => $notification->canonical === 'position_high_profit_closed'
             && $notification->via(Kraite::admin()) === [PushoverChannel::class],
+    );
+});
+
+it('keeps manual attribution on a high-profit close', function (): void {
+    NotificationFacade::fake();
+    $position = buildPositionForWapedCloseNotification(true, pnl: '8.75000000');
+    $position->updateSaving(['manually_closed_at' => now()]);
+    $user = $position->account->user;
+
+    expect(dispatchWapedCloseNotification(
+        $position->fresh(),
+        filledLimitCount: 3,
+        notifyThreshold: 3,
+    ))->toBe([
+        'waped_closed_notification_sent' => false,
+        'high_profit_notification_sent' => true,
+    ]);
+
+    NotificationFacade::assertSentTo(
+        $user,
+        AlertNotification::class,
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_high_profit_closed'
+            && $notification->title === "🎉 High-Profit Position Manually Closed — LONG {$position->parsed_trading_pair}"
+            && str_contains((string) $notification->pushoverMessage, 'manually closed outside Kraite.'),
     );
 });

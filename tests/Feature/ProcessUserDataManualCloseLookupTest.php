@@ -34,6 +34,8 @@ it('finds an active position by its stored trading pair for an unowned reduce-on
         'direction' => 'LONG',
     ]);
 
+    expect($position->manually_closed_at)->toBeNull();
+
     $result = (new ProcessUserDataEventJob(
         accountId: $account->id,
         apiSystemId: $binance->id,
@@ -58,10 +60,11 @@ it('finds an active position by its stored trading pair for an unowned reduce-on
         ],
     ))->compute();
 
-    $replacementDispatched = Step::query()
+    $replacement = Step::query()
         ->where('priority', 'high')
-        ->exists();
+        ->sole();
 
     expect($result['manual_close_detected'])->toBeTrue()
-        ->and($replacementDispatched)->toBeTrue();
+        ->and($replacement->arguments['manualCloseDetected'])->toBeTrue()
+        ->and($position->refresh()->manually_closed_at)->toBeNull();
 });

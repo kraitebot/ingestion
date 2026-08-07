@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.92.0 - 2026-08-08
+
+Ships `kraitebot/core` 1.103.0.
+
+### Explicit manual-close notifications
+
+- [NEW] Exchange-side closes confirmed outside Kraite are labeled as manually
+  closed in trader notifications, including non-WAP and high-profit closes.
+- [PRESERVED] Automated Kraite closes and final-PnL ordering remain unchanged.
+- [VERIFIED] Focused Pest 5/TIA coverage passes the manual-close, close-alert,
+  stop-loss, and final-PnL regression paths.
+
 ## 1.91.2 - 2026-08-04
 
 Ships `kraitebot/core` 1.102.2.
