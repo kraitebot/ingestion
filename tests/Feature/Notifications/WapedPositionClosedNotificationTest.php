@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Str;
 use Kraite\Core\Enums\NotificationSeverity;
@@ -20,6 +21,9 @@ use Kraite\Core\Models\User;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Notifications\Channels\AppPushChannel;
 use Kraite\Core\Support\PositionClosedNotifier;
+use NotificationChannels\Pushover\PushoverChannel;
+
+use function Pest\Laravel\mock;
 
 beforeEach(function (): void {
     Kraite::findOrFail(1)->updateSaving(['notifications_enabled' => true]);
@@ -111,6 +115,11 @@ function dispatchWapedCloseNotification(
 }
 
 it('sends a WAP-position close through the trader channels including the iPhone app', function (): void {
+    Mail::fake();
+    mock(PushoverChannel::class)
+        ->shouldReceive('send')
+        ->once()
+        ->andReturnNull();
     Http::fake([
         'https://exp.host/--/api/v2/push/send' => Http::response([
             'data' => [['status' => 'ok', 'id' => 'wap-close-ticket']],
@@ -130,8 +139,15 @@ it('sends a WAP-position close through the trader channels including the iPhone 
         ->where('user_id', $user->id)
         ->where('canonical', 'position_closed')
         ->where('channel', 'app');
+    $mailLogs = NotificationLog::query()
+        ->where('user_id', $user->id)
+        ->where('canonical', 'position_closed')
+        ->where('channel', 'mail');
 
-    expect((clone $appLogs)->count())->toBe(0);
+    expect((clone $appLogs)->count())
+        ->toBe(0)
+        ->and((clone $mailLogs)->count())
+        ->toBe(0);
 
     expect(dispatchWapedCloseNotification($position))->toBe([
         'waped_closed_notification_sent' => false,
@@ -175,7 +191,83 @@ it('sends a WAP-position close through the trader channels including the iPhone 
     ]);
 
     Http::assertSentCount(1);
-    expect((clone $appLogs)->count())->toBe(1);
+    expect((clone $appLogs)->count())
+        ->toBe(1)
+        ->and((clone $mailLogs)->count())
+        ->toBe(1)
+        ->and((clone $mailLogs)->sole()->recipient)
+        ->toBe($user->email);
+});
+
+it('routes every WAP close to trader app and email plus operator Pushover despite empty trader preferences', function (): void {
+    NotificationFacade::fake();
+    $position = buildPositionForWapedCloseNotification(true, [], pnl: '4.25000000');
+    $trader = $position->account->user;
+    $operator = Kraite::admin();
+
+    NotificationFacade::assertNothingSent();
+
+    expect(dispatchWapedCloseNotification($position))->toBe([
+        'waped_closed_notification_sent' => true,
+        'high_profit_notification_sent' => false,
+    ]);
+
+    NotificationFacade::assertSentToTimes($trader, AlertNotification::class, 1);
+    NotificationFacade::assertSentTo(
+        $trader,
+        AlertNotification::class,
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_closed'
+            && $notification->via($trader) === [AppPushChannel::class, 'mail'],
+    );
+    NotificationFacade::assertSentToTimes($operator, AlertNotification::class, 1);
+    NotificationFacade::assertSentTo(
+        $operator,
+        AlertNotification::class,
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_closed'
+            && $notification->via($operator) === [PushoverChannel::class],
+    );
+});
+
+it('still delivers trader app and email when operator Pushover throws', function (): void {
+    Mail::fake();
+    mock(PushoverChannel::class)
+        ->shouldReceive('send')
+        ->once()
+        ->andThrow(new RuntimeException('Pushover unavailable'));
+    Http::fake([
+        'https://exp.host/--/api/v2/push/send' => Http::response([
+            'data' => [['status' => 'ok', 'id' => 'fallback-app-ticket']],
+        ]),
+    ]);
+    $position = buildPositionForWapedCloseNotification(true, [], pnl: '4.25000000');
+    $trader = $position->account->user;
+    $token = 'ExponentPushToken[fallback_phone]';
+    AppPushDevice::factory()->create([
+        'user_id' => $trader->id,
+        'expo_push_token' => $token,
+        'token_hash' => hash('sha256', $token),
+        'disabled_at' => null,
+    ]);
+
+    expect(dispatchWapedCloseNotification($position))->toBe([
+        'waped_closed_notification_sent' => false,
+        'high_profit_notification_sent' => false,
+    ]);
+
+    Http::assertSent(static fn (Request $request): bool => ($request->data()[0]['to'] ?? null) === $token);
+    expect(NotificationLog::query()
+        ->where('user_id', $trader->id)
+        ->where('canonical', 'position_closed')
+        ->where('channel', 'app')
+        ->count())
+        ->toBe(1)
+        ->and(NotificationLog::query()
+            ->where('user_id', $trader->id)
+            ->where('canonical', 'position_closed')
+            ->where('channel', 'mail')
+            ->where('recipient', $trader->email)
+            ->count())
+        ->toBe(1);
 });
 
 it('does not send the close notification for a position that never completed WAP', function (): void {
@@ -217,8 +309,15 @@ it('sends only the specialized high-profit close when its threshold is met', fun
         $user,
         AlertNotification::class,
         static fn (AlertNotification $notification): bool => $notification->canonical === 'position_high_profit_closed'
-            && $notification->via($user) === ['mail', AppPushChannel::class]
+            && $notification->via($user) === [AppPushChannel::class, 'mail']
             && str_contains((string) $notification->pushoverMessage, 'Exit: 12.456')
             && ! str_contains((string) $notification->pushoverMessage, '12.456789'),
+    );
+    NotificationFacade::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
+    NotificationFacade::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_high_profit_closed'
+            && $notification->via(Kraite::admin()) === [PushoverChannel::class],
     );
 });

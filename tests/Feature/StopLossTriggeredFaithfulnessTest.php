@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Atomic\Position\CancelAlgoOpenOrdersJob;
 use Kraite\Core\Jobs\Lifecycles\Position\ClosePositionJob;
+use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use StepDispatcher\Models\Step;
@@ -61,6 +63,25 @@ function buildAlgoStopLossOrder(Position $position, string $status = 'NEW', ?str
     ]);
 }
 
+function attachExchangeSymbolForTriggeredStopTest(Position $position): ExchangeSymbol
+{
+    $token = 'SL'.Str::upper(Str::random(8));
+    $exchangeSymbol = ExchangeSymbol::factory()->create([
+        'token' => $token,
+        'quote' => 'USDT',
+        'api_system_id' => $position->account->api_system_id,
+        'system_disabled_at' => null,
+        'system_disabled_reason' => null,
+    ]);
+
+    $position->updateSaving([
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'parsed_trading_pair' => $token.'USDT',
+    ]);
+
+    return $exchangeSymbol;
+}
+
 // ───────────────── Pin 1: TRIGGERED dispatches ClosePositionJob ─────────────────
 
 it('dispatches ClosePositionJob when a STOP-MARKET algo transitions to TRIGGERED', function (): void {
@@ -87,6 +108,119 @@ it('still dispatches ClosePositionJob when a STOP-MARKET goes FILLED (regression
     $step = Steps::usingPrefix('trading', fn () => Step::where('class', ClosePositionJob::class)->first());
 
     expect($step)->not->toBeNull();
+});
+
+it('permanently blocks only the stopped exchange symbol after a confirmed stop execution', function (string $status): void {
+    $position = buildBinanceTriggeredTestPosition();
+    $exchangeSymbol = attachExchangeSymbolForTriggeredStopTest($position);
+    $unrelatedExchangeSymbol = ExchangeSymbol::factory()->create([
+        'token' => 'SAFE'.Str::upper(Str::random(8)),
+        'system_disabled_at' => null,
+        'system_disabled_reason' => null,
+    ]);
+    $existingSiblingPosition = Position::factory()->short()->create([
+        'exchange_symbol_id' => $exchangeSymbol->id,
+        'status' => 'active',
+    ]);
+    $stopLoss = buildAlgoStopLossOrder($position, status: 'NEW');
+
+    expect($exchangeSymbol->system_disabled_at)
+        ->toBeNull()
+        ->and($exchangeSymbol->system_disabled_reason)
+        ->toBeNull()
+        ->and($unrelatedExchangeSymbol->system_disabled_at)
+        ->toBeNull()
+        ->and($existingSiblingPosition->status)
+        ->toBe('active');
+
+    $stopLoss->update(['status' => $status]);
+
+    expect($exchangeSymbol->fresh()->system_disabled_at?->toDateTimeString())
+        ->toBe(now()->toDateTimeString())
+        ->and($exchangeSymbol->fresh()->system_disabled_reason)
+        ->toBe('stop_loss_triggered')
+        ->and($unrelatedExchangeSymbol->fresh()->system_disabled_at)
+        ->toBeNull()
+        ->and($unrelatedExchangeSymbol->fresh()->system_disabled_reason)
+        ->toBeNull()
+        ->and($existingSiblingPosition->fresh()->status)
+        ->toBe('active');
+})->with([
+    'triggered algo status' => 'TRIGGERED',
+    'filled stop status' => 'FILLED',
+]);
+
+it('does not block the exchange symbol when a profit order closes the position', function (): void {
+    $position = buildBinanceTriggeredTestPosition();
+    $exchangeSymbol = attachExchangeSymbolForTriggeredStopTest($position);
+    $profitOrder = Order::create([
+        'position_id' => $position->id,
+        'side' => 'SELL',
+        'position_side' => $position->direction,
+        'type' => 'PROFIT-LIMIT',
+        'price' => '0.20000',
+        'quantity' => '10',
+        'is_algo' => false,
+        'status' => 'NEW',
+        'exchange_order_id' => 'profit-'.Str::uuid(),
+    ]);
+
+    expect($exchangeSymbol->system_disabled_at)
+        ->toBeNull()
+        ->and($exchangeSymbol->system_disabled_reason)
+        ->toBeNull();
+
+    $profitOrder->update(['status' => 'FILLED']);
+
+    expect($exchangeSymbol->fresh()->system_disabled_at)
+        ->toBeNull()
+        ->and($exchangeSymbol->fresh()->system_disabled_reason)
+        ->toBeNull();
+});
+
+it('does not block the exchange symbol when a stop order ends without executing', function (string $status): void {
+    $position = buildBinanceTriggeredTestPosition();
+    $exchangeSymbol = attachExchangeSymbolForTriggeredStopTest($position);
+    $stopLoss = buildAlgoStopLossOrder($position, status: 'NEW');
+
+    expect($exchangeSymbol->system_disabled_at)
+        ->toBeNull()
+        ->and($exchangeSymbol->system_disabled_reason)
+        ->toBeNull();
+
+    $stopLoss->update(['status' => $status]);
+
+    expect($exchangeSymbol->fresh()->system_disabled_at)
+        ->toBeNull()
+        ->and($exchangeSymbol->fresh()->system_disabled_reason)
+        ->toBeNull();
+})->with([
+    'cancelled' => 'CANCELLED',
+    'expired' => 'EXPIRED',
+    'rejected' => 'REJECTED',
+]);
+
+it('preserves an earlier system block when the stop later executes', function (): void {
+    $position = buildBinanceTriggeredTestPosition();
+    $exchangeSymbol = attachExchangeSymbolForTriggeredStopTest($position);
+    $blockedAt = now()->subHour();
+    $exchangeSymbol->updateSaving([
+        'system_disabled_at' => $blockedAt,
+        'system_disabled_reason' => ExchangeSymbol::SYSTEM_BLOCK_OPENING_FAILED,
+    ]);
+    $stopLoss = buildAlgoStopLossOrder($position, status: 'NEW');
+
+    expect($exchangeSymbol->fresh()->system_disabled_at?->toDateTimeString())
+        ->toBe($blockedAt->toDateTimeString())
+        ->and($exchangeSymbol->fresh()->system_disabled_reason)
+        ->toBe(ExchangeSymbol::SYSTEM_BLOCK_OPENING_FAILED);
+
+    $stopLoss->update(['status' => 'TRIGGERED']);
+
+    expect($exchangeSymbol->fresh()->system_disabled_at?->toDateTimeString())
+        ->toBe($blockedAt->toDateTimeString())
+        ->and($exchangeSymbol->fresh()->system_disabled_reason)
+        ->toBe(ExchangeSymbol::SYSTEM_BLOCK_OPENING_FAILED);
 });
 
 // ───────────────── Pin 2: CancelAlgoOpenOrdersJob skips TRIGGERED ─────────────────
