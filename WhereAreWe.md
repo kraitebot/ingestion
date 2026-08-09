@@ -1,3 +1,25 @@
+# WhereAreWe — 2026-08-09 (manual-close evidence and exact close prices)
+
+## Date
+
+2026-08-09
+
+## This release
+
+- **Exchange-side closes remain fast and honest:** direct Binance user-data
+  fills still start replacement immediately, while one-way and hedge-mode
+  side semantics prevent opening fills from being mislabeled as closes.
+- **Dropped frames no longer force a guess:** after confirmed flatness, the
+  engine checks archived events, bounded Binance trades/orders/algo-orders,
+  and force-order evidence. Only externally proven closes receive manual
+  attribution; Kraite, liquidation/ADL, and unknown evidence stay automatic
+  or unclassified.
+- **The trader's actual exit price is preserved:** the final reducing trade's
+  exact price survives the close-data update instead of being replaced by a
+  generic or unavailable order price.
+
+---
+
 # WhereAreWe — 2026-08-04 (partial-close reconciliation and Laravel audit)
 
 ## Date

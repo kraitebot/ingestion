@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.92.1 - 2026-08-09
+
+Ships `kraitebot/core` 1.103.1.
+
+### Reliable manual-close attribution
+
+- [FIXED] Direct user-data closes remain the fast path while one-way and
+  hedge-mode side semantics reject opening or ambiguous fills.
+- [FIXED] Confirmed-flat fallback checks archived events, Binance trades,
+  regular/algo orders, and force orders; Kraite-owned, forced, and unknown
+  evidence is never labeled manual.
+- [FIXED] The final reducing trade price survives the remaining close-data
+  update.
+- [VERIFIED] Focused Pest 5/TIA coverage passes 58 tests and 124 assertions.
+
 ## 1.92.0 - 2026-08-08
 
 Ships `kraitebot/core` 1.103.0.
