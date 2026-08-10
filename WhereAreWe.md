@@ -1,4 +1,4 @@
-# WhereAreWe — 2026-08-10 (bounded monitor noise and release lifecycle)
+# WhereAreWe — 2026-08-10 (fresh workers and bounded monitor noise)
 
 ## Date
 
@@ -6,6 +6,10 @@
 
 ## This release
 
+- **Warmup refreshes the full ingestion runtime:** the canonical warmup
+  restarts Horizon, both Binance streams, dispatch, and the scheduler before
+  lifting maintenance. A failed restart leaves the application down for a
+  safe retry, so no mixed old/new worker set can accept trading work.
 - **Planned sibling maintenance stays quiet without hiding outages:** the
   health watchdog suppresses only HTTP 503 responses backed by that exact
   Laravel application's fresh maintenance marker. HTTP 500s, missing markers,

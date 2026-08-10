@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.92.4 - 2026-08-10
+
+Ships `kraitebot/core` 1.103.4.
+
+### Fresh workers at warmup
+
+- [FIXED] Canonical warmup restarts all five ingestion supervisors before the
+  application leaves maintenance, so deployed code is loaded by every
+  long-lived process.
+- [HARDENED] A failed restart keeps the application cooled and returns a failed
+  warmup result for safe operator retry.
+- [VERIFIED] Pest 5/TIA focused coverage passes the warmup, health, monitor,
+  schedule, and deployment handoff paths.
+
 ## 1.92.3 - 2026-08-10
 
 Ships `kraitebot/core` 1.103.3.
