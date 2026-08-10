@@ -43,15 +43,15 @@ echo ""
 # though the app is in maintenance + Horizon is processing). Use sparingly and
 # only when the operator has independently verified the box is safe to deploy.
 if [ "${KRAITE_DEPLOY_REEXECED:-0}" = "1" ] && [ "${KRAITE_COOLDOWN_VERIFIED:-0}" = "1" ]; then
-    echo "[1/9] Cooldown verified by pre-checkout pass"
+    echo "[1/10] Cooldown verified by pre-checkout pass"
 elif [ "${FORCE_DEPLOY:-0}" = "1" ]; then
-    echo "[1/9] Cooldown check BYPASSED (FORCE_DEPLOY=1)"
+    echo "[1/10] Cooldown check BYPASSED (FORCE_DEPLOY=1)"
 elif ! su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:cooldown --status" 2>&1 | grep -q "STATUS:COOLED_DOWN"; then
     echo "ERROR: Server is NOT cooled down. Run 'php artisan kraite:cooldown' first."
     echo "       Or, if you've independently verified the box is safe, re-run with FORCE_DEPLOY=1."
     exit 1
 else
-    echo "[1/9] Cooldown verified"
+    echo "[1/10] Cooldown verified"
 fi
 
 # The checkout can introduce an application/package API pair that the old
@@ -67,7 +67,7 @@ if ! su - $KRAITE_USER -c 'composer config --global --list 2>/dev/null' | grep -
     echo "WARNING: $KRAITE_USER missing composer GitHub OAuth — skipping auto-setup."
     echo "Run: su - $KRAITE_USER -c 'composer config --global github-oauth.github.com <token>'"
 fi
-echo "[2/9] Composer auth: verified"
+echo "[2/10] Composer auth: verified"
 
 # --- Step 3: Pull latest code (by TAG, not branch HEAD) ---
 # deploy.sh expects $DEPLOY_TAG to be set by the caller. If missing, abort.
@@ -123,13 +123,13 @@ chown $KRAITE_USER:www-data "$PROJECT_DIR/composer.json" "$PROJECT_DIR/composer.
 # before the re-exec is detected and skipped.
 if [ "${KRAITE_DEPLOY_REEXECED:-0}" != "1" ]; then
     export KRAITE_DEPLOY_REEXECED=1
-    echo "[3.5/9] Re-execing deploy.sh from the checked-out tag"
+    echo "[3.5/10] Re-execing deploy.sh from the checked-out tag"
     exec bash "$PROJECT_DIR/deploy.sh"
 fi
-echo "[3.5/9] Re-exec already done (KRAITE_DEPLOY_REEXECED=1)"
+echo "[3.5/10] Re-exec already done (KRAITE_DEPLOY_REEXECED=1)"
 
 COMMIT=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && git log --oneline -1")
-echo "[3/9] Code: $COMMIT"
+echo "[3/10] Code: $COMMIT"
 
 # --- Step 4: Install committed production dependencies ---
 # Dependency resolution happens locally before the release tag is created.
@@ -149,7 +149,7 @@ fi
 su - $KRAITE_USER -c "cd $PROJECT_DIR && $COMPOSER_BIN install --no-interaction --no-dev --optimize-autoloader --quiet"
 CORE_VERSION=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='kraitebot/core']" 2>/dev/null || echo "unknown")
 SD_VERSION=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(p['version']) for p in d['packages'] if p['name']=='brunocfalcao/step-dispatcher']" 2>/dev/null || echo "unknown")
-echo "[4/9] Composer: installed (core $CORE_VERSION, step-dispatcher $SD_VERSION)"
+echo "[4/10] Composer: installed (core $CORE_VERSION, step-dispatcher $SD_VERSION)"
 
 # HARD RULE: no dev-master on production. Verify no packages resolved to dev-*.
 DEV_PKGS=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && cat composer.lock" | python3 -c "
@@ -171,11 +171,11 @@ fi
 chown -R $KRAITE_USER:www-data "$PROJECT_DIR"
 chmod -R 775 "$PROJECT_DIR/storage" "$PROJECT_DIR/bootstrap/cache"
 chmod 644 "$PROJECT_DIR/bootstrap/cache"/*.php 2>/dev/null || true
-echo "[5/9] Permissions: fixed"
+echo "[5/10] Permissions: fixed"
 
 # --- Step 6: Read server role ---
 SERVER_ROLE=$(su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan tinker --execute=\"echo config('kraite.server_role', 'web');\"" 2>/dev/null | tail -1 || echo "web")
-echo "[6/9] Server role: $SERVER_ROLE"
+echo "[6/10] Server role: $SERVER_ROLE"
 
 # --- Step 7: DB backup + migrate (ingestion only) ---
 # Backups land in $PROJECT_DIR/db-backups/ — a flat directory at the
@@ -189,7 +189,7 @@ echo "[6/9] Server role: $SERVER_ROLE"
 # the dump; migrations and every later deployment gate still run normally.
 if [ "$SERVER_ROLE" = "ingestion" ]; then
     if [ "${SKIP_DB_BACKUP:-0}" = "1" ]; then
-        echo "[7/9] DB backup: skipped (SKIP_DB_BACKUP=1)"
+        echo "[7/10] DB backup: skipped (SKIP_DB_BACKUP=1)"
     else
         BACKUP_DIR="$PROJECT_DIR/db-backups"
         mkdir -p "$BACKUP_DIR"
@@ -225,26 +225,26 @@ if [ "$SERVER_ROLE" = "ingestion" ]; then
     # to dump), the gzip would also "succeed" and leave a near-zero-byte
     # file. Refuse to migrate against an empty snapshot.
         if [ ! -s "$BACKUP_FILE" ] || [ "$(stat -c %s "$BACKUP_FILE" 2>/dev/null || stat -f %z "$BACKUP_FILE")" -lt 1024 ]; then
-            echo "[7/9] DB backup FAILED — snapshot is empty or under 1KB at $BACKUP_FILE. Aborting before migrations."
+            echo "[7/10] DB backup FAILED — snapshot is empty or under 1KB at $BACKUP_FILE. Aborting before migrations."
             exit 1
         fi
 
         chown $KRAITE_USER:www-data "$BACKUP_FILE"
-        echo "[7/9] DB backup: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+        echo "[7/10] DB backup: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
     fi
 
     su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan migrate --force --no-interaction"
-    echo "[7/9] Migrations: done"
+    echo "[7/10] Migrations: done"
 else
-    echo "[7/9] Migrations: skipped (role=$SERVER_ROLE)"
+    echo "[7/10] Migrations: skipped (role=$SERVER_ROLE)"
 fi
 
 # --- Step 8: Build frontend (if applicable) ---
 if [ -f "$PROJECT_DIR/package.json" ] && grep -q '"build"' "$PROJECT_DIR/package.json" 2>/dev/null; then
     su - $KRAITE_USER -c "cd $PROJECT_DIR && npm install --quiet 2>/dev/null && npm run build --quiet 2>/dev/null"
-    echo "[8/9] Frontend: built"
+    echo "[8/10] Frontend: built"
 else
-    echo "[8/9] Frontend: N/A"
+    echo "[8/10] Frontend: N/A"
 fi
 
 # --- Step 9: Rebuild caches ---
@@ -254,7 +254,7 @@ su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan route:cache"
 su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan view:cache" 2>/dev/null || true
 chmod 644 "$PROJECT_DIR/bootstrap/cache"/*.php 2>/dev/null || true
 chgrp www-data "$PROJECT_DIR/bootstrap/cache"/*.php 2>/dev/null || true
-echo "[9/9] Caches: rebuilt"
+echo "[9/10] Caches: rebuilt"
 
 # --- Step 10: Fleet topology drift check ---
 # Hard floor: assert every `config('kraite.horizon.workers')` key has a
@@ -271,54 +271,11 @@ echo "[9/9] Caches: rebuilt"
 echo ""
 echo "--- Step 10: Fleet topology check ---"
 su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan kraite:verify-fleet-topology --fail-on-drift --quiet-on-success"
-echo "[10/11] Fleet topology: aligned"
+echo "[10/10] Fleet topology: aligned"
 
-# --- Step 11: Force-restart long-running PHP daemons ---
-# Long-running PHP processes (Horizon supervisors, kraite:dispatch-daemon,
-# WS streams) hold class definitions in memory for their entire lifetime.
-# After a code change, without an explicit restart they continue executing
-# the OLD opcode even though the new files are already on disk. CLI
-# opcache is off, so any FRESH PHP invocation (artisan, schedule:run
-# children) picks up new code immediately — but long-lived daemons do not.
-#
-# Concrete incident 2026-05-31: queue-name convention flip
-# ({logical}-{hostname} → {hostname}-{logical}) shipped successfully, but
-# kraite:dispatch-daemon (started days earlier) kept dispatching to
-# OLD-convention queues that no Horizon supervisor subscribed to under
-# the new naming. Steps stayed Dispatched until recover-stale promoted
-# them to the literal 'priority' queue (also unconsumed because workers
-# now subscribe to {hostname}-priority), and the loop accumulated 1.96M
-# orphan Redis jobs locally before the trap was identified.
-#
-# Server is cooled down by Step 1 gate at this point — no in-flight
-# work, no ongoing API calls. Restart is safe across the role unit set.
-# Each restart is best-effort (`|| true`): a unit missing from this host's
-# supervisor config is normal (workers don't run dispatch-daemon or WS
-# streams) and must not abort the deploy.
-echo ""
-echo "--- Step 11: Restart long-running daemons ---"
-case "$SERVER_ROLE" in
-    ingestion)
-        UNITS="kraite-horizon kraite-dispatch-daemon kraite-stream-binance-prices kraite-stream-binance-user-data"
-        ;;
-    *)
-        UNITS="kraite-horizon"
-        ;;
-esac
-
-for unit in $UNITS; do
-    # supervisorctl exits non-zero for a configured program in STOPPED/FATAL
-    # state. Capture the status before matching so pipefail does not
-    # misclassify that program as absent and skip the required restart.
-    unit_status=$(supervisorctl status "$unit" 2>/dev/null || true)
-
-    if grep -qE "RUNNING|STOPPED|FATAL|EXITED" <<< "$unit_status"; then
-        supervisorctl restart "$unit" 2>&1 | sed 's/^/    /' || true
-    else
-        echo "    $unit: not configured on this host, skipping"
-    fi
-done
-echo "[11/11] Daemons: restarted with fresh opcode"
+# Keep the cooldown boundary real. Starting writers here caused each release
+# to boot the user-data daemon, stop it again for diagnostics, then boot it a
+# second time during warmup. Only kraite:warmup may start long-lived application processes.
 
 echo ""
 echo "=== Deploy complete ==="

@@ -17,10 +17,13 @@ BASH;
         ->and(mb_strpos($source, $handoffBranch))->toBeLessThan(mb_strpos($source, $cooldownProbe));
 });
 
-it('can restart a configured supervisor program that is currently stopped', function (): void {
+it('keeps every long-lived writer stopped until the canonical warmup owns the restart', function (): void {
     $source = file_get_contents(base_path('deploy.sh'));
 
     expect($source)
-        ->toContain('unit_status=$(supervisorctl status "$unit" 2>/dev/null || true)')
-        ->toContain('grep -qE "RUNNING|STOPPED|FATAL|EXITED" <<< "$unit_status"');
+        ->not->toContain('supervisorctl restart')
+        ->not->toContain('UNITS="kraite-horizon')
+        ->not->toMatch('/\[\d+(?:\.\d+)?\/9\]/')
+        ->toContain('[10/10] Fleet topology: aligned')
+        ->toContain('Only kraite:warmup may start long-lived application processes.');
 });

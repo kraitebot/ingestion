@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.92.3 - 2026-08-10
+
+Ships `kraitebot/core` 1.103.3.
+
+### Bounded production monitor alerts
+
+- [FIXED] Planned sibling Laravel maintenance no longer creates false public
+  endpoint alerts; only a fresh exact down marker suppresses HTTP 503.
+- [FIXED] Deploy leaves long-lived writers stopped until canonical warmup,
+  preventing duplicate daemon starts during the diagnostics boundary.
+- [VERIFIED] Stable monitor signals dedupe unchanged advisories, recovery is
+  independently visible, and the effective nullable trading gate is used.
+- [VERIFIED] Focused Pest 5/TIA coverage passes the health, monitor, schedule,
+  and deployment handoff regression paths.
+
 ## 1.92.2 - 2026-08-10
 
 Ships `kraitebot/core` 1.103.2.

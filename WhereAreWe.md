@@ -1,3 +1,22 @@
+# WhereAreWe — 2026-08-10 (bounded monitor noise and release lifecycle)
+
+## Date
+
+2026-08-10
+
+## This release
+
+- **Planned sibling maintenance stays quiet without hiding outages:** the
+  health watchdog suppresses only HTTP 503 responses backed by that exact
+  Laravel application's fresh maintenance marker. HTTP 500s, missing markers,
+  and stuck maintenance remain alertable.
+- **A release starts long-lived writers exactly once:** deploy leaves Horizon,
+  streams, and dispatch stopped after the diagnostics reset; canonical warmup
+  alone restarts them.
+- **Operational pages are actionable:** stable monitor signals dedupe for a
+  day, recovery has its own bucket, critical trading-safety findings can still
+  page immediately, and the monitor uses the engine's effective nullable gate.
+
 # WhereAreWe — 2026-08-10 (GRAM drift snapshot race guard)
 
 ## Date

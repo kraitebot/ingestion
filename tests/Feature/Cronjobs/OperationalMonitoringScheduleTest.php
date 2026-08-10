@@ -15,6 +15,15 @@ it('keeps every user-facing endpoint from the retired local monitor under the he
         'api_aasa' => 'https://api.kraite.com/.well-known/apple-app-site-association',
         'syntax' => 'https://syntax.kraite.com/',
     ]);
+
+    expect(config('kraite.health_watchdog.public_endpoint_maintenance_markers'))->toBe([
+        'kraite_home' => '/home/kraite/kraite.com/storage/framework/down',
+        'registration' => '/home/kraite/kraite.com/storage/framework/down',
+        'privacy' => '/home/kraite/kraite.com/storage/framework/down',
+        'terms' => '/home/kraite/kraite.com/storage/framework/down',
+        'admin' => '/home/kraite/admin.kraite.com/storage/framework/down',
+        'api_aasa' => '/home/kraite/admin.kraite.com/storage/framework/down',
+    ]);
 });
 
 it('owns every production monitor cadence in the ingestion Laravel schedule', function (): void {
