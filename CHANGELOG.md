@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.92.5 - 2026-08-10
+
+Ships `kraitebot/core` 1.103.4.
+
+### Quiet diagnostics boundary
+
+- [FIXED] Deploy explicitly stops any already-running ingestion supervisors
+  before the post-deploy diagnostics reset; warmup remains their sole restart
+  owner.
+- [HARDENED] A release cannot claim a quiet diagnostics boundary while stale
+  long-lived workers are still writing.
+- [VERIFIED] Deploy handoff coverage proves the five ingestion units stop and
+  no deploy-time restart path exists.
+
 ## 1.92.4 - 2026-08-10
 
 Ships `kraitebot/core` 1.103.4.

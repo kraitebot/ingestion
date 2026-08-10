@@ -22,8 +22,10 @@ it('keeps every long-lived writer stopped until the canonical warmup owns the re
 
     expect($source)
         ->not->toContain('supervisorctl restart')
-        ->not->toContain('UNITS="kraite-horizon')
+        ->toContain('supervisorctl stop')
+        ->toContain('UNITS="kraite-horizon kraite-stream-binance-prices kraite-stream-binance-user-data kraite-dispatch-daemon kraite-scheduler"')
         ->not->toMatch('/\[\d+(?:\.\d+)?\/9\]/')
         ->toContain('[10/10] Fleet topology: aligned')
+        ->toContain('[11/11] Daemons: stopped for warmup')
         ->toContain('Only kraite:warmup may start long-lived application processes.');
 });

@@ -6,6 +6,10 @@
 
 ## This release
 
+- **The diagnostics boundary is now genuinely quiet:** deploy stops any
+  already-running ingestion supervisors before reset, and canonical warmup is
+  still the only restart owner. This closes the gap where old workers could
+  keep writing while a release was being baselined.
 - **Warmup refreshes the full ingestion runtime:** the canonical warmup
   restarts Horizon, both Binance streams, dispatch, and the scheduler before
   lifting maintenance. A failed restart leaves the application down for a

@@ -276,6 +276,34 @@ echo "[10/10] Fleet topology: aligned"
 # Keep the cooldown boundary real. Starting writers here caused each release
 # to boot the user-data daemon, stop it again for diagnostics, then boot it a
 # second time during warmup. Only kraite:warmup may start long-lived application processes.
+# Stop any processes that were already running when cooldown began so the
+# diagnostics reset has a genuinely quiet boundary and warmup cannot leave a
+# pre-release worker alive.
+echo ""
+echo "--- Step 11: Stop long-running daemons ---"
+case "$SERVER_ROLE" in
+    ingestion)
+        UNITS="kraite-horizon kraite-stream-binance-prices kraite-stream-binance-user-data kraite-dispatch-daemon kraite-scheduler"
+        ;;
+    *)
+        UNITS="kraite-horizon"
+        ;;
+esac
+
+for unit in $UNITS; do
+    unit_status=$(supervisorctl status "$unit" 2>/dev/null || true)
+
+    if grep -qE "RUNNING|STOPPED|FATAL|EXITED" <<< "$unit_status"; then
+        if grep -q "RUNNING" <<< "$unit_status"; then
+            supervisorctl stop "$unit" 2>&1 | sed 's/^/    /'
+        else
+            echo "    $unit: already stopped"
+        fi
+    else
+        echo "    $unit: not configured on this host, skipping"
+    fi
+done
+echo "[11/11] Daemons: stopped for warmup"
 
 echo ""
 echo "=== Deploy complete ==="
