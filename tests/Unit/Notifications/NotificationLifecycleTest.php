@@ -65,6 +65,53 @@ it('describes position drift as alert-only instead of claiming the drift command
         ->not->toContain('sync-orders dispatched');
 });
 
+it('builds the exchange-only position alert used by the drift command', function (): void {
+    $message = NotificationMessageBuilder::build('position_exchange_only_detected', [
+        'pair' => 'GRAMUSDT',
+        'direction' => 'SHORT',
+        'account_name' => 'Binance Account',
+        'exchange' => 'binance',
+        'exchange_data' => ['quantity' => '86'],
+    ]);
+
+    expect($message['severity'])->toBe(Kraite\Core\Enums\NotificationSeverity::Critical)
+        ->and($message['title'])->toBe('Untracked Exchange Position Detected')
+        ->and($message['emailMessage'])->toContain('GRAMUSDT', 'SHORT', 'Binance Account')
+        ->and($message['pushoverMessage'])->toContain('GRAMUSDT', 'SHORT');
+});
+
+it('builds the exchange-only orders alert used by the drift command', function (): void {
+    $message = NotificationMessageBuilder::build('orders_exchange_only_detected', [
+        'account_name' => 'Binance Account',
+        'exchange' => 'binance',
+        'orphan_count' => 1,
+        'orphans' => [[
+            'symbol' => 'GRAMUSDT',
+            'type' => 'STOP_MARKET',
+            'exchange_order_id' => '4000001819508418',
+        ]],
+    ]);
+
+    expect($message['severity'])->toBe(Kraite\Core\Enums\NotificationSeverity::Critical)
+        ->and($message['title'])->toBe('Untracked Exchange Orders Detected')
+        ->and($message['emailMessage'])->toContain('GRAMUSDT', '4000001819508418')
+        ->and($message['pushoverMessage'])->toContain('1', 'Binance Account');
+});
+
+it('builds the incomplete drift snapshot alert used by the drift command', function (): void {
+    $message = NotificationMessageBuilder::build('account_drift_snapshot_failed', [
+        'account_name' => 'Binance Account',
+        'exchange' => 'binance',
+        'api_error' => 'openAlgoOrders unavailable?signature=DO_NOT_EXPOSE',
+    ]);
+
+    expect($message['severity'])->toBe(Kraite\Core\Enums\NotificationSeverity::High)
+        ->and($message['title'])->toBe('Drift Snapshot Incomplete')
+        ->and($message['emailMessage'])->toContain('Binance Account', 'openAlgoOrders unavailable')
+        ->and($message['emailMessage'])->not->toContain('DO_NOT_EXPOSE')
+        ->and($message['pushoverMessage'])->toContain('Binance Account', 'snapshot');
+});
+
 it('NotificationService.flushNotificationCache exists for test isolation', function (): void {
     // The in-process cache prevents a per-call DB hit on hot paths
     // (`ApiRequestLog::saved` event, every position lifecycle step).

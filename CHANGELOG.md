@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.92.2 - 2026-08-10
+
+Ships `kraitebot/core` 1.103.2.
+
+### Trustworthy drift snapshots
+
+- [FIXED] GRAM close races no longer create stale missing-protection alerts:
+  quiet candidates are revalidated against local state and current exchange
+  exposure before notification.
+- [FIXED] Required conditional-order and final exposure failures stay
+  inconclusive instead of manufacturing drift from partial snapshots.
+- [FIXED] Exchange-only position and order candidates recheck local ownership;
+  genuine untracked exposure remains alertable.
+- [VERIFIED] Targeted Pest 5/TIA coverage passes 45 tests and 169 assertions;
+  syntax, Pint, Rector, and PHPStan gates pass for the application.
+
 ## 1.92.1 - 2026-08-09
 
 Ships `kraitebot/core` 1.103.1.

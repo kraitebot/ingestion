@@ -128,8 +128,426 @@ function bindDriftReport(\Kraite\Core\Support\Drift\AccountDriftReport $report):
 {
     $mock = M::mock(DriftChecker::class);
     $mock->shouldReceive('analyseAccount')->andReturn($report);
+    $mock->shouldReceive('isExchangePositionOpen')->andReturn(true)->byDefault();
     app()->instance(DriftChecker::class, $mock);
 }
+
+it('suppresses a drift alert when a websocket order update lands while the snapshot is assembled', function (): void {
+    $f = makeSpotterFixture(token: 'CLOSERACE');
+    $position = $f['position'];
+
+    makeSpotterOrder($position->id, [
+        'type' => 'MARKET', 'status' => 'FILLED',
+        'price' => '1.00000000', 'quantity' => '10.00000000',
+    ]);
+    $stop = makeSpotterOrder($position->id, [
+        'type' => 'STOP-MARKET', 'side' => 'SELL', 'status' => 'NEW',
+        'price' => '0.90000000', 'quantity' => '10.00000000', 'is_algo' => true,
+    ]);
+    ageAllOrdersOutsideQuietWindow($position->id);
+
+    $report = new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [
+            new \Kraite\Core\Support\Drift\PositionDriftReport(
+                symbol: $f['pair'],
+                direction: 'LONG',
+                status: \Kraite\Core\Support\Drift\PositionDriftReport::STATUS_DRIFT,
+                positionId: $position->id,
+                db: ['id' => $position->id, 'status' => 'active'],
+                exchange: ['quantity' => '10'],
+                positionDriftFields: [],
+                orders: [
+                    new \Kraite\Core\Support\Drift\OrderDriftReport(
+                        status: \Kraite\Core\Support\Drift\OrderDriftReport::STATUS_DB_ONLY,
+                        db: ['id' => $stop->id, 'type' => 'STOP-MARKET', 'status' => 'NEW'],
+                        exchange: null,
+                        driftFields: [],
+                    ),
+                ],
+            ),
+        ],
+        orphanOrders: [],
+    );
+
+    $mock = M::mock(DriftChecker::class);
+    $mock->shouldReceive('analyseAccount')
+        ->once()
+        ->andReturnUsing(function () use ($stop, $report) {
+            $stop->update(['status' => 'EXPIRED']);
+
+            return $report;
+        });
+    $mock->shouldNotReceive('isExchangePositionOpen');
+    app()->instance(DriftChecker::class, $mock);
+
+    expect($stop->fresh()->status)->toBe('NEW');
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    expect($stop->fresh()->status)->toBe('EXPIRED');
+    Notification::assertNothingSent();
+});
+
+it('suppresses a drift alert when final exchange confirmation finds the position already flat', function (): void {
+    $f = makeSpotterFixture(token: 'FLATRACE');
+    $position = $f['position'];
+
+    makeSpotterOrder($position->id, [
+        'type' => 'MARKET', 'status' => 'FILLED',
+        'price' => '1.00000000', 'quantity' => '10.00000000',
+    ]);
+    $stop = makeSpotterOrder($position->id, [
+        'type' => 'STOP-MARKET', 'side' => 'SELL', 'status' => 'NEW',
+        'price' => '0.90000000', 'quantity' => '10.00000000', 'is_algo' => true,
+    ]);
+    ageAllOrdersOutsideQuietWindow($position->id);
+
+    $report = new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [
+            new \Kraite\Core\Support\Drift\PositionDriftReport(
+                symbol: $f['pair'],
+                direction: 'LONG',
+                status: \Kraite\Core\Support\Drift\PositionDriftReport::STATUS_DRIFT,
+                positionId: $position->id,
+                db: ['id' => $position->id, 'status' => 'active'],
+                exchange: ['quantity' => '10'],
+                positionDriftFields: [],
+                orders: [
+                    new \Kraite\Core\Support\Drift\OrderDriftReport(
+                        status: \Kraite\Core\Support\Drift\OrderDriftReport::STATUS_DB_ONLY,
+                        db: ['id' => $stop->id, 'type' => 'STOP-MARKET', 'status' => 'NEW'],
+                        exchange: null,
+                        driftFields: [],
+                    ),
+                ],
+            ),
+        ],
+        orphanOrders: [],
+    );
+
+    $mock = M::mock(DriftChecker::class);
+    $mock->shouldReceive('analyseAccount')->once()->andReturn($report);
+    $mock->shouldReceive('isExchangePositionOpen')
+        ->once()
+        ->withArgs(fn (Account $account, Position $candidate): bool => $account->is($f['account']) && $candidate->is($position))
+        ->andReturn(false);
+    app()->instance(DriftChecker::class, $mock);
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    expect($position->fresh()->status)->toBe('active')
+        ->and($stop->fresh()->status)->toBe('NEW');
+    Notification::assertNothingSent();
+});
+
+it('suppresses exchange-only position alert when the local position appeared during snapshot assembly', function (): void {
+    $f = makeSpotterFixture(token: 'APPEARED');
+    makeSpotterOrder($f['position']->id, [
+        'type' => 'MARKET', 'status' => 'FILLED',
+        'price' => '1.00000000', 'quantity' => '10.00000000',
+    ]);
+    ageAllOrdersOutsideQuietWindow($f['position']->id);
+
+    $report = new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [
+            new \Kraite\Core\Support\Drift\PositionDriftReport(
+                symbol: $f['pair'],
+                direction: 'LONG',
+                status: \Kraite\Core\Support\Drift\PositionDriftReport::STATUS_EXCHANGE_ONLY,
+                positionId: null,
+                db: null,
+                exchange: ['quantity' => '10'],
+                positionDriftFields: [],
+                orders: [],
+            ),
+        ],
+        orphanOrders: [],
+    );
+    bindDriftReport($report);
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    expect($f['position']->fresh()->status)->toBe('active');
+    Notification::assertNothingSent();
+});
+
+it('suppresses exchange-only order alert when the local order appeared during snapshot assembly', function (): void {
+    $f = makeSpotterFixture(token: 'ORDERAPPEARED');
+    $order = makeSpotterOrder($f['position']->id, [
+        'type' => 'PROFIT-LIMIT', 'side' => 'SELL', 'status' => 'NEW',
+        'price' => '1.10000000', 'quantity' => '10.00000000',
+    ]);
+    ageAllOrdersOutsideQuietWindow($f['position']->id);
+
+    $report = new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [],
+        orphanOrders: [[
+            'client_order_id' => $order->client_order_id,
+            'exchange_order_id' => 'changed-during-persist',
+            'symbol' => $f['pair'],
+            'status' => 'NEW',
+            'side' => 'SELL',
+            'type' => 'LIMIT',
+            'price' => '1.10000000',
+            'quantity' => '10.00000000',
+        ]],
+    );
+    bindDriftReport($report);
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    expect($order->fresh()->status)->toBe('NEW');
+    Notification::assertNothingSent();
+});
+
+it('still alerts when a missing stop is confirmed while exchange exposure remains open', function (): void {
+    $f = makeSpotterFixture(token: 'REALSTOPDRIFT');
+    $position = $f['position'];
+    makeSpotterOrder($position->id, [
+        'type' => 'MARKET', 'status' => 'FILLED',
+        'price' => '1.00000000', 'quantity' => '10.00000000',
+    ]);
+    $stop = makeSpotterOrder($position->id, [
+        'type' => 'STOP-MARKET', 'side' => 'SELL', 'status' => 'NEW',
+        'price' => '0.90000000', 'quantity' => '10.00000000', 'is_algo' => true,
+    ]);
+    ageAllOrdersOutsideQuietWindow($position->id);
+
+    $report = new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [
+            new \Kraite\Core\Support\Drift\PositionDriftReport(
+                symbol: $f['pair'],
+                direction: 'LONG',
+                status: \Kraite\Core\Support\Drift\PositionDriftReport::STATUS_DRIFT,
+                positionId: $position->id,
+                db: ['id' => $position->id, 'status' => 'active'],
+                exchange: ['quantity' => '10'],
+                positionDriftFields: [],
+                orders: [
+                    new \Kraite\Core\Support\Drift\OrderDriftReport(
+                        status: \Kraite\Core\Support\Drift\OrderDriftReport::STATUS_DB_ONLY,
+                        db: ['id' => $stop->id, 'type' => 'STOP-MARKET', 'status' => 'NEW'],
+                        exchange: null,
+                        driftFields: [],
+                    ),
+                ],
+            ),
+        ],
+        orphanOrders: [],
+    );
+
+    $mock = M::mock(DriftChecker::class);
+    $mock->shouldReceive('analyseAccount')->once()->andReturn($report);
+    $mock->shouldReceive('isExchangePositionOpen')->once()->andReturn(true);
+    app()->instance(DriftChecker::class, $mock);
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    expect($position->fresh()->status)->toBe('active')
+        ->and($stop->fresh()->status)->toBe('NEW');
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->canonical === 'position_drift_detected',
+    );
+});
+
+it('routes failed final confirmation to snapshot-failed without sending position drift', function (): void {
+    $f = makeSpotterFixture(token: 'CONFIRMFAIL');
+    $position = $f['position'];
+    makeSpotterOrder($position->id, [
+        'type' => 'MARKET', 'status' => 'FILLED',
+        'price' => '1.00000000', 'quantity' => '10.00000000',
+    ]);
+    $stop = makeSpotterOrder($position->id, [
+        'type' => 'STOP-MARKET', 'side' => 'SELL', 'status' => 'NEW',
+        'price' => '0.90000000', 'quantity' => '10.00000000', 'is_algo' => true,
+    ]);
+    ageAllOrdersOutsideQuietWindow($position->id);
+
+    $report = new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [
+            new \Kraite\Core\Support\Drift\PositionDriftReport(
+                symbol: $f['pair'],
+                direction: 'LONG',
+                status: \Kraite\Core\Support\Drift\PositionDriftReport::STATUS_DRIFT,
+                positionId: $position->id,
+                db: ['id' => $position->id, 'status' => 'active'],
+                exchange: ['quantity' => '10'],
+                positionDriftFields: [],
+                orders: [
+                    new \Kraite\Core\Support\Drift\OrderDriftReport(
+                        status: \Kraite\Core\Support\Drift\OrderDriftReport::STATUS_DB_ONLY,
+                        db: ['id' => $stop->id, 'type' => 'STOP-MARKET', 'status' => 'NEW'],
+                        exchange: null,
+                        driftFields: [],
+                    ),
+                ],
+            ),
+        ],
+        orphanOrders: [],
+    );
+
+    $mock = M::mock(DriftChecker::class);
+    $mock->shouldReceive('analyseAccount')->once()->andReturn($report);
+    $mock->shouldReceive('isExchangePositionOpen')->once()->andThrow(new RuntimeException('confirmation unavailable'));
+    app()->instance(DriftChecker::class, $mock);
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->canonical === 'account_drift_snapshot_failed',
+    );
+    Notification::assertNotSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->canonical === 'position_drift_detected',
+    );
+});
+
+it('still alerts for a genuinely untracked exchange position', function (): void {
+    $f = makeSpotterFixture(token: 'ANCHORPOSITION');
+    makeSpotterOrder($f['position']->id, [
+        'type' => 'MARKET', 'status' => 'FILLED',
+        'price' => '1.00000000', 'quantity' => '10.00000000',
+    ]);
+    ageAllOrdersOutsideQuietWindow($f['position']->id);
+
+    $report = new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [
+            new \Kraite\Core\Support\Drift\PositionDriftReport(
+                symbol: $f['pair'],
+                direction: 'SHORT',
+                status: \Kraite\Core\Support\Drift\PositionDriftReport::STATUS_EXCHANGE_ONLY,
+                positionId: null,
+                db: null,
+                exchange: ['quantity' => '86'],
+                positionDriftFields: [],
+                orders: [],
+            ),
+        ],
+        orphanOrders: [],
+    );
+    bindDriftReport($report);
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->canonical === 'position_exchange_only_detected',
+    );
+});
+
+it('still alerts for a genuinely untracked exchange order', function (): void {
+    $f = makeSpotterFixture(token: 'ANCHORORDER');
+    makeSpotterOrder($f['position']->id, [
+        'type' => 'MARKET', 'status' => 'FILLED',
+        'price' => '1.00000000', 'quantity' => '10.00000000',
+    ]);
+    ageAllOrdersOutsideQuietWindow($f['position']->id);
+
+    $report = new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [],
+        orphanOrders: [[
+            'client_order_id' => 'untracked-client-order',
+            'exchange_order_id' => 'untracked-exchange-order',
+            'symbol' => 'UNTRACKEDUSDT',
+            'status' => 'NEW',
+            'side' => 'SELL',
+            'type' => 'STOP_MARKET',
+            'price' => '0.90000000',
+            'quantity' => '10.00000000',
+        ]],
+    );
+    bindDriftReport($report);
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->canonical === 'orders_exchange_only_detected',
+    );
+});
+
+it('alerts for an untracked exchange order that has no usable identifier', function (): void {
+    $f = makeSpotterFixture(token: 'NOORDERID');
+    makeSpotterOrder($f['position']->id, [
+        'type' => 'MARKET', 'status' => 'FILLED',
+        'price' => '1.00000000', 'quantity' => '10.00000000',
+    ]);
+    ageAllOrdersOutsideQuietWindow($f['position']->id);
+
+    bindDriftReport(new \Kraite\Core\Support\Drift\AccountDriftReport(
+        account: $f['account'],
+        positions: [],
+        orphanOrders: [[
+            'client_order_id' => null,
+            'exchange_order_id' => null,
+            'symbol' => 'UNKNOWNUSDT',
+            'status' => 'NEW',
+            'side' => 'SELL',
+            'type' => 'STOP_MARKET',
+            'price' => '0.90000000',
+            'quantity' => '10.00000000',
+        ]],
+    ));
+
+    $this->artisan('kraite:cron-check-drifts', [
+        '--skip-structure-audit' => true,
+        '--skip-wap-heal' => true,
+        '--skip-engine-health' => true,
+    ])->assertSuccessful();
+
+    Notification::assertSentTo(
+        Kraite::admin(),
+        AlertNotification::class,
+        fn (AlertNotification $notification): bool => $notification->canonical === 'orders_exchange_only_detected',
+    );
+});
 
 it('dispatches PrepareSyncOrdersJob and notifies on a quiet drifted active position', function (): void {
     $f = makeSpotterFixture();

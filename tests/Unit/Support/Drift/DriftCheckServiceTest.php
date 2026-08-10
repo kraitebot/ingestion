@@ -247,6 +247,108 @@ it('reports an HTTP 200 vendor error as snapshot failure instead of db-only drif
         ->and($report->orphanOrders)->toBe([]);
 });
 
+it('reports a Binance algo-order endpoint failure as an incomplete snapshot instead of missing-stop drift', function (): void {
+    $f = makeDriftFixture(token: 'ALGOFAIL');
+    $f['account']->update([
+        'binance_api_key' => 'TESTKEY',
+        'binance_api_secret' => 'TESTSECRET',
+    ]);
+    makeOrder($f['position']->id, [
+        'type' => 'MARKET',
+        'status' => 'FILLED',
+        'price' => '1.00000000',
+        'quantity' => '10.00000000',
+    ]);
+    makeOrder($f['position']->id, [
+        'type' => 'STOP-MARKET',
+        'side' => 'SELL',
+        'status' => 'NEW',
+        'price' => '0.90000000',
+        'quantity' => '10.00000000',
+        'is_algo' => true,
+    ]);
+
+    Http::fake(function (Illuminate\Http\Client\Request $request) use ($f) {
+        if (str_contains($request->url(), '/fapi/v1/openAlgoOrders')) {
+            return Http::response([
+                'code' => -1000,
+                'msg' => 'Internal error; unable to process your request.',
+            ], 500);
+        }
+
+        if (str_contains($request->url(), '/fapi/v3/positionRisk')) {
+            return Http::response([[
+                'symbol' => $f['pair'],
+                'positionSide' => 'LONG',
+                'positionAmt' => '10',
+                'entryPrice' => '1.00000000',
+            ]]);
+        }
+
+        return Http::response([]);
+    });
+
+    $report = (new DriftCheckService)->analyseAccount($f['account']->fresh());
+
+    expect($report->apiError)->not->toBeNull()
+        ->and($report->apiError)->toContain('Internal error')
+        ->and($report->positions)->toBe([])
+        ->and($report->orphanOrders)->toBe([]);
+});
+
+it('confirms a Binance position remains open from a fresh validated snapshot', function (): void {
+    $f = makeDriftFixture(token: 'CONFIRMOPEN');
+    $f['account']->update([
+        'binance_api_key' => 'TESTKEY',
+        'binance_api_secret' => 'TESTSECRET',
+    ]);
+    Http::fake([
+        '*' => Http::response([[
+            'symbol' => $f['pair'],
+            'positionSide' => 'LONG',
+            'positionAmt' => '10',
+            'entryPrice' => '1.00000000',
+        ]]),
+    ]);
+
+    $isOpen = (new DriftCheckService)->isExchangePositionOpen(
+        $f['account']->fresh(),
+        $f['position']->fresh(),
+    );
+
+    expect($isOpen)->toBeTrue();
+});
+
+it('confirms a Binance position became flat from a fresh validated snapshot', function (): void {
+    $f = makeDriftFixture(token: 'CONFIRMFLAT');
+    $f['account']->update([
+        'binance_api_key' => 'TESTKEY',
+        'binance_api_secret' => 'TESTSECRET',
+    ]);
+    Http::fake(['*' => Http::response([])]);
+
+    $isOpen = (new DriftCheckService)->isExchangePositionOpen(
+        $f['account']->fresh(),
+        $f['position']->fresh(),
+    );
+
+    expect($isOpen)->toBeFalse();
+});
+
+it('rejects malformed final position confirmation instead of treating it as flat', function (): void {
+    $f = makeDriftFixture(token: 'CONFIRMBAD');
+    $f['account']->update([
+        'binance_api_key' => 'TESTKEY',
+        'binance_api_secret' => 'TESTSECRET',
+    ]);
+    Http::fake(['*' => Http::response(['unexpected' => 'shape'])]);
+
+    expect(fn () => (new DriftCheckService)->isExchangePositionOpen(
+        $f['account']->fresh(),
+        $f['position']->fresh(),
+    ))->toThrow(UnexpectedValueException::class, 'Unable to confirm binance position');
+});
+
 it('flags WAP price drift on a PROFIT-LIMIT order when exchange has the post-WAP price', function (): void {
     // Scenario: position got a DCA fill, WAP recomputed the TP and pushed
     // it to the exchange via apiModify, but the DB-side persist failed.

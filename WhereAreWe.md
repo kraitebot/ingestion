@@ -1,3 +1,22 @@
+# WhereAreWe — 2026-08-10 (GRAM drift snapshot race guard)
+
+## Date
+
+2026-08-10
+
+## This release
+
+- **Quiet drift candidates are revalidated before an alert:** if a position
+  closes while the exchange snapshot is being assembled, the stale missing-
+  protection conclusion is suppressed; a genuinely open exposure still alerts.
+- **Incomplete exchange evidence stays inconclusive:** required conditional-
+  order calls and the final exposure confirmation now produce a dedicated
+  snapshot-incomplete alert instead of manufacturing drift from partial data.
+- **Exchange-only candidates are checked against fresh local state:** a newly
+  persisted position or order is not reported as untracked, while real
+  untracked exchange exposure remains visible. No automatic order or position
+  mutation is made.
+
 # WhereAreWe — 2026-08-09 (manual-close evidence and exact close prices)
 
 ## Date
