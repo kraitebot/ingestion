@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.94.0 - 2026-08-12
+
+Ships `kraitebot/core` 1.106.0.
+
+### Four-hour position sparklines
+
+- [ADDED] Open-position symbols receive a dedicated 15-minute candle refresh
+  every fifteen minutes for the mobile four-hour sparkline.
+- [PRESERVED] Engine-timeframe candle refresh remains separate, so the new
+  visual history does not alter trading conclusions.
+- [VERIFIED] Targeted Pest 5/TIA coverage passes the schedule and position
+  sparkline command paths.
+
 ## 1.93.0 - 2026-08-12
 
 Ships `kraitebot/core` 1.105.0.

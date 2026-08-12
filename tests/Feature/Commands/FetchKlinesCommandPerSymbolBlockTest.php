@@ -67,17 +67,74 @@ test('schedules all-symbol candle refreshes only for the active timeframe ladder
 
     Artisan::call('schedule:list', ['--json' => true]);
 
-    $events = collect(json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR))
+    $scheduledEvents = collect(json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR));
+
+    $events = $scheduledEvents
         ->filter(fn (array $event): bool => str_contains($event['command'], 'kraite:cron-fetch-klines --timeframe=')
-            && ! str_contains($event['command'], '--reference-set'))
+            && ! str_contains($event['command'], '--reference-set')
+            && ! str_contains($event['command'], '--position-sparklines'))
         ->values();
+
+    $sparklineEvents = $scheduledEvents
+        ->filter(fn (array $event): bool => str_contains(
+            $event['command'],
+            'kraite:cron-fetch-klines --position-sparklines --timeframe=15m --limit=20',
+        ));
 
     expect($events)->toHaveCount(3)
         ->and($events->sole(fn (array $event): bool => str_contains($event['command'], '--timeframe=1h'))['expression'])->toBe('5 * * * *')
         ->and($events->sole(fn (array $event): bool => str_contains($event['command'], '--timeframe=4h'))['expression'])->toBe('5 */4 * * *')
         ->and($events->sole(fn (array $event): bool => str_contains($event['command'], '--timeframe=1d'))['expression'])->toBe('5 0 * * *')
         ->and($events->contains(fn (array $event): bool => str_contains($event['command'], '--timeframe=6h')))->toBeFalse()
-        ->and($events->contains(fn (array $event): bool => str_contains($event['command'], '--timeframe=12h')))->toBeFalse();
+        ->and($events->contains(fn (array $event): bool => str_contains($event['command'], '--timeframe=12h')))->toBeFalse()
+        ->and($sparklineEvents)->toHaveCount(1)
+        ->and($sparklineEvents->sole()['expression'])->toBe('*/15 * * * *');
+});
+
+test('sparkline path fetches the actual open-position symbol without dispatching analysis', function (): void {
+    $bitget = ApiSystem::factory()->exchange()->create([
+        'canonical' => 'bitget-sparkline',
+        'name' => 'Bitget sparkline',
+    ]);
+    $openSymbol = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitget->id,
+        'token' => 'SPARKOPEN',
+        'quote' => 'USDT',
+    ]);
+    $closedSymbol = ExchangeSymbol::factory()->create([
+        'api_system_id' => $bitget->id,
+        'token' => 'SPARKCLOSED',
+        'quote' => 'USDT',
+    ]);
+    Position::factory()->long()->create([
+        'exchange_symbol_id' => $openSymbol->id,
+        'parsed_trading_pair' => 'SPARKOPENUSDT',
+        'status' => 'closing',
+    ]);
+    Position::factory()->long()->create([
+        'exchange_symbol_id' => $closedSymbol->id,
+        'parsed_trading_pair' => 'SPARKCLOSEDUSDT',
+        'status' => 'closed',
+    ]);
+
+    expect(Step::query()->where('class', FetchKlinesJob::class)->exists())->toBeFalse();
+
+    $this->artisan('kraite:cron-fetch-klines', [
+        '--position-sparklines' => true,
+        '--timeframe' => '15m',
+        '--limit' => 20,
+    ])->assertExitCode(0);
+
+    $steps = Step::query()->get();
+
+    expect($steps)->toHaveCount(1)
+        ->and($steps->sole()->class)->toBe(FetchKlinesJob::class)
+        ->and($steps->sole()->index)->toBe(1)
+        ->and($steps->sole()->queue)->toBe('indicators')
+        ->and($steps->sole()->arguments)->toHaveCount(3)
+        ->and(data_get($steps->sole()->arguments, 'exchangeSymbolId'))->toBe($openSymbol->id)
+        ->and(data_get($steps->sole()->arguments, 'timeframe'))->toBe('15m')
+        ->and(data_get($steps->sole()->arguments, 'limit'))->toBe(20);
 });
 
 test('bulk path creates shared BTC block with orchestrator at index 2', function (): void {

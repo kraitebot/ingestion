@@ -215,10 +215,17 @@ if (! $isCoolingDown()) {
         ->cron('*/3 * * * *')
         ->withoutOverlapping(3);
 
-    // Fetch klines for active positions only (5m timeframe)
+    // Keep engine-timeframe candles fresh for active positions.
     Schedule::command('kraite:cron-fetch-klines --only-active-positions')
         ->everyFiveMinutes()
         ->withoutOverlapping(5);
+
+    // Keep a denser, four-hour visual history for open-position sparklines.
+    // This stores 15m candles without adding 15m to the engine timeframe
+    // ladder, so trading conclusions continue to use only configured spans.
+    Schedule::command('kraite:cron-fetch-klines --position-sparklines --timeframe=15m --limit=20')
+        ->everyFifteenMinutes()
+        ->withoutOverlapping(14);
 
     // Fetch 15m klines for the BSCS reference basket (BTC + ETH/SOL/BNB/XRP
     // by default, configurable via MARKET_REGIME_SYMBOLS). Required by the
