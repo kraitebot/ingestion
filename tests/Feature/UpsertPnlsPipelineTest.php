@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use Carbon\CarbonImmutable;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Kraite\Core\Enums\NotificationSeverity;
 use Kraite\Core\Jobs\Atomic\Position\Binance\FetchAccountPositionsPnlJob;
 use Kraite\Core\Jobs\Atomic\Position\Bitget\FetchAccountPositionsPnlJob as BitgetFetchAccountPositionsPnlJob;
@@ -12,19 +14,22 @@ use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Notification as NotificationDefinition;
+use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Notifications\AlertNotification;
 use StepDispatcher\Models\Step;
 
 beforeEach(function (): void {
+    $this->travelTo(CarbonImmutable::parse('2026-05-12 00:00:00'));
+
     Kraite::findOrFail(1)->updateSaving(['notifications_enabled' => true]);
 
     NotificationDefinition::query()->updateOrCreate(
-        ['canonical' => 'position_closed'],
+        ['canonical' => 'position_high_profit_closed'],
         [
-            'title' => 'Position Closed',
-            'description' => 'PnL pipeline close test definition.',
+            'title' => 'High-Profit Position Closed',
+            'description' => 'PnL pipeline penultimate-limit close test definition.',
             'default_severity' => NotificationSeverity::Info,
             'cache_duration' => 60,
             'cache_key' => ['position'],
@@ -87,8 +92,26 @@ function createClosedPositionForPnl(Account $account, string $token, string $dir
         'closing_price' => '1.47930000',
         'quantity' => '24.80000000',
         'leverage' => 20,
+        'total_limit_orders' => 4,
         'pnl' => $pnl,
     ]);
+}
+
+function qualifyPositionForPenultimatePnlClose(Position $position): void
+{
+    for ($index = 0; $index < 3; $index++) {
+        Order::withoutEvents(fn () => Order::create([
+            'position_id' => $position->id,
+            'uuid' => Str::uuid()->toString(),
+            'client_order_id' => Str::uuid()->toString(),
+            'type' => 'LIMIT',
+            'side' => $position->direction === 'LONG' ? 'BUY' : 'SELL',
+            'status' => 'FILLED',
+            'reference_status' => 'FILLED',
+            'price' => '1.47',
+            'quantity' => '1',
+        ]));
+    }
 }
 
 function makeBinancePnlJob(int $accountId, array $responsesByType): FetchAccountPositionsPnlJob
@@ -221,18 +244,19 @@ it('matches Bitget positions by time window and stores netProfit', function (): 
         ->and((float) $position->pnl)->toEqualWithDelta(14.5, 0.0001);
 });
 
-it('persists Binance PnL before sending the WAP close notification', function (): void {
+it('persists Binance PnL before sending the penultimate-limit close notification', function (): void {
     $account = createBinanceAccountForPnl();
     $position = createClosedPositionForPnl(
         $account, 'BNB', 'LONG',
         '2026-05-11 21:30:00', '2026-05-11 21:45:00'
     );
     $position->updateSaving(['was_waped' => true, 'waped_at' => now()->subMinute()]);
+    qualifyPositionForPenultimatePnlClose($position);
     $pnlAtNotification = [];
 
     Event::listen(NotificationSending::class, function (NotificationSending $event) use ($position, &$pnlAtNotification): bool {
         if ($event->notification instanceof AlertNotification
-            && $event->notification->canonical === 'position_closed'
+            && $event->notification->canonical === 'position_high_profit_closed'
         ) {
             $pnlAtNotification[] = Position::findOrFail($position->id)->pnl;
         }
@@ -261,18 +285,19 @@ it('persists Binance PnL before sending the WAP close notification', function ()
         ->and(array_values(array_unique($pnlAtNotification)))->toBe(['4.25000000']);
 });
 
-it('persists Bitget PnL before sending the WAP close notification', function (): void {
+it('persists Bitget PnL before sending the penultimate-limit close notification', function (): void {
     $account = createBitgetAccountForPnl();
     $position = createClosedPositionForPnl(
         $account, 'ETH', 'SHORT',
         '2026-05-11 10:00:00', '2026-05-11 12:00:00'
     );
     $position->updateSaving(['was_waped' => true, 'waped_at' => now()->subMinute()]);
+    qualifyPositionForPenultimatePnlClose($position);
     $pnlAtNotification = [];
 
     Event::listen(NotificationSending::class, function (NotificationSending $event) use ($position, &$pnlAtNotification): bool {
         if ($event->notification instanceof AlertNotification
-            && $event->notification->canonical === 'position_closed'
+            && $event->notification->canonical === 'position_high_profit_closed'
         ) {
             $pnlAtNotification[] = Position::findOrFail($position->id)->pnl;
         }

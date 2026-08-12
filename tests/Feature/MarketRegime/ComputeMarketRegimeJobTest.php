@@ -14,8 +14,6 @@ use Kraite\Core\Models\MarketRegimeSnapshot;
 use Kraite\Core\Models\Notification as NotificationDefinition;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\User;
-use Kraite\Core\Notifications\AlertNotification;
-use Kraite\Core\Notifications\Channels\AppPushChannel;
 
 /**
  * Phase 1 contract for the BSCS compute pipeline:
@@ -122,13 +120,17 @@ it('denormalises score, band, and synced_at onto the kraite singleton', function
         ->and($kraite->bscs_synced_at)->not->toBeNull();
 });
 
-it('sends a BSCS score transition only to the traders app when the score returns to zero', function (): void {
+it('does not notify for BSCS score transitions', function (): void {
     NotificationFacade::fake();
     Kraite::find(1)->updateSaving([
         'notifications_enabled' => true,
         'bscs_score' => 60,
         'bscs_band' => 'fragile',
     ]);
+    expect((bool) NotificationDefinition::query()
+        ->where('canonical', 'market_regime_score_changed')
+        ->value('is_active'))->toBeFalse();
+
     NotificationDefinition::query()
         ->where('canonical', 'market_regime_score_changed')
         ->update(['is_active' => true]);
@@ -147,14 +149,7 @@ it('sends a BSCS score transition only to the traders app when the score returns
     (new ComputeMarketRegimeJob)->compute();
 
     expect(Kraite::find(1)->bscs_score)->toBe(0);
-    NotificationFacade::assertSentTo(
-        $trader,
-        AlertNotification::class,
-        fn (AlertNotification $notification, array $channels): bool => $notification->canonical === 'market_regime_score_changed'
-            && $notification->title === 'BSCS cleared — 0/100'
-            && $channels === [AppPushChannel::class],
-    );
-    NotificationFacade::assertNotSentTo(Kraite::admin(), AlertNotification::class);
+    NotificationFacade::assertNothingSent();
 });
 
 it('Phase 1 invariant: bscs_block_active stays false regardless of score or pre-state', function (): void {

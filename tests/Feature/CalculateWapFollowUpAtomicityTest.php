@@ -8,6 +8,7 @@ use Kraite\Core\Jobs\Lifecycles\Position\ApplyWapJob;
 use Kraite\Core\Models\Account;
 use Kraite\Core\Models\ApiSystem;
 use Kraite\Core\Models\ExchangeSymbol;
+use Kraite\Core\Models\NotificationLog;
 use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
@@ -42,16 +43,18 @@ beforeEach(function (): void {
     // caches resolveNotification() in-process, so if the first test in
     // this file resolves the canonical against an empty table, the null
     // is cached and the notification test would fail vacuously.
-    Kraite\Core\Models\Notification::create([
-        'canonical' => 'position_wap_applied',
-        'title' => 'Position WAP Applied',
-        'description' => 'test',
-        'default_severity' => 'high',
-        'verified' => 1,
-        'is_active' => true,
-        'cache_duration' => 30,
-        'cache_key' => ['position'],
-    ]);
+    Kraite\Core\Models\Notification::query()->updateOrCreate(
+        ['canonical' => 'position_penultimate_limit_filled'],
+        [
+            'title' => 'Penultimate Limit Filled',
+            'description' => 'test',
+            'default_severity' => 'high',
+            'verified' => 1,
+            'is_active' => true,
+            'cache_duration' => 30,
+            'cache_key' => ['position'],
+        ],
+    );
 
     // Registered once per process; the toggle scopes it per test. Throwing
     // from creating() aborts the insert — the exact shape of a transient
@@ -131,6 +134,23 @@ function countFollowUpSteps(Position $position): int
         ->count());
 }
 
+function addFilledWapLimits(Position $position, int $count): void
+{
+    for ($index = 0; $index < $count; $index++) {
+        Order::withoutEvents(fn () => Order::create([
+            'position_id' => $position->id,
+            'uuid' => Str::uuid()->toString(),
+            'client_order_id' => Str::uuid()->toString(),
+            'type' => 'LIMIT',
+            'side' => 'BUY',
+            'status' => 'FILLED',
+            'reference_status' => 'FILLED',
+            'price' => '0.94',
+            'quantity' => '50',
+        ]));
+    }
+}
+
 it('rolls back the fill acknowledgement when the follow-up step insert fails', function (): void {
     [$position, $profitOrder, $unackedFill] = buildWapAtomicityFixture('WAPATOM1');
 
@@ -181,12 +201,7 @@ it('commits ack and follow-up step together on the happy path, idempotently', fu
     expect(countFollowUpSteps($position))->toBe(1);
 });
 
-it('sends the WAP-applied notification exactly once per job run, cache or no cache', function (): void {
-    // F17 (code-review 05-P2): Bitget notifies inline from computeApiable
-    // AND via inherited complete(); dedupe used to depend entirely on the
-    // 30s notification cache throttle. The job now latches send-once per
-    // instance — proven here by flushing the cache between calls so the
-    // throttle cannot mask a second send.
+it('sends the penultimate-limit notification once and only through the app', function (): void {
     Illuminate\Support\Facades\Notification::fake();
 
     // The suite runs with the global notification switch off; this test
@@ -194,6 +209,7 @@ it('sends the WAP-applied notification exactly once per job run, cache or no cac
     config(['kraite.notifications_enabled' => true]);
 
     [$position, $profitOrder] = buildWapAtomicityFixture('WAPNOTIF1');
+    addFilledWapLimits($position, 2);
 
     $user = Kraite\Core\Models\User::factory()->create([
         'is_active' => true,
@@ -208,8 +224,6 @@ it('sends the WAP-applied notification exactly once per job run, cache or no cac
 
     Illuminate\Support\Facades\Cache::flush();
 
-    // Second notification attempt in the same run (the Bitget double-call
-    // shape). Throttle is gone — only the instance latch can stop it.
     (function (): void {
         /** @var CalculateWapAndModifyProfitOrderJob $this */
         $this->dispatchWapAppliedNotification('1.00', '100');
@@ -219,16 +233,69 @@ it('sends the WAP-applied notification exactly once per job run, cache or no cac
     Illuminate\Support\Facades\Notification::assertSentTo(
         $user,
         AlertNotification::class,
-        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_wap_applied'
-            && in_array(AppPushChannel::class, $notification->via($user), true),
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_penultimate_limit_filled'
+            && $notification->via($user) === [AppPushChannel::class],
     );
 });
 
-it('formats WAP notification prices and quantities with the token precisions', function (): void {
+it('does not notify before the penultimate limit fills', function (): void {
     Illuminate\Support\Facades\Notification::fake();
     config(['kraite.notifications_enabled' => true]);
 
     [$position, $profitOrder] = buildWapAtomicityFixture('WAPNOTIF2');
+    $user = Kraite\Core\Models\User::factory()->active()->create();
+    $position->account->update(['user_id' => $user->id]);
+
+    $job = new CalculateWapAndModifyProfitOrderJob($position->id);
+    $job->profitOrder = $profitOrder;
+
+    (function (): void {
+        /** @var CalculateWapAndModifyProfitOrderJob $this */
+        $this->dispatchWapAppliedNotification('1.00', '100');
+    })->call($job);
+
+    Illuminate\Support\Facades\Notification::assertNothingSent();
+});
+
+it('does not repeat the penultimate alert after the final limit also fills', function (): void {
+    Illuminate\Support\Facades\Notification::fake();
+    config(['kraite.notifications_enabled' => true]);
+
+    [$position, $profitOrder] = buildWapAtomicityFixture('WAPNOTIF3');
+    addFilledWapLimits($position, 3);
+
+    $user = Kraite\Core\Models\User::factory()->active()->create();
+    $position->account->update(['user_id' => $user->id]);
+
+    NotificationLog::create([
+        'canonical' => 'position_penultimate_limit_filled',
+        'user_id' => $user->id,
+        'relatable_type' => $position->getMorphClass(),
+        'relatable_id' => $position->id,
+        'channel' => 'app',
+        'recipient' => 'iPhone app',
+        'sent_at' => now(),
+        'status' => 'delivered',
+        'passed_threshold' => true,
+    ]);
+
+    $job = new CalculateWapAndModifyProfitOrderJob($position->id);
+    $job->profitOrder = $profitOrder;
+
+    (function (): void {
+        /** @var CalculateWapAndModifyProfitOrderJob $this */
+        $this->dispatchWapAppliedNotification('1.00', '100');
+    })->call($job);
+
+    Illuminate\Support\Facades\Notification::assertNothingSent();
+});
+
+it('formats the penultimate-limit notification with the token precisions and ladder depth', function (): void {
+    Illuminate\Support\Facades\Notification::fake();
+    config(['kraite.notifications_enabled' => true]);
+
+    [$position, $profitOrder] = buildWapAtomicityFixture('WAPNOTIF4');
+    addFilledWapLimits($position, 2);
 
     $user = Kraite\Core\Models\User::factory()->create([
         'is_active' => true,
@@ -252,7 +319,8 @@ it('formats WAP notification prices and quantities with the token precisions', f
     Illuminate\Support\Facades\Notification::assertSentTo(
         $user,
         AlertNotification::class,
-        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_wap_applied'
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_penultimate_limit_filled'
+            && str_contains((string) $notification->pushoverMessage, 'DCA rungs filled: 3/4')
             && str_contains((string) $notification->pushoverMessage, 'TP price: 7.059 → 6.661')
             && str_contains((string) $notification->pushoverMessage, 'TP qty: 16.57 → 49.71')
             && str_contains((string) $notification->pushoverMessage, 'Break-even: 6.637')

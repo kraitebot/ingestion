@@ -1,3 +1,24 @@
+# WhereAreWe — 2026-08-12 (quiet deep-ladder notifications)
+
+## Date
+
+2026-08-12
+
+## This release
+
+- **Routine WAP updates stay quiet:** the trader's iPhone receives one
+  app-only alert when a position fills its penultimate DCA limit, including
+  the ladder depth and TP movement. Earlier WAP recalculations do not notify.
+- **Qualifying closes stay trader-focused:** after final exchange PnL exists,
+  only positions that reached the penultimate DCA limit receive one app-only
+  close alert. Generic close, email, Pushover, and operator copies are not
+  sent.
+- **BSCS score noise is removed:** score transitions no longer alert; the
+  separate app-only pause and recovery events remain unchanged.
+- **Fresh installs match live state:** legacy generic-close, routine-WAP, and
+  BSCS score-transition definitions seed inactive, matching the forward
+  migrations for existing installations.
+
 # WhereAreWe — 2026-08-10 (fresh workers and bounded monitor noise)
 
 ## Date

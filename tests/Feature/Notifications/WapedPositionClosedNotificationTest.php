@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Str;
 use Kraite\Core\Enums\NotificationSeverity;
@@ -21,9 +20,6 @@ use Kraite\Core\Models\User;
 use Kraite\Core\Notifications\AlertNotification;
 use Kraite\Core\Notifications\Channels\AppPushChannel;
 use Kraite\Core\Support\PositionClosedNotifier;
-use NotificationChannels\Pushover\PushoverChannel;
-
-use function Pest\Laravel\mock;
 
 beforeEach(function (): void {
     Kraite::findOrFail(1)->updateSaving(['notifications_enabled' => true]);
@@ -32,17 +28,6 @@ beforeEach(function (): void {
         'kraite.app_push.endpoint' => 'https://exp.host/--/api/v2/push/send',
     ]);
 
-    NotificationDefinition::query()->updateOrCreate(
-        ['canonical' => 'position_closed'],
-        [
-            'title' => 'Position Closed',
-            'description' => 'WAP close test definition.',
-            'default_severity' => NotificationSeverity::Info,
-            'cache_duration' => 60,
-            'cache_key' => ['position'],
-            'is_active' => true,
-        ],
-    );
     NotificationDefinition::query()->updateOrCreate(
         ['canonical' => 'position_high_profit_closed'],
         [
@@ -54,11 +39,10 @@ beforeEach(function (): void {
             'is_active' => true,
         ],
     );
-
 });
 
 /** @param array<int, string> $channels */
-function buildPositionForWapedCloseNotification(
+function buildPositionForPenultimateCloseNotification(
     bool $wasWaped,
     array $channels = ['mail'],
     ?string $pnl = null,
@@ -93,20 +77,16 @@ function buildPositionForWapedCloseNotification(
         'parsed_trading_pair' => $symbol->token.'USDT',
         'was_waped' => $wasWaped,
         'waped_at' => $wasWaped ? now()->subMinute() : null,
+        'total_limit_orders' => 4,
         'pnl' => $pnl,
     ]);
 }
 
 /** @return array{waped_closed_notification_sent: bool, high_profit_notification_sent: bool} */
-function dispatchWapedCloseNotification(
+function dispatchPenultimateCloseNotification(
     Position $position,
     int $filledLimitCount = 1,
-    int $notifyThreshold = 3,
 ): array {
-    $position->account->updateSaving([
-        'total_limit_orders_filled_to_notify' => $notifyThreshold,
-    ]);
-
     return app(PositionClosedNotifier::class)->send(
         position: $position->fresh(),
         closingPrice: '12.45678900',
@@ -114,18 +94,13 @@ function dispatchWapedCloseNotification(
     );
 }
 
-it('sends a WAP-position close through the trader channels including the iPhone app', function (): void {
-    Mail::fake();
-    mock(PushoverChannel::class)
-        ->shouldReceive('send')
-        ->once()
-        ->andReturnNull();
+it('sends a qualifying close to the app only after exchange PnL exists and only once', function (): void {
     Http::fake([
         'https://exp.host/--/api/v2/push/send' => Http::response([
             'data' => [['status' => 'ok', 'id' => 'wap-close-ticket']],
         ]),
     ]);
-    $position = buildPositionForWapedCloseNotification(true, []);
+    $position = buildPositionForPenultimateCloseNotification(true, ['mail', 'pushover']);
     $user = $position->account->user;
     $token = 'ExponentPushToken[wap_close_phone]';
     AppPushDevice::factory()->create([
@@ -137,11 +112,11 @@ it('sends a WAP-position close through the trader channels including the iPhone 
 
     $appLogs = NotificationLog::query()
         ->where('user_id', $user->id)
-        ->where('canonical', 'position_closed')
+        ->where('canonical', 'position_high_profit_closed')
         ->where('channel', 'app');
     $mailLogs = NotificationLog::query()
         ->where('user_id', $user->id)
-        ->where('canonical', 'position_closed')
+        ->where('canonical', 'position_high_profit_closed')
         ->where('channel', 'mail');
 
     expect((clone $appLogs)->count())
@@ -149,7 +124,7 @@ it('sends a WAP-position close through the trader channels including the iPhone 
         ->and((clone $mailLogs)->count())
         ->toBe(0);
 
-    expect(dispatchWapedCloseNotification($position))->toBe([
+    expect(dispatchPenultimateCloseNotification($position, filledLimitCount: 3))->toBe([
         'waped_closed_notification_sent' => false,
         'high_profit_notification_sent' => false,
     ]);
@@ -159,19 +134,19 @@ it('sends a WAP-position close through the trader channels including the iPhone 
 
     $position->updateSaving(['pnl' => '4.25000000']);
 
-    expect(dispatchWapedCloseNotification($position->fresh()))->toBe([
-        'waped_closed_notification_sent' => true,
-        'high_profit_notification_sent' => false,
+    expect(dispatchPenultimateCloseNotification($position->fresh(), filledLimitCount: 3))->toBe([
+        'waped_closed_notification_sent' => false,
+        'high_profit_notification_sent' => true,
     ]);
 
     Http::assertSent(static function (Request $request) use ($position, $token): bool {
         $payload = $request->data()[0] ?? [];
 
         return $payload['to'] === $token
-            && $payload['title'] === "Position Closed — LONG {$position->parsed_trading_pair}"
+            && $payload['title'] === "🎉 High-Profit Close — LONG {$position->parsed_trading_pair}"
             && str_contains($payload['body'], 'Exit: 12.456')
             && ! str_contains($payload['body'], '12.456789')
-            && $payload['data']['canonical'] === 'position_closed'
+            && $payload['data']['canonical'] === 'position_high_profit_closed'
             && $payload['data']['screen'] === 'Dashboard'
             && $payload['badge'] === 1;
     });
@@ -185,7 +160,7 @@ it('sends a WAP-position close through the trader channels including the iPhone 
         ->and($appLog->message_id)
         ->toBe('wap-close-ticket');
 
-    expect(dispatchWapedCloseNotification($position->fresh()))->toBe([
+    expect(dispatchPenultimateCloseNotification($position->fresh(), filledLimitCount: 3))->toBe([
         'waped_closed_notification_sent' => false,
         'high_profit_notification_sent' => false,
     ]);
@@ -194,93 +169,36 @@ it('sends a WAP-position close through the trader channels including the iPhone 
     expect((clone $appLogs)->count())
         ->toBe(1)
         ->and((clone $mailLogs)->count())
-        ->toBe(1)
-        ->and((clone $mailLogs)->sole()->recipient)
-        ->toBe($user->email);
+        ->toBe(0);
 });
 
-it('routes every WAP close to trader app and email plus operator Pushover despite empty trader preferences', function (): void {
+it('forces qualifying closes to the trader app without email or operator Pushover', function (): void {
     NotificationFacade::fake();
-    $position = buildPositionForWapedCloseNotification(true, [], pnl: '4.25000000');
+    $position = buildPositionForPenultimateCloseNotification(true, ['mail', 'pushover'], pnl: '4.25000000');
     $trader = $position->account->user;
-    $operator = Kraite::admin();
 
     NotificationFacade::assertNothingSent();
 
-    expect(dispatchWapedCloseNotification($position))->toBe([
-        'waped_closed_notification_sent' => true,
-        'high_profit_notification_sent' => false,
+    expect(dispatchPenultimateCloseNotification($position, filledLimitCount: 3))->toBe([
+        'waped_closed_notification_sent' => false,
+        'high_profit_notification_sent' => true,
     ]);
 
     NotificationFacade::assertSentToTimes($trader, AlertNotification::class, 1);
     NotificationFacade::assertSentTo(
         $trader,
         AlertNotification::class,
-        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_closed'
-            && $notification->via($trader) === [AppPushChannel::class, 'mail'],
+        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_high_profit_closed'
+            && $notification->via($trader) === [AppPushChannel::class],
     );
-    NotificationFacade::assertSentToTimes($operator, AlertNotification::class, 1);
-    NotificationFacade::assertSentTo(
-        $operator,
-        AlertNotification::class,
-        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_closed'
-            && $notification->via($operator) === [PushoverChannel::class],
-    );
+    NotificationFacade::assertNotSentTo(Kraite::admin(), AlertNotification::class);
 });
 
-it('still delivers trader app and email when operator Pushover throws', function (): void {
-    Mail::fake();
-    mock(PushoverChannel::class)
-        ->shouldReceive('send')
-        ->once()
-        ->andThrow(new RuntimeException('Pushover unavailable'));
-    Http::fake([
-        'https://exp.host/--/api/v2/push/send' => Http::response([
-            'data' => [['status' => 'ok', 'id' => 'fallback-app-ticket']],
-        ]),
-    ]);
-    $position = buildPositionForWapedCloseNotification(true, [], pnl: '4.25000000');
-    $trader = $position->account->user;
-    $token = 'ExponentPushToken[fallback_phone]';
-    AppPushDevice::factory()->create([
-        'user_id' => $trader->id,
-        'expo_push_token' => $token,
-        'token_hash' => hash('sha256', $token),
-        'disabled_at' => null,
-    ]);
-
-    expect(dispatchWapedCloseNotification($position))->toBe([
-        'waped_closed_notification_sent' => false,
-        'high_profit_notification_sent' => false,
-    ]);
-
-    Http::assertSent(static fn (Request $request): bool => ($request->data()[0]['to'] ?? null) === $token);
-    expect(NotificationLog::query()
-        ->where('user_id', $trader->id)
-        ->where('canonical', 'position_closed')
-        ->where('channel', 'app')
-        ->count())
-        ->toBe(1)
-        ->and(NotificationLog::query()
-            ->where('user_id', $trader->id)
-            ->where('canonical', 'position_closed')
-            ->where('channel', 'mail')
-            ->where('recipient', $trader->email)
-            ->count())
-        ->toBe(1);
-});
-
-it('does not send the close notification for a position that never completed WAP', function (): void {
+it('does not send a close alert before the penultimate limit', function (): void {
     NotificationFacade::fake();
-    $position = buildPositionForWapedCloseNotification(false, pnl: '2.10000000');
+    $position = buildPositionForPenultimateCloseNotification(true, pnl: '4.25000000');
 
-    NotificationFacade::assertNothingSent();
-
-    expect(dispatchWapedCloseNotification(
-        $position,
-        filledLimitCount: 3,
-        notifyThreshold: 3,
-    ))->toBe([
+    expect(dispatchPenultimateCloseNotification($position, filledLimitCount: 2))->toBe([
         'waped_closed_notification_sent' => false,
         'high_profit_notification_sent' => false,
     ]);
@@ -288,42 +206,49 @@ it('does not send the close notification for a position that never completed WAP
     NotificationFacade::assertNothingSent();
 });
 
-it('labels an exchange-side manual close explicitly even when the position was never WAPed', function (): void {
+it('qualifies a close from ladder depth even if the WAP flag was not persisted', function (): void {
     NotificationFacade::fake();
-    $position = buildPositionForWapedCloseNotification(false, pnl: '2.10000000');
-    $position->updateSaving(['manually_closed_at' => now()]);
+    $position = buildPositionForPenultimateCloseNotification(false, pnl: '2.10000000');
     $user = $position->account->user;
 
     NotificationFacade::assertNothingSent();
 
-    expect(dispatchWapedCloseNotification($position->fresh()))->toBe([
-        'waped_closed_notification_sent' => true,
-        'high_profit_notification_sent' => false,
+    expect(dispatchPenultimateCloseNotification(
+        $position,
+        filledLimitCount: 3,
+    ))->toBe([
+        'waped_closed_notification_sent' => false,
+        'high_profit_notification_sent' => true,
     ]);
 
     NotificationFacade::assertSentToTimes($user, AlertNotification::class, 1);
-    NotificationFacade::assertSentTo(
-        $user,
-        AlertNotification::class,
-        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_closed'
-            && $notification->title === "Position Manually Closed — LONG {$position->parsed_trading_pair}"
-            && str_contains((string) $notification->pushoverMessage, 'manually closed')
-            && str_contains((string) $notification->pushoverMessage, 'Closed outside Kraite.')
-            && $notification->via($user) === [AppPushChannel::class, 'mail'],
-    );
 });
 
-it('sends only the specialized high-profit close when its threshold is met', function (): void {
+it('keeps a manual close silent when the position did not reach the penultimate limit', function (): void {
     NotificationFacade::fake();
-    $position = buildPositionForWapedCloseNotification(true, pnl: '8.75000000');
+    $position = buildPositionForPenultimateCloseNotification(false, pnl: '2.10000000');
+    $position->updateSaving(['manually_closed_at' => now()]);
+
+    NotificationFacade::assertNothingSent();
+
+    expect(dispatchPenultimateCloseNotification($position->fresh(), filledLimitCount: 2))->toBe([
+        'waped_closed_notification_sent' => false,
+        'high_profit_notification_sent' => false,
+    ]);
+
+    NotificationFacade::assertNothingSent();
+});
+
+it('sends only the specialized app close after the penultimate limit is reached', function (): void {
+    NotificationFacade::fake();
+    $position = buildPositionForPenultimateCloseNotification(true, pnl: '8.75000000');
     $user = $position->account->user;
 
     NotificationFacade::assertNothingSent();
 
-    expect(dispatchWapedCloseNotification(
+    expect(dispatchPenultimateCloseNotification(
         $position,
         filledLimitCount: 3,
-        notifyThreshold: 3,
     ))->toBe([
         'waped_closed_notification_sent' => false,
         'high_profit_notification_sent' => true,
@@ -334,29 +259,22 @@ it('sends only the specialized high-profit close when its threshold is met', fun
         $user,
         AlertNotification::class,
         static fn (AlertNotification $notification): bool => $notification->canonical === 'position_high_profit_closed'
-            && $notification->via($user) === [AppPushChannel::class, 'mail']
+            && $notification->via($user) === [AppPushChannel::class]
             && str_contains((string) $notification->pushoverMessage, 'Exit: 12.456')
             && ! str_contains((string) $notification->pushoverMessage, '12.456789'),
     );
-    NotificationFacade::assertSentToTimes(Kraite::admin(), AlertNotification::class, 1);
-    NotificationFacade::assertSentTo(
-        Kraite::admin(),
-        AlertNotification::class,
-        static fn (AlertNotification $notification): bool => $notification->canonical === 'position_high_profit_closed'
-            && $notification->via(Kraite::admin()) === [PushoverChannel::class],
-    );
+    NotificationFacade::assertNotSentTo(Kraite::admin(), AlertNotification::class);
 });
 
 it('keeps manual attribution on a high-profit close', function (): void {
     NotificationFacade::fake();
-    $position = buildPositionForWapedCloseNotification(true, pnl: '8.75000000');
+    $position = buildPositionForPenultimateCloseNotification(true, pnl: '8.75000000');
     $position->updateSaving(['manually_closed_at' => now()]);
     $user = $position->account->user;
 
-    expect(dispatchWapedCloseNotification(
+    expect(dispatchPenultimateCloseNotification(
         $position->fresh(),
         filledLimitCount: 3,
-        notifyThreshold: 3,
     ))->toBe([
         'waped_closed_notification_sent' => false,
         'high_profit_notification_sent' => true,
