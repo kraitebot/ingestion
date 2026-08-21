@@ -254,7 +254,11 @@ if [ -d "$PROJECT_DIR/resources/views" ]; then
     su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan view:cache"
     echo "[9/10] View cache: rebuilt"
 else
-    echo "[9/10] View cache: N/A (no resources/views directory)"
+    # A prior deployment may have compiled vendor views even though this role
+    # has no application views. Remove that stale cache instead of leaving
+    # executable PHP files behind for the next warmup.
+    su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan view:clear"
+    echo "[9/10] View cache: cleared (no resources/views directory)"
 fi
 find "$PROJECT_DIR/bootstrap/cache" -maxdepth 1 -type f -name '*.php' -exec chmod 0644 {} +
 find "$PROJECT_DIR/bootstrap/cache" -maxdepth 1 -type f -name '*.php' -exec chgrp www-data {} +

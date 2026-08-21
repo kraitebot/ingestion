@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.94.4 - 2026-08-21
+
+Ships `kraitebot/core` 1.106.1.
+
+### Clean cache activation
+
+- [FIXED] Ingestion clears stale compiled vendor views when it has no view
+  directory, so prior cache artifacts cannot survive a later warmup.
+- [VERIFIED] Focused Pest 5/TIA coverage passes the deploy handoff and
+  notification regression paths.
+
 ## 1.94.3 - 2026-08-21
 
 Ships `kraitebot/core` 1.106.1.

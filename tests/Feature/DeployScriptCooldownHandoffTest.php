@@ -30,12 +30,13 @@ it('keeps every long-lived writer stopped until the canonical warmup owns the re
         ->toContain('Only kraite:warmup may start long-lived application processes.');
 });
 
-it('skips view caching only when the application has no views', function (): void {
+it('clears stale view cache rather than compiling views when the application has no views', function (): void {
     $source = file_get_contents(base_path('deploy.sh'));
 
     expect($source)
         ->toContain('if [ -d "$PROJECT_DIR/resources/views" ]; then')
         ->toContain('php artisan view:cache')
-        ->toContain('View cache: N/A (no resources/views directory)')
+        ->toContain('php artisan view:clear')
+        ->toContain('View cache: cleared (no resources/views directory)')
         ->not->toContain('php artisan view:cache" 2>/dev/null || true');
 });
