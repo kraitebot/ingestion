@@ -250,10 +250,14 @@ fi
 # --- Step 9: Rebuild caches ---
 su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan config:cache"
 su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan route:cache"
-# view:cache only on servers that have views (ingestion/workers don't)
-su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan view:cache" 2>/dev/null || true
-chmod 644 "$PROJECT_DIR/bootstrap/cache"/*.php 2>/dev/null || true
-chgrp www-data "$PROJECT_DIR/bootstrap/cache"/*.php 2>/dev/null || true
+if [ -d "$PROJECT_DIR/resources/views" ]; then
+    su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan view:cache"
+    echo "[9/10] View cache: rebuilt"
+else
+    echo "[9/10] View cache: N/A (no resources/views directory)"
+fi
+find "$PROJECT_DIR/bootstrap/cache" -maxdepth 1 -type f -name '*.php' -exec chmod 0644 {} +
+find "$PROJECT_DIR/bootstrap/cache" -maxdepth 1 -type f -name '*.php' -exec chgrp www-data {} +
 echo "[9/10] Caches: rebuilt"
 
 # --- Step 10: Fleet topology drift check ---

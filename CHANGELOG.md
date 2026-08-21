@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.94.3 - 2026-08-21
+
+Ships `kraitebot/core` 1.106.1.
+
+### Strict cache activation
+
+- [FIXED] Ingestion skips view caching only when it has no view directory;
+  cache-command failures are no longer hidden during deployment.
+- [VERIFIED] Focused Pest 5/TIA coverage passes the deploy handoff and
+  notification regression paths.
+
 ## 1.94.2 - 2026-08-21
 
 Ships `kraitebot/core` 1.106.1.

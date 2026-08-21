@@ -1,4 +1,4 @@
-# WhereAreWe — 2026-08-21 (truthful deep-ladder close alerts)
+# WhereAreWe — 2026-08-21 (truthful alerts and strict cache activation)
 
 ## Date
 
@@ -10,6 +10,9 @@
   the trader's app-only alert only after the exchange reports a positive final
   PnL. Loss and break-even stop-loss closes remain silent; the existing
   exchange-symbol safety block remains independent.
+- **Deployment cache failures stay visible:** ingestion has no view directory,
+  so its deploy skips only that inapplicable cache. Config and route cache
+  failures remain hard release failures.
 
 # WhereAreWe — 2026-08-12 (quiet deep-ladder notifications)
 
