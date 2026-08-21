@@ -16,6 +16,7 @@ test('compiles Blade views as non-executable files without changing explicit mod
 
     expect($filesystem)->toBeInstanceOf(CompiledViewFilesystem::class)
         ->and($compiler)->toBeInstanceOf(BladeCompiler::class)
+        ->and(config()->string('view.compiled'))->toBe(storage_path('framework/views/cli'))
         ->and(is_file($sourcePath))->toBeFalse()
         ->and(is_file($compiledPath))->toBeFalse()
         ->and(is_file($outsidePath))->toBeFalse();

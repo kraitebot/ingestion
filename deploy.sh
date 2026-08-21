@@ -250,6 +250,16 @@ fi
 # --- Step 9: Rebuild caches ---
 su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan config:cache"
 su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan route:cache"
+# CLI workers and PHP-FPM compile distinct view caches so a worker-owned mail
+# partial never blocks PHP-FPM's explicit timestamp update (and vice versa).
+# Clear the retired shared cache plus the PHP-FPM cache before the CLI cache is
+# optionally rebuilt below. The exact, validated runtime-cache paths keep this
+# cleanup out of application source, persisted storage, and release backups.
+for VIEW_CACHE_DIR in "$PROJECT_DIR/storage/framework/views" "$PROJECT_DIR/storage/framework/views/cli" "$PROJECT_DIR/storage/framework/views/web"; do
+    if [ -d "$VIEW_CACHE_DIR" ]; then
+        find "$VIEW_CACHE_DIR" -maxdepth 1 -type f -name '*.php' -delete
+    fi
+done
 if [ -d "$PROJECT_DIR/resources/views" ]; then
     su - $KRAITE_USER -c "cd $PROJECT_DIR && php artisan view:cache"
     echo "[9/10] View cache: rebuilt"

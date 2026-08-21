@@ -14,8 +14,9 @@
 ## Compiled-view runtime safety
 
 - **Every newly compiled Blade view is non-executable:** the application fixes
-  Laravel's umask-derived default at the compiled-view boundary, while keeping
-  explicit file modes elsewhere intact.
+  Laravel's umask-derived default at the compiled-view boundary. CLI workers
+  and PHP-FPM use separate cache namespaces, so each runtime can safely retain
+  Laravel's explicit timestamp behavior.
 
 ## Date
 

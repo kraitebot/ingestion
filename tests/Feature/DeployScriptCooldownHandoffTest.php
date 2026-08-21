@@ -38,5 +38,8 @@ it('clears stale view cache rather than compiling views when the application has
         ->toContain('php artisan view:cache')
         ->toContain('php artisan view:clear')
         ->toContain('View cache: cleared (no resources/views directory)')
+        ->toContain('"$PROJECT_DIR/storage/framework/views/cli"')
+        ->toContain('"$PROJECT_DIR/storage/framework/views/web"')
+        ->toContain("-type f -name '*.php' -delete")
         ->not->toContain('php artisan view:cache" 2>/dev/null || true');
 });

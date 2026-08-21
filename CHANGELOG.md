@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.95.2 - 2026-08-21
+
+Ships `kraitebot/core` 1.107.0.
+
+### Runtime-owned compiled views
+
+- [FIXED] CLI workers and PHP-FPM compile Blade templates into separate cache
+  namespaces, so either runtime can preserve Laravel's explicit timestamps.
+- [FIXED] Deployment clears the retired shared cache and the PHP-FPM cache
+  before rebuilding the CLI cache for the exact release.
+- [VERIFIED] Targeted Pest 5/TIA coverage proves the CLI cache contract,
+  non-executable output, and deployment cache cleanup.
+
 ## 1.95.1 - 2026-08-21
 
 Ships `kraitebot/core` 1.107.0.

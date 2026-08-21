@@ -15,6 +15,13 @@ final class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        if (! $this->isCachingConfiguration()) {
+            config()->set(
+                'view.compiled',
+                config()->string('view.compiled').DIRECTORY_SEPARATOR.(PHP_SAPI === 'cli' ? 'cli' : 'web'),
+            );
+        }
+
         $this->app->singleton('files', static fn (): CompiledViewFilesystem => new CompiledViewFilesystem);
     }
 
@@ -44,5 +51,14 @@ final class AppServiceProvider extends ServiceProvider
     private function bootModelsDefaults(): void
     {
         Model::unguard();
+    }
+
+    private function isCachingConfiguration(): bool
+    {
+        $arguments = $_SERVER['argv'] ?? [];
+
+        return $this->app->runningInConsole()
+            && is_array($arguments)
+            && in_array('config:cache', $arguments, true);
     }
 }
