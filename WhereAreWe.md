@@ -1,3 +1,16 @@
+# WhereAreWe — 2026-08-21 (truthful deep-ladder close alerts)
+
+## Date
+
+2026-08-21
+
+## This release
+
+- **High-profit close alerts now mean profit:** a penultimate-DCA close sends
+  the trader's app-only alert only after the exchange reports a positive final
+  PnL. Loss and break-even stop-loss closes remain silent; the existing
+  exchange-symbol safety block remains independent.
+
 # WhereAreWe — 2026-08-12 (quiet deep-ladder notifications)
 
 ## Date

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.94.2 - 2026-08-21
+
+Ships `kraitebot/core` 1.106.1.
+
+### Truthful high-profit close alerts
+
+- [FIXED] The app-only high-profit close alert now requires positive final
+  exchange PnL after the penultimate DCA rung.
+- [PRESERVED] Loss and break-even stop-loss closes remain silent, while the
+  exchange-symbol stop-loss protection path remains unchanged.
+- [VERIFIED] Focused Pest 5/TIA coverage passes the stop-loss, close-alert,
+  and exchange-PnL regression paths.
+
 ## 1.94.0 - 2026-08-12
 
 Ships `kraitebot/core` 1.106.0.

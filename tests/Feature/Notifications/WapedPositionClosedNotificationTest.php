@@ -14,6 +14,7 @@ use Kraite\Core\Models\ExchangeSymbol;
 use Kraite\Core\Models\Kraite;
 use Kraite\Core\Models\Notification as NotificationDefinition;
 use Kraite\Core\Models\NotificationLog;
+use Kraite\Core\Models\Order;
 use Kraite\Core\Models\Position;
 use Kraite\Core\Models\Symbol;
 use Kraite\Core\Models\User;
@@ -205,6 +206,47 @@ it('does not send a close alert before the penultimate limit', function (): void
 
     NotificationFacade::assertNothingSent();
 });
+
+it('does not label a non-positive stop-loss close as high profit', function (string $pnl): void {
+    NotificationFacade::fake();
+    $position = buildPositionForPenultimateCloseNotification(true, pnl: $pnl);
+    $stopLoss = Order::withoutEvents(function () use ($position): Order {
+        return Order::create([
+            'position_id' => $position->id,
+            'uuid' => Str::uuid()->toString(),
+            'client_order_id' => Str::uuid()->toString(),
+            'type' => 'STOP-MARKET',
+            'side' => 'SELL',
+            'position_side' => $position->direction,
+            'status' => 'FILLED',
+            'reference_status' => 'FILLED',
+            'price' => '286.81654000',
+            'quantity' => '0',
+            'is_algo' => true,
+            'filled_at' => now(),
+        ]);
+    });
+
+    expect($position->pnl)
+        ->toBe($pnl)
+        ->and($stopLoss->status)
+        ->toBe('FILLED');
+    NotificationFacade::assertNothingSent();
+
+    expect(dispatchPenultimateCloseNotification($position, filledLimitCount: 4))->toBe([
+        'waped_closed_notification_sent' => false,
+        'high_profit_notification_sent' => false,
+    ]);
+
+    expect($position->fresh()->pnl)
+        ->toBe($pnl)
+        ->and($stopLoss->fresh()->status)
+        ->toBe('FILLED');
+    NotificationFacade::assertNothingSent();
+})->with([
+    'production-sized loss' => '-415.85686241',
+    'break-even close' => '0.00000000',
+]);
 
 it('qualifies a close from ladder depth even if the WAP flag was not persisted', function (): void {
     NotificationFacade::fake();
