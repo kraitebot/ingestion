@@ -1,5 +1,16 @@
 # WhereAreWe — 2026-08-21 (truthful alerts and clean cache activation)
 
+## TAAPI v2 delivery
+
+- **Indicator decisions keep their existing meaning under TAAPI v2:** the
+  service authenticates through the supported v2 boundary, supplies the market
+  candles it needs, and preserves the existing indicator result contract.
+- **Provider traffic has one shared budget at the real request boundary:** a
+  Futures attempt and its controlled Spot fallback each reserve their own slot,
+  preventing worker concurrency from overshooting the provider limit.
+- **A release is not healthy with fresh provider rate-limit errors:** clean
+  post-warmup TAAPI diagnostics are now a required production acceptance gate.
+
 ## Date
 
 2026-08-21

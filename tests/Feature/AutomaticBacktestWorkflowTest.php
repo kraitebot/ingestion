@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Kraite\Core\Jobs\Backtest\EnsureBacktestCandleCoverageStep;
 use Kraite\Core\Jobs\Backtest\FetchTaapiCandlesStep;
@@ -24,7 +26,6 @@ use Kraite\Core\Support\Throttlers\TaapiThrottler;
 use StepDispatcher\Models\Step;
 use StepDispatcher\States\Running;
 use StepDispatcher\Support\StepDispatcher;
-use Tests\Support\StepTester;
 
 /**
  * @return array{account: Account, symbol: ExchangeSymbol, sibling: ExchangeSymbol}
@@ -40,6 +41,11 @@ function makeAutomaticBacktestFixture(string $token = 'SAFE'): array
     $bitget = ApiSystem::factory()->exchange()->create([
         'canonical' => 'bitget',
         'name' => 'Bitget',
+    ]);
+    ApiSystem::factory()->create([
+        'canonical' => 'taapi',
+        'name' => 'TAAPI',
+        'is_exchange' => false,
     ]);
     $canonicalSymbol = Symbol::factory()->create(['token' => $token]);
     $account = Account::factory()->create([
@@ -268,47 +274,33 @@ it('attempts every candle source before leaving an uncovered token pending', fun
     ));
 });
 
-it('reschedules a TAAPI candle fetch when the shared limiter is busy', function (): void {
+it('paces a TAAPI candle fetch at the HTTP client boundary', function (): void {
     $fixture = makeAutomaticBacktestFixture('THROTTLED');
     Kraite::findOrFail(1)->forceFill(['taapi_secret' => 'test-secret'])->save();
     Http::fake([
         'https://api.taapi.io/*' => Http::response([], 200),
     ]);
+    config()->set('kraite.throttlers.taapi.requests_per_window', 1);
+    config()->set('kraite.throttlers.taapi.window_seconds', 1);
+    config()->set('kraite.throttlers.taapi.min_delay_between_requests_ms', 0);
+    config()->set('kraite.throttlers.taapi.safety_threshold', 1.0);
     TaapiThrottler::reset();
-    TaapiThrottler::recordDispatch();
+    TaapiThrottler::throttleRequest();
+    $nowMilliseconds = (int) round(now()->getPreciseTimestamp(3));
 
-    $windowSeconds = config()->integer('kraite.throttlers.taapi.window_seconds');
-    $windowKey = 'taapi_throttler:window:'.(int) floor(now()->timestamp / $windowSeconds);
-    $countBefore = Cache::get($windowKey, 0);
-    $step = StepTester::createSteps([[
-        'queue' => 'indicators',
-        'arguments' => [
-            'exchangeSymbolId' => $fixture['symbol']->id,
-            'timeframe' => '1d',
-        ],
-        'relatable_type' => ExchangeSymbol::class,
-        'relatable_id' => $fixture['symbol']->id,
-    ]], FetchTaapiCandlesStep::class)[0];
+    expect((int) Cache::get('taapi_throttler:last_dispatch'))->toBe($nowMilliseconds + 1000);
 
-    expect($countBefore)->toBe(1)
-        ->and($step->response)->toBeNull();
+    $result = (new FetchTaapiCandlesStep($fixture['symbol']->id, '1d'))->compute();
 
-    StepTester::withSteps([$step])
-        ->withStatusMatrix([1 => [$step->id => 'pending']])
-        ->onlyDispatchTicks(1)
-        ->withLabel('taapi_candle_fetch_throttled')
-        ->test();
-
-    $step->refresh();
-
-    expect($step->was_throttled)->toBeTrue()
-        ->and($step->retries)->toBe(0)
-        ->and($step->response)->toBeNull()
-        ->and($step->dispatch_after)->not->toBeNull()
-        ->and($step->dispatch_after->isAfter(now()))->toBeTrue()
-        ->and(Cache::get($windowKey, 0))->toBe($countBefore);
-
-    Http::assertNothingSent();
+    expect($result)->toBe([
+        'inserted' => 0,
+        'earliest' => null,
+        'latest' => null,
+        'source_url' => 'https://api.taapi.io/candles',
+    ])
+        ->and((int) Cache::get('taapi_throttler:last_dispatch'))->toBe($nowMilliseconds + 2000);
+    Sleep::assertSequence([Sleep::for(1000)->milliseconds()]);
+    Http::assertSentCount(1);
     TaapiThrottler::reset();
 });
 
@@ -339,10 +331,7 @@ it('records a shared TAAPI slot immediately before a real candle request', funct
     ]);
     TaapiThrottler::reset();
 
-    $windowSeconds = config()->integer('kraite.throttlers.taapi.window_seconds');
-    $windowKey = 'taapi_throttler:window:'.(int) floor(now()->timestamp / $windowSeconds);
-
-    expect(Cache::get($windowKey, 0))->toBe(0)
+    expect(Cache::get('taapi_throttler:last_dispatch'))->toBeNull()
         ->and(DB::table('candles')->where('exchange_symbol_id', $fixture['symbol']->id)->exists())->toBeFalse();
 
     $result = (new FetchTaapiCandlesStep($fixture['symbol']->id, '1d'))->compute();
@@ -359,13 +348,72 @@ it('records a shared TAAPI slot immediately before a real candle request', funct
         ->and($result['source_url'])->toBe('https://api.taapi.io/candles')
         ->and($result['requested'])->toBe(200)
         ->and($storedTimestamps)->toBe([$lastClosedTimestamp])
-        ->and(Cache::get($windowKey, 0))->toBe(1);
+        ->and((int) Cache::get('taapi_throttler:last_dispatch'))->toBeGreaterThan(
+            (int) round(now()->getPreciseTimestamp(3)),
+        );
 
     Http::assertSentCount(1);
     Http::assertSent(fn ($request): bool => str_starts_with(
         $request->url(),
         'https://api.taapi.io/candles',
     ));
+    TaapiThrottler::reset();
+});
+
+it('uses one v2 candles request while preserving the backtest candle result', function (): void {
+    $fixture = makeAutomaticBacktestFixture('V2CANDLES');
+    $token = 'taapi-v2-candle-test-token';
+    $lastClosedTimestamp = now('UTC')->startOfDay()->subDay()->getTimestamp();
+    $currentOpenTimestamp = now('UTC')->startOfDay()->getTimestamp();
+    config()->set('kraite.api.taapi.driver', 'v2');
+    config()->set('kraite.api.credentials.taapi.v2_token', $token);
+    Http::fake([
+        'https://v2.taapi.io/candles*' => Http::response([
+            [
+                'timestamp' => $lastClosedTimestamp,
+                'open' => 100,
+                'high' => 110,
+                'low' => 90,
+                'close' => 105,
+                'volume' => 1000,
+            ],
+            [
+                'timestamp' => $currentOpenTimestamp,
+                'open' => 105,
+                'high' => 115,
+                'low' => 95,
+                'close' => 110,
+                'volume' => 1200,
+            ],
+        ]),
+    ]);
+    TaapiThrottler::reset();
+
+    $result = (new FetchTaapiCandlesStep($fixture['symbol']->id, '1d'))->compute();
+    $storedTimestamps = DB::table('candles')
+        ->where('exchange_symbol_id', $fixture['symbol']->id)
+        ->where('timeframe', '1d')
+        ->pluck('timestamp')
+        ->map(static fn ($timestamp): int => (int) $timestamp)
+        ->all();
+
+    expect($result['inserted'])->toBe(1)
+        ->and($result['source_url'])->toBe('https://v2.taapi.io/candles')
+        ->and($storedTimestamps)->toBe([$lastClosedTimestamp]);
+
+    Http::assertSentCount(1);
+    $request = Http::recorded()->sole()[0];
+
+    expect($request)->toBeInstanceOf(Request::class)
+        ->and($request->url())->toStartWith('https://v2.taapi.io/candles')
+        ->and($request->header('Authorization')[0])->toBe('Bearer '.$token)
+        ->and($request->data())->toEqual([
+            'exchange' => 'binancefutures',
+            'symbol' => 'V2CANDLESUSDT',
+            'timeframe' => '1d',
+            'results' => 200,
+            'backtrack' => 0,
+        ]);
     TaapiThrottler::reset();
 });
 
@@ -377,13 +425,11 @@ it('spends no TAAPI quota when the latest closed candle already exists', functio
     ]);
     TaapiThrottler::reset();
 
-    $windowSeconds = config()->integer('kraite.throttlers.taapi.window_seconds');
-    $windowKey = 'taapi_throttler:window:'.(int) floor(now()->timestamp / $windowSeconds);
     $result = (new FetchTaapiCandlesStep($fixture['symbol']->id, '1d'))->compute();
 
     expect($result['skipped'])->toBeTrue()
         ->and($result['reason'])->toBe('DB already holds the latest closed candle.')
-        ->and(Cache::get($windowKey, 0))->toBe(0);
+        ->and(Cache::get('taapi_throttler:last_dispatch'))->toBeNull();
 
     Http::assertNothingSent();
     TaapiThrottler::reset();

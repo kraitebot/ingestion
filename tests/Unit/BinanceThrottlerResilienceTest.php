@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Sleep;
 use Kraite\Core\Models\Server;
 use Kraite\Core\Support\Throttlers\BinanceThrottler;
 use Kraite\Core\Support\Throttlers\BybitThrottler;
@@ -17,6 +18,7 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     $this->freezeTime();
     AtomicReservationProbeThrottler::reset();
+    TaapiThrottler::reset();
 });
 
 function seedBinanceThrottleIp(): string
@@ -50,37 +52,55 @@ it('atomically reserves the configured request budget without recordDispatch dou
         ->toBeLessThanOrEqual(60000);
 });
 
-it('stores non-atomic dispatch timestamps as epoch milliseconds', function (): void {
+it('atomically reserves a TAAPI request slot at the HTTP boundary', function (): void {
     $this->travelTo(Carbon::parse('2026-08-01 12:34:56.123'));
+    config()->set('kraite.throttlers.taapi.requests_per_window', 2);
+    config()->set('kraite.throttlers.taapi.window_seconds', 1);
+    config()->set('kraite.throttlers.taapi.min_delay_between_requests_ms', 0);
+    config()->set('kraite.throttlers.taapi.safety_threshold', 1.0);
 
-    TaapiThrottler::recordDispatch();
+    TaapiThrottler::throttleRequest();
 
     expect((int) Cache::get('taapi_throttler:last_dispatch'))
-        ->toBe((int) round(now()->getPreciseTimestamp(3)));
+        ->toBe((int) round(now()->getPreciseTimestamp(3)) + 500);
+    Sleep::assertNeverSlept();
 });
 
-it('normalizes numeric Redis-style dispatch timestamps without losing precision', function (): void {
+it('normalizes numeric Redis-style TAAPI reservations without losing precision', function (): void {
     $this->travelTo(Carbon::parse('2026-08-01 12:34:56.123'));
+    config()->set('kraite.throttlers.taapi.requests_per_window', 1000);
+    config()->set('kraite.throttlers.taapi.window_seconds', 1);
     config()->set('kraite.throttlers.taapi.min_delay_between_requests_ms', 221);
     $nowMs = (int) round(now()->getPreciseTimestamp(3));
-    Cache::put('taapi_throttler:last_dispatch', (string) ($nowMs - 183), 60);
+    Cache::put('taapi_throttler:last_dispatch', (string) ($nowMs + 38), 60);
 
-    expect(TaapiThrottler::canDispatch())->toBe(38);
+    TaapiThrottler::throttleRequest();
+
+    expect((int) Cache::get('taapi_throttler:last_dispatch'))->toBe($nowMs + 259);
+    Sleep::assertSequence([Sleep::for(38)->milliseconds()]);
 });
 
-it('enforces the full base throttle delay when the cached timestamp is in the future', function (): void {
+it('preserves a future TAAPI reservation made by another worker', function (): void {
+    config()->set('kraite.throttlers.taapi.requests_per_window', 1000);
+    config()->set('kraite.throttlers.taapi.window_seconds', 1);
     config()->set('kraite.throttlers.taapi.min_delay_between_requests_ms', 221);
     $nowMs = (int) round(now()->getPreciseTimestamp(3));
     Cache::put('taapi_throttler:last_dispatch', $nowMs + 5000, 60);
 
-    expect(TaapiThrottler::canDispatch())->toBe(221);
+    TaapiThrottler::throttleRequest();
+
+    expect((int) Cache::get('taapi_throttler:last_dispatch'))->toBe($nowMs + 5221);
+    Sleep::assertSequence([Sleep::for(5000)->milliseconds()]);
 });
 
-it('fails closed when a base throttle dispatch timestamp is malformed', function (): void {
+it('fails closed when a TAAPI request reservation is malformed', function (): void {
     config()->set('kraite.throttlers.taapi.min_delay_between_requests_ms', 221);
     Cache::put('taapi_throttler:last_dispatch', new stdClass, 60);
 
-    expect(TaapiThrottler::canDispatch())->toBe(30000);
+    expect(fn () => TaapiThrottler::throttleRequest())
+        ->toThrow(UnexpectedValueException::class, 'integer timestamp');
+
+    Sleep::assertNeverSlept();
 });
 
 it('enforces exchange pre-flight delays from scalar dispatch timestamps', function (

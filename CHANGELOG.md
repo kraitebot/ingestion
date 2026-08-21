@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.95.0 - 2026-08-21
+
+Ships `kraitebot/core` 1.107.0.
+
+### Reliable TAAPI v2 indicators
+
+- [CHANGED] Ingestion uses the authenticated TAAPI v2 provider for live
+  indicator and backtest candle work while keeping existing conclusion output.
+- [HARDENED] Provider pacing accounts for each physical TAAPI request, so
+  concurrent indicator workers cannot exceed the shared request budget through
+  hidden fallback calls.
+- [VERIFIED] Focused and full Pest 5/TIA coverage prove v2 output mapping,
+  request budgeting, legacy rollback, provider errors, and candle persistence.
+
 ## 1.94.4 - 2026-08-21
 
 Ships `kraitebot/core` 1.106.1.

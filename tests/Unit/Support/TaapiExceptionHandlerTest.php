@@ -82,3 +82,27 @@ test('does not ignore non-400 errors', function (): void {
     // 429 is not in ignorable codes, so should not be ignored
     expect($handler->ignoreException($exception))->toBeFalse();
 });
+
+test('extracts the v2 status code and message envelope', function (): void {
+    $handler = new TaapiExceptionHandler();
+    $response = new Response(
+        401,
+        [],
+        json_encode([
+            'statusCode' => 401,
+            'error' => 'Unauthorized',
+            'message' => 'Invalid API token',
+        ], JSON_THROW_ON_ERROR),
+    );
+    $exception = new RequestException(
+        'Unauthorized',
+        new Request('GET', '/indicator/rsi'),
+        $response,
+    );
+
+    expect($handler->extractHttpErrorCodes($exception))->toBe([
+        'http_code' => 401,
+        'status_code' => 401,
+        'message' => 'Invalid API token',
+    ]);
+});
