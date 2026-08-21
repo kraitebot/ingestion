@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Support\Filesystem\CompiledViewFilesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
@@ -12,7 +13,10 @@ use StepDispatcher\Models\StepsDispatcherTicks;
 
 final class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->singleton('files', static fn (): CompiledViewFilesystem => new CompiledViewFilesystem);
+    }
 
     public function boot(): void
     {

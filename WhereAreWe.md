@@ -1,4 +1,4 @@
-# WhereAreWe — 2026-08-21 (truthful alerts and clean cache activation)
+# WhereAreWe — 2026-08-21 (TAAPI v2 and safe compiled views)
 
 ## TAAPI v2 delivery
 
@@ -10,6 +10,12 @@
   preventing worker concurrency from overshooting the provider limit.
 - **A release is not healthy with fresh provider rate-limit errors:** clean
   post-warmup TAAPI diagnostics are now a required production acceptance gate.
+
+## Compiled-view runtime safety
+
+- **Every newly compiled Blade view is non-executable:** the application fixes
+  Laravel's umask-derived default at the compiled-view boundary, while keeping
+  explicit file modes elsewhere intact.
 
 ## Date
 

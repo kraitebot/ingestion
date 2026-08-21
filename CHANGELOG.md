@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.95.1 - 2026-08-21
+
+Ships `kraitebot/core` 1.107.0.
+
+### Safe compiled-view runtime boundary
+
+- [FIXED] Compiled Blade views now always receive non-executable `0644`
+  permissions, independently of the PHP runtime umask.
+- [PRESERVED] Explicit filesystem modes outside the compiled-view cache remain
+  unchanged.
+- [VERIFIED] Focused Pest 5/TIA coverage compiles a real Blade template and
+  checks both permission contracts.
+
 ## 1.95.0 - 2026-08-21
 
 Ships `kraitebot/core` 1.107.0.
